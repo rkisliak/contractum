@@ -23,7 +23,7 @@ T = TypeVar("T", bound="ContractVersionListOut")
 
 @_attrs_define
 class ContractVersionListOut:
-    """ Every visible version, highest SemVer precedence first (unpaginated, A13).
+    """ Every visible version, highest SemVer precedence first (unpaginated).
 
         Attributes:
             items (list[ContractVersionMetadataOut]):

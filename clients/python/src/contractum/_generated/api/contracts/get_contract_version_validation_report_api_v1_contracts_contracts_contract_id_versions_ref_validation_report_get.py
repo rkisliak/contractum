@@ -121,7 +121,7 @@ def sync_detailed(
 ) -> Response[Any | ContractValidationReportOut | Problem]:
     """ Get Contract Version Validation Report
 
-     The stored report a visible version was published with, by ``latest`` or SemVer (D-155).
+     The stored report a visible version was published with, by ``latest`` or SemVer.
 
     Args:
         contract_id (UUID):
@@ -157,7 +157,7 @@ def sync(
 ) -> Any | ContractValidationReportOut | Problem | None:
     """ Get Contract Version Validation Report
 
-     The stored report a visible version was published with, by ``latest`` or SemVer (D-155).
+     The stored report a visible version was published with, by ``latest`` or SemVer.
 
     Args:
         contract_id (UUID):
@@ -188,7 +188,7 @@ async def asyncio_detailed(
 ) -> Response[Any | ContractValidationReportOut | Problem]:
     """ Get Contract Version Validation Report
 
-     The stored report a visible version was published with, by ``latest`` or SemVer (D-155).
+     The stored report a visible version was published with, by ``latest`` or SemVer.
 
     Args:
         contract_id (UUID):
@@ -224,7 +224,7 @@ async def asyncio(
 ) -> Any | ContractValidationReportOut | Problem | None:
     """ Get Contract Version Validation Report
 
-     The stored report a visible version was published with, by ``latest`` or SemVer (D-155).
+     The stored report a visible version was published with, by ``latest`` or SemVer.
 
     Args:
         contract_id (UUID):

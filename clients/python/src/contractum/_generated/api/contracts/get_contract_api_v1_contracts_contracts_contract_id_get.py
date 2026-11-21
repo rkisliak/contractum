@@ -117,10 +117,10 @@ def sync_detailed(
 
      Contract metadata of the head row; content-derived fields are null without ``contract:read``.
 
-    The head row is the Latest once the contract has one, else the newest draft (D-36).
+    The head row is the Latest once the contract has one, else the newest draft.
     ``contract:view`` admits every role that can see contracts; a caller who holds
     ``contract:read-published`` only gets the Latest (published content they may fetch anyway),
-    and the unknown-contract 404 for a contract without one (RBAC-07, RBAC-09).
+    and the unknown-contract 404 for a contract without one.
 
     Args:
         contract_id (UUID):
@@ -155,10 +155,10 @@ def sync(
 
      Contract metadata of the head row; content-derived fields are null without ``contract:read``.
 
-    The head row is the Latest once the contract has one, else the newest draft (D-36).
+    The head row is the Latest once the contract has one, else the newest draft.
     ``contract:view`` admits every role that can see contracts; a caller who holds
     ``contract:read-published`` only gets the Latest (published content they may fetch anyway),
-    and the unknown-contract 404 for a contract without one (RBAC-07, RBAC-09).
+    and the unknown-contract 404 for a contract without one.
 
     Args:
         contract_id (UUID):
@@ -188,10 +188,10 @@ async def asyncio_detailed(
 
      Contract metadata of the head row; content-derived fields are null without ``contract:read``.
 
-    The head row is the Latest once the contract has one, else the newest draft (D-36).
+    The head row is the Latest once the contract has one, else the newest draft.
     ``contract:view`` admits every role that can see contracts; a caller who holds
     ``contract:read-published`` only gets the Latest (published content they may fetch anyway),
-    and the unknown-contract 404 for a contract without one (RBAC-07, RBAC-09).
+    and the unknown-contract 404 for a contract without one.
 
     Args:
         contract_id (UUID):
@@ -226,10 +226,10 @@ async def asyncio(
 
      Contract metadata of the head row; content-derived fields are null without ``contract:read``.
 
-    The head row is the Latest once the contract has one, else the newest draft (D-36).
+    The head row is the Latest once the contract has one, else the newest draft.
     ``contract:view`` admits every role that can see contracts; a caller who holds
     ``contract:read-published`` only gets the Latest (published content they may fetch anyway),
-    and the unknown-contract 404 for a contract without one (RBAC-07, RBAC-09).
+    and the unknown-contract 404 for a contract without one.
 
     Args:
         contract_id (UUID):

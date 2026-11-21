@@ -27,9 +27,9 @@ T = TypeVar("T", bound="ContractDiffOut")
 
 @_attrs_define
 class ContractDiffOut:
-    """ The classified changes between two refs, computed on the fly and never stored (D-156).
+    """ The classified changes between two refs, computed on the fly and never stored.
 
-    ``changes`` items have the stored-report change shape (D-148): ``code``, ``class``,
+    ``changes`` items have the stored-report change shape: ``code``, ``class``,
     ``element_kind``, ``path``, ``pointer_before``, ``pointer_after``, ``attribute``, ``before``,
     ``after`` (values only for allow-listed attributes).
 

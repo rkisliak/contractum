@@ -199,14 +199,14 @@ def sync_detailed(
 ) -> Response[ContractListOut | Problem]:
     """ List Contracts
 
-     List and search contracts (D-12): filters, ``q`` text match, keyset pagination.
+     List and search contracts: filters, ``q`` text match, keyset pagination.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
-    the SQL, so a caller without access gets an empty page (D-35). A row appears when the caller
+    the SQL, so a caller without access gets an empty page. A row appears when the caller
     holds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a
     Latest. Every row is the contract's head: the Latest once one exists (for every caller), else
     the newest draft. Its content-derived fields are filled only where the caller holds
-    ``contract:read`` (D-36) or ``contract:read-published``, and content filters match only those
+    ``contract:read`` or ``contract:read-published``, and content filters match only those
     rows, so a published-only caller can never match a draft's values.
 
     Args:
@@ -267,14 +267,14 @@ def sync(
 ) -> ContractListOut | Problem | None:
     """ List Contracts
 
-     List and search contracts (D-12): filters, ``q`` text match, keyset pagination.
+     List and search contracts: filters, ``q`` text match, keyset pagination.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
-    the SQL, so a caller without access gets an empty page (D-35). A row appears when the caller
+    the SQL, so a caller without access gets an empty page. A row appears when the caller
     holds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a
     Latest. Every row is the contract's head: the Latest once one exists (for every caller), else
     the newest draft. Its content-derived fields are filled only where the caller holds
-    ``contract:read`` (D-36) or ``contract:read-published``, and content filters match only those
+    ``contract:read`` or ``contract:read-published``, and content filters match only those
     rows, so a published-only caller can never match a draft's values.
 
     Args:
@@ -330,14 +330,14 @@ async def asyncio_detailed(
 ) -> Response[ContractListOut | Problem]:
     """ List Contracts
 
-     List and search contracts (D-12): filters, ``q`` text match, keyset pagination.
+     List and search contracts: filters, ``q`` text match, keyset pagination.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
-    the SQL, so a caller without access gets an empty page (D-35). A row appears when the caller
+    the SQL, so a caller without access gets an empty page. A row appears when the caller
     holds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a
     Latest. Every row is the contract's head: the Latest once one exists (for every caller), else
     the newest draft. Its content-derived fields are filled only where the caller holds
-    ``contract:read`` (D-36) or ``contract:read-published``, and content filters match only those
+    ``contract:read`` or ``contract:read-published``, and content filters match only those
     rows, so a published-only caller can never match a draft's values.
 
     Args:
@@ -398,14 +398,14 @@ async def asyncio(
 ) -> ContractListOut | Problem | None:
     """ List Contracts
 
-     List and search contracts (D-12): filters, ``q`` text match, keyset pagination.
+     List and search contracts: filters, ``q`` text match, keyset pagination.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
-    the SQL, so a caller without access gets an empty page (D-35). A row appears when the caller
+    the SQL, so a caller without access gets an empty page. A row appears when the caller
     holds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a
     Latest. Every row is the contract's head: the Latest once one exists (for every caller), else
     the newest draft. Its content-derived fields are filled only where the caller holds
-    ``contract:read`` (D-36) or ``contract:read-published``, and content filters match only those
+    ``contract:read`` or ``contract:read-published``, and content filters match only those
     rows, so a published-only caller can never match a draft's values.
 
     Args:

@@ -29,7 +29,7 @@ T = TypeVar("T", bound="ContractVersionMetadataOut")
 
 @_attrs_define
 class ContractVersionMetadataOut:
-    """ One visible version of a contract, without its document (API-02, D-48).
+    """ One visible version of a contract, without its document.
 
         Attributes:
             content_sha256 (str):

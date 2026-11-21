@@ -21,7 +21,7 @@ T = TypeVar("T", bound="ContractTemplateOriginOut")
 
 @_attrs_define
 class ContractTemplateOriginOut:
-    """ The template version a contract was copied from (CONT-02); the content is not linked.
+    """ The template version a contract was copied from; the content is not linked.
 
         Attributes:
             template_id (UUID):

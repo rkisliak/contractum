@@ -320,15 +320,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # pnpm must be set up before setup-node so that setup-node can use the pnpm cache.
+      # No pnpm cache here: the audit reads the lockfile and installs nothing, so there is no store
+      # to cache (setup-node's cache would fail its post step on the missing path).
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           package_json_file: ui/package.json
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: ui/.nvmrc
-          cache: pnpm
-          cache-dependency-path: ui/pnpm-lock.yaml
       - name: pnpm audit (production dependencies, high and critical)
         run: pnpm --dir ui audit --prod --audit-level high
 

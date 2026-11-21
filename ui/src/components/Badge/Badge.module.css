@@ -1,0 +1,66 @@
+/* Badge (enterprise badges.md, UI-SPEC 5.7). Tokens only. 12px medium label, 1px border, 6px radius,
+ * content-sized (never full width). Status meaning always carries an icon or text, never colour alone. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  width: auto;
+  padding: 0.125rem var(--spacing-2);
+  border: var(--border-width-hairline) solid var(--badge-border);
+  border-radius: var(--radius-control);
+  background: var(--badge-fill);
+  box-shadow: var(--shadow-none);
+  color: var(--badge-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  /* A badge is one short label: it never wraps inside (a two-line pill reads as two badges). */
+  white-space: nowrap;
+  /* A long user-supplied label ends in an ellipsis past 16rem (the full text is the title), never a wider
+   * badge or a second line (volume audit R16). */
+  max-inline-size: min(100%, 16rem);
+}
+
+.label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mono {
+  font-family: var(--font-family-monospace);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.brand {
+  --badge-fill: var(--color-brand-softer);
+  --badge-text: var(--color-fg-brand-strong);
+  --badge-border: var(--color-border-brand-subtle);
+}
+
+.neutral {
+  --badge-fill: var(--color-neutral-secondary-medium);
+  --badge-text: var(--color-heading);
+  --badge-border: var(--color-border-default);
+}
+
+.success {
+  --badge-fill: var(--color-success-soft);
+  --badge-text: var(--color-fg-success-strong);
+  --badge-border: var(--color-border-success-subtle);
+}
+
+.warning {
+  --badge-fill: var(--color-warning-soft);
+  --badge-text: var(--color-fg-warning);
+  --badge-border: var(--color-border-warning-subtle);
+}
+
+.danger {
+  --badge-fill: var(--color-danger-soft);
+  --badge-text: var(--color-fg-danger-strong);
+  --badge-border: var(--color-border-danger-subtle);
+}

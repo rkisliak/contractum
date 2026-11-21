@@ -1,0 +1,15 @@
+# pip-audit ignore file (security.yml job `pip-audit`). It ships empty on purpose: prefer
+# upgrading the package (`uv lock --upgrade-package <name>`) over ignoring a finding.
+#
+# Entry format: one advisory ID per line (PYSEC-..., GHSA-..., CVE-...) followed by an expiry
+# date, after which the job fails until the entry is reviewed:
+#
+#   GHSA-xxxx-xxxx-xxxx exp:2027-01-31
+#
+# Every entry must be preceded by a comment that gives:
+#   - the reason it is ignored,
+#   - the owner who reviews it,
+#   - a link to the advisory,
+#   - why it is not exploitable here.
+#
+# Entries are reviewed when they expire. Lines that start with # and blank lines are ignored.

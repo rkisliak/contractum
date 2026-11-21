@@ -1,0 +1,14 @@
+[project]
+name = "dc-rules"
+version = "0.1.0"
+description = "Declarative rule engine: rule model, CEL and JSONPath ports, evaluator (pure, no I/O)"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "cel-expr-python==0.1.4",
+  "python-jsonpath==2.2.2",
+  "pydantic==2.14.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

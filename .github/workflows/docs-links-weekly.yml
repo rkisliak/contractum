@@ -1,0 +1,60 @@
+# Weekly check of the EXTERNAL links in every Markdown file, with lychee (official release binary,
+# SHA-256 verified). It never runs on pull requests, so a remote site that is down never blocks a
+# merge. A failure here is a to-do list: fix or remove the dead links in a normal pull request.
+# Local links, images and heading anchors are checked offline on every pull request in docs.yml.
+name: docs-links-weekly
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  external-links:
+    name: external-links
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # To upgrade: take both values from the lychee-v<version> release (the
+      # lychee-x86_64-unknown-linux-gnu.tar.gz asset digest) and change them together. Keep them
+      # equal to the pins in docs.yml.
+      LYCHEE_VERSION: "0.24.2"
+      LYCHEE_SHA256: "1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install lychee (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          tarball="$RUNNER_TEMP/lychee.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${LYCHEE_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/lychee-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/lychee-bin" --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
+          echo "$RUNNER_TEMP/lychee-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/lychee-bin/lychee" --version
+      # lychee.toml leaves `offline` unset (the pull request job passes --offline on the command
+      # line), so this job uses the same config online: same excluded paths, hidden files and
+      # fragment checks. Keep `offline` out of lychee.toml: a config value cannot be turned off
+      # from the command line.
+      - name: lychee (external links)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          lychee --config lychee.toml \
+            --exclude-all-private \
+            --accept '200..=299,429' \
+            --max-retries 2 \
+            --retry-wait-time 5 \
+            --timeout 20 \
+            './**/*.md'

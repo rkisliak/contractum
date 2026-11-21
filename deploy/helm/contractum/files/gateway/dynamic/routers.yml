@@ -1,0 +1,103 @@
+# One router per module, each a trailing-slash PathPrefix so /api/v1/identity-evil never matches.
+# No router sends an unmatched path to an application service: the lowest-priority catch-all
+# below answers everything else (/internal/..., /healthz, /readyz, /.well-known/..., unknown
+# /api/v1/<module>/ paths) with a 404 problem, and its only target is the problem responder.
+# Middleware order: security-headers outermost so HSTS also lands on the errors the gateway
+# re-renders (404, 413, 429, 5xx), then cors so CORS headers land on them too, then
+# gateway-problems outside the body and rate limiters so it sees their 413 and 429. The ui router
+# has no cors (same origin) and its own static-asset limiter: security-headers, gateway-problems,
+# rl-ui.
+# The one other application router is `ui` (GET and HEAD only, priority 2): the single-page app
+# for every path that is not an API, internal, well-known or health path. Those paths, and any
+# other method, still reach the catch-all, so the UI can never shadow an API or internal route.
+http:
+  routers:
+    identity-auth:
+      rule: "PathPrefix(`/api/v1/identity/auth/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-auth]
+      service: identity
+    identity:
+      rule: "PathPrefix(`/api/v1/identity/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-default]
+      service: identity
+    contracts:
+      rule: "PathPrefix(`/api/v1/contracts/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-default]
+      service: contracts
+    validation:
+      rule: "PathPrefix(`/api/v1/validation/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-default]
+      service: validation
+    audit:
+      rule: "PathPrefix(`/api/v1/audit/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-default]
+      service: audit
+    # The one non-module router: the merged OpenAPI document and the vendored Swagger UI. Exact
+    # Paths plus a trailing-slash PathPrefix, so /api/v1/docsevil stays on the catch-all.
+    api-docs:
+      rule: "Path(`/api/v1/openapi.json`) || Path(`/api/v1/docs`) || PathPrefix(`/api/v1/docs/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-default]
+      service: api-docs
+
+    # The web UI (D-UI-08-06). Compound rule at priority 2, above the priority-1 catch-all and below
+    # every module router (their rules are longer, so they win without a priority). The explicit
+    # exclusions keep /api, /api/..., /internal/..., /.well-known/... and the health paths on the
+    # catch-all; POST to an SPA path is not matched and answers the catch-all 404 problem. No cors
+    # (same origin) and no body limit (GET and HEAD carry no body).
+    ui:
+      rule: "(Method(`GET`) || Method(`HEAD`)) && PathPrefix(`/`) && !PathPrefix(`/api/`) && !Path(`/api`) && !PathPrefix(`/internal/`) && !PathPrefix(`/.well-known/`) && !Path(`/healthz`) && !Path(`/readyz`)"
+      priority: 2
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, gateway-problems, rl-ui]
+      service: ui
+
+    catchall-problem:
+      rule: "PathPrefix(`/`)"
+      priority: 1
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers, cors, gateway-problems, rl-default, replace-path-404]
+      service: problem-responder
+
+  services:
+    problem-responder:
+      loadBalancer:
+        servers:
+          - url: "http://problem-responder:8080"
+    identity:
+      loadBalancer:
+        servers:
+          - url: "http://identity:8000"
+    contracts:
+      loadBalancer:
+        servers:
+          - url: "http://contracts:8000"
+    validation:
+      loadBalancer:
+        servers:
+          - url: "http://validation:8000"
+    audit:
+      loadBalancer:
+        servers:
+          - url: "http://audit:8000"
+    api-docs:
+      loadBalancer:
+        servers:
+          - url: "http://api-docs:8080"
+    ui:
+      loadBalancer:
+        servers:
+          - url: "http://ui:8080"

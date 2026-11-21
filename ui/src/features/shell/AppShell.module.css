@@ -1,0 +1,82 @@
+/* App shell (UI-SPEC section 6; enterprise layout.md). Tokens only. The page sits on the page surface
+ * (gray-50 / gray-950) so card panels read as raised. */
+.shell {
+  min-height: 100dvh;
+  /* neutral-secondary-soft in light; neutral-primary in dark so cards stay raised. */
+  background: var(--color-surface-page);
+}
+
+.skipLink {
+  position: fixed;
+  inset-block-start: var(--spacing-2);
+  inset-inline-start: var(--spacing-2);
+  z-index: var(--z-skip-link);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-control);
+  background: var(--color-brand);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-white);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skipLink:focus {
+  transform: none;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: var(--size-sidebar-rail) var(--size-sidebar) minmax(
+      0,
+      1fr
+    );
+  min-height: 100dvh;
+}
+
+.bodyCollapsed {
+  grid-template-columns: var(--size-sidebar-rail) minmax(0, 1fr);
+}
+
+.railSlot,
+.sidebarSlot {
+  position: sticky;
+  inset-block-start: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.sidebarSlot {
+  border-inline-end: var(--border-width-hairline) solid
+    var(--color-neutral-quaternary);
+  background: var(--color-neutral-primary-soft);
+}
+
+.main {
+  min-width: 0;
+  padding-block: var(--spacing-6) var(--spacing-12);
+  /* A 32px gutter (4% on very wide screens), no fixed cap: tables and text use the width. */
+  padding-inline: max(var(--spacing-8), 4%);
+}
+
+.main:focus {
+  outline: none;
+}
+
+.content {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .body,
+  .bodyCollapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .railSlot,
+  .sidebarSlot {
+    display: none;
+  }
+}

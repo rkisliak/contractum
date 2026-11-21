@@ -1,0 +1,162 @@
+/*
+ * Combobox (enterprise dropdown.md + inputs.md). Tokens only. The field is the shared FieldShell; the
+ * popup is the dropdown surface: 12px overlay radius, shadow-lg, 4px inset so the options take the
+ * concentric inner radius (8px). It is fixed-positioned from the input's box (see index.tsx).
+ */
+.anchor {
+  position: relative;
+  min-width: 0;
+}
+
+.input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-size: var(--font-size-input);
+  line-height: var(--line-height-component);
+  text-overflow: clip;
+  align-self: stretch;
+  padding: 0 var(--spacing-3);
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.input::placeholder {
+  color: var(--color-body);
+  opacity: 1;
+}
+
+.inputWithClear {
+  padding-inline-end: var(--spacing-2);
+}
+
+.trailing {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-inline-end: var(--spacing-1);
+}
+
+.popup {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-overlay);
+  background: var(--color-neutral-primary-medium);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.list {
+  display: grid;
+  gap: var(--spacing-1);
+  min-height: 0;
+  margin: 0;
+  padding: var(--inset-overlay);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.option {
+  display: grid;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-overlay-inner);
+  color: var(--color-body);
+  cursor: pointer;
+  outline: none;
+  transition: background-color var(--motion-hover) var(--motion-ease);
+}
+
+.option:hover {
+  background: var(--color-neutral-tertiary-medium);
+  color: var(--color-heading);
+}
+
+/* The keyboard-active option: the same fill plus the one 2px focus ring, inset. */
+.option[data-active] {
+  background: var(--color-neutral-tertiary-medium);
+  color: var(--color-heading);
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.option[aria-selected="true"] .name {
+  color: var(--color-fg-brand);
+}
+
+.disabled,
+.disabled:hover {
+  background: transparent;
+  color: var(--color-body);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.first {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.name {
+  min-width: 0;
+  color: var(--color-heading);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.check {
+  flex-shrink: 0;
+  color: var(--color-fg-brand);
+}
+
+/* Line 2: secondary text, then the object ID on its own line, both in the normal font (D-03), muted. */
+.second {
+  display: grid;
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+}
+
+.detail,
+.meta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: normal;
+}
+
+.note {
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.status {
+  padding: var(--spacing-3);
+  border-block-start: var(--border-width-hairline) solid
+    var(--color-border-default);
+  color: var(--color-body);
+}
+
+.list + .status {
+  flex-shrink: 0;
+}
+
+.popup > .status:first-child {
+  border-block-start: 0;
+}

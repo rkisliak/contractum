@@ -1,0 +1,84 @@
+# Contractum docs site, built by Zensical (`uv run --group docs zensical build --strict`, run from
+# the repository root). Pages must read correctly on GitHub too, so no site-only syntax: use GitHub
+# alerts (`> [!NOTE]`, rendered by gh-admonitions) and plain fenced blocks, no snippets, no tabs.
+site_name: Contractum
+# The GitHub Pages address. The Pages job sets DOCS_SITE_URL from actions/configure-pages, so a
+# deployed site always has the right URL; local and pull-request builds use this default.
+site_url: !ENV [DOCS_SITE_URL, "https://rkisliak.github.io/contractum/"]
+repo_url: https://github.com/rkisliak/contractum
+repo_name: rkisliak/contractum
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      # GitHub-compatible heading ids, so one anchor works on GitHub, on the site and in lychee.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+  # Built into Zensical: "> [!NOTE]" renders on GitHub and as an admonition on the site.
+  - gh-admonitions
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          # griffe reads the SDK source statically; the SDK is not installed in the root lock.
+          paths: [clients/python/src]
+          options:
+            show_source: false
+            members_order: source
+            filters: ["!^_"]
+            show_signature_annotations: true
+            separate_signature: true
+
+nav:
+  - Home: index.md
+  - Security: security.md
+  - For users:
+      - Getting started: user/getting-started.md
+      - SDK and CLI: user/sdk-cli.md
+      - Subscriptions: user/subscriptions.md
+      - API guide: user/api-guide.md
+      - Writing rules: user/writing-rules.md
+      - UI guide: user/ui-guide.md
+      - Reference:
+          - CLI: user/reference/cli.md
+          - SDK API: user/reference/sdk-api.md
+          - HTTP API: user/reference/http-api.md
+  - For administrators:
+      - Deploy on Kubernetes: admin/deploy-kubernetes.md
+      - First run: admin/first-run.md
+      - Entra ID: admin/entra-setup.md
+      - Upgrade and backup: admin/upgrade-backup.md
+      - Troubleshooting: admin/troubleshooting.md
+      - Settings: admin/settings.md
+  - For developers:
+      - Local stack: dev/local-stack.md
+      - CI and GitHub: dev/ci-and-github.md
+      - Architecture:
+          - Overview: dev/architecture/README.md
+          - 01 System overview: dev/architecture/01-system-overview.md
+          - 02 Identity and access: dev/architecture/02-identity-and-access.md
+          - 03 Contracts and lifecycle: dev/architecture/03-contracts-and-lifecycle.md
+          - 04 Validation and rules: dev/architecture/04-validation-and-rules.md
+          - 05 Audit and events: dev/architecture/05-audit-and-events.md
+          - 06 Platform and operations: dev/architecture/06-platform-and-operations.md
+      - API design decisions: dev/api-design-decisions.md
+      - Publishing: dev/publishing.md

@@ -1,0 +1,38 @@
+/* Compact top bar (under 1024px only). Tokens only. */
+.bar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-sticky);
+  display: none;
+  align-items: center;
+  gap: var(--spacing-3);
+  height: var(--size-topbar);
+  padding-inline: var(--spacing-4);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-2xs);
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  border-radius: var(--radius-control);
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .bar {
+    display: flex;
+  }
+}
+
+.end {
+  margin-inline-start: auto;
+}

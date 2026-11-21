@@ -1,0 +1,96 @@
+/*
+ * Empty, loading and spinner states (UI-SPEC 5.9, C-10, C-16). Tokens only.
+ * Motion is replaced by static states under prefers-reduced-motion.
+ */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  color: var(--color-body);
+}
+
+/* Icon shape (icon-shapes.md, gray, MD): 40px circle, 20px glyph. */
+.emptyIcon {
+  box-sizing: content-box;
+  flex-shrink: 0;
+  margin-block-end: var(--spacing-4);
+  padding: 0.625rem;
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-tertiary);
+  color: var(--color-body);
+}
+
+.emptyHeading {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  overflow-wrap: anywhere;
+}
+
+/* C-10: a paragraph follows the heading, so spacing-8. */
+.emptyBody {
+  margin: var(--spacing-8) 0 0;
+  max-width: 100%;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.emptyAction {
+  margin-block-start: var(--spacing-6);
+}
+
+.skeleton {
+  display: grid;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.skeletonRow {
+  height: 1.25rem;
+  border-radius: var(--radius-control);
+  background: var(--color-neutral-tertiary);
+  animation: pulse 1200ms ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.6;
+  }
+}
+
+.spinner {
+  display: inline-flex;
+  align-items: center;
+}
+
+.spinnerIcon {
+  flex-shrink: 0;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinnerLabel {
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-component);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow,
+  .spinnerIcon {
+    animation: none;
+  }
+}

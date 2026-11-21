@@ -1,0 +1,79 @@
+/* Drawer (UI-SPEC 5.10, C-16). Tokens only. Full-height overlay panel: shadow-xl, a 1px edge, and the
+ * 12px overlay radius on its inner (viewport-facing) corners only. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
+}
+
+.panel {
+  position: fixed;
+  inset-block: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  width: min(var(--size-drawer), calc(100vw - var(--spacing-12)));
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xl);
+  transition: transform var(--motion-overlay) var(--motion-ease);
+}
+
+.wide {
+  width: min(40rem, calc(100vw - var(--spacing-12)));
+}
+
+.start {
+  inset-inline-start: 0;
+  border-inline-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  border-start-end-radius: var(--radius-overlay);
+  border-end-end-radius: var(--radius-overlay);
+}
+
+.end {
+  inset-inline-end: 0;
+  border-inline-start: var(--border-width-hairline) solid
+    var(--color-border-default);
+  border-start-start-radius: var(--radius-overlay);
+  border-end-start-radius: var(--radius-overlay);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+}
+
+.title {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+}
+
+.hiddenTitle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Detail sheets: the body content starts at the same 16px inset as the title. */
+.padded {
+  padding: var(--spacing-4);
+}

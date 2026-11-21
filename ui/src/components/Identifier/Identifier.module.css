@@ -1,0 +1,11 @@
+/* One-line identifier in the normal font (quick 261119-r5g, D-03) without tabular figures (they widen a UUID's hyphens until it looks monospaced), truncated
+ * with an ellipsis past --identifier-max. */
+.id {
+  display: inline-block;
+  max-width: var(--identifier-max, 18rem);
+  overflow: hidden;
+  font-variant-numeric: normal;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}

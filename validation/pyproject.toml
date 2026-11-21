@@ -1,0 +1,21 @@
+[project]
+name = "dc-validation"
+version = "0.1.0"
+description = "Validation service: governance rule evaluation"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "dc-core",
+  "dc-auth",
+  "dc-odcs",
+  "dc-rules",
+]
+
+[tool.uv.sources]
+dc-core = { workspace = true }
+dc-auth = { workspace = true }
+dc-odcs = { workspace = true }
+dc-rules = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

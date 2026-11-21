@@ -1,0 +1,165 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "contractum"
+version = "0.1.0"
+description = "Read-only consumer of published Contractum data contracts: fetch, pin and test your data locally."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+  "click>=8.2,<9",
+  "httpx>=0.27,<1",
+  "pydantic>=2.10,<3",
+  "rich>=13.9,<16",
+  "pyarrow>=18,<30",
+  "PyYAML>=6.0.1,<7",
+  "keyring>=25,<26",
+  "platformdirs>=4.2,<5",
+  "filelock>=3.13,<5",
+  "attrs>=23.2",
+]
+
+[project.optional-dependencies]
+pandas = ["pandas>=2.2,<4"]
+polars = ["polars>=1.3,<3"]
+delta = ["deltalake>=1.0,<2"]
+sql = ["sqlglot>=28.4,<31"]
+all = ["contractum[pandas,polars,delta,sql]"]
+
+[project.scripts]
+contractum = "contractum.cli:main"
+
+[project.entry-points.pytest11]
+contractum = "contractum.pytest_plugin"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<10",
+  "coverage>=7.10",
+  "respx>=0.22",
+  "hypothesis>=6.100",
+  "import-linter>=2.1",
+  "mypy>=1.13",
+  "ruff==0.17.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contractum"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["src/contractum/_generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S603", "S607"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = [
+  "yaml",
+  "pyarrow",
+  "pyarrow.*",
+  "keyring",
+  "keyring.*",
+  "deltalake",
+  "polars",
+  "pandas",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["contractum._generated.*"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Per-plan helpers live in the tests/support namespace package, one module per plan.
+pythonpath = ["tests"]
+addopts = "--strict-markers --import-mode=importlib"
+markers = [
+  "unit: fast tests, no network and no server",
+  "integration: needs a running Contractum stack or a container",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source_pkgs = ["contractum"]
+omit = ["*/_generated/*"]
+relative_files = true
+patch = ["subprocess"]
+
+# combine folds subprocess and integration data recorded under other working directories onto
+# the canonical path (the combined coverage script relies on it).
+[tool.coverage.paths]
+contractum = ["src/contractum", "*/src/contractum"]
+
+[tool.coverage.report]
+fail_under = 98
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "@overload"]
+
+[tool.importlinter]
+root_packages = ["contractum"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "contractum imports no server code"
+type = "forbidden"
+source_modules = ["contractum"]
+forbidden_modules = [
+  "dc_core",
+  "dc_auth",
+  "dc_odcs",
+  "dc_rules",
+  "dc_identity",
+  "dc_contracts",
+  "dc_validation",
+  "dc_audit",
+  "dc_mail",
+  "fastapi",
+  "sqlalchemy",
+  "alembic",
+]
+
+[[tool.importlinter.contracts]]
+name = "engine, odcs and report stay pure"
+type = "forbidden"
+source_modules = ["contractum.engine", "contractum.odcs", "contractum.report"]
+forbidden_modules = [
+  "click",
+  "rich",
+  "httpx",
+  "keyring",
+  "contractum.cli",
+  "contractum._api",
+  "contractum._transport",
+  "contractum._generated",
+  "contractum.auth",
+  "contractum.client",
+]

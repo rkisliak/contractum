@@ -1,0 +1,7 @@
+/* ConfirmDialog (UI-SPEC 5.5): the panel, header, body and footer come from Dialog.module.css. */
+.form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}

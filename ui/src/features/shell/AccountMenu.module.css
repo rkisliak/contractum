@@ -1,0 +1,37 @@
+/* Account menu trigger (UI-SPEC section 6). Tokens only. */
+.trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* In the slate rail: the same 40px hit area and hover as the rail icons. */
+.rail {
+  border-radius: var(--radius-card);
+  transition: background-color var(--motion-hover) var(--motion-ease);
+}
+
+.rail:hover {
+  background: var(--color-rail-hover);
+}
+
+.avatar {
+  width: 2rem;
+  height: 2rem;
+}
+
+.name {
+  color: var(--color-heading);
+  font-weight: var(--font-weight-semibold);
+}
+
+.meta {
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+}

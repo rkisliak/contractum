@@ -1,0 +1,186 @@
+# Contractum Helm chart: default values.
+#
+# One release per namespace: the services address each other by fixed Service names
+# (identity, contracts, validation, audit, mail, nats, postgres), exactly as in docker compose.
+# Secrets are never created by the chart. Create them first (scripts/create-secrets.sh or your
+# secret manager); docs/admin/deploy-kubernetes.md lists every Secret and key.
+
+global:
+  # Registry and tag for the platform images (contractum/<component>:<tag>).
+  imageRegistry: ""            # e.g. myregistry.azurecr.io (empty: use the repository as is)
+  imageTag: "dev"              # set to your release tag, e.g. 1.0.0
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []         # e.g. [{name: regcred}]
+  # The public URL users open (scheme://host[:port]). Used for the browser-visible Entra
+  # authority defaults and documentation; the gateway itself routes by path only.
+  publicUrl: "https://contractum.example.com"
+  # Proxy addresses the services trust for X-Forwarded-* (uvicorn --forwarded-allow-ips). The
+  # client IP drives identity's per-IP login backoff. "*" is safe only while networkPolicy.enabled
+  # keeps every path to the services through the gateway.
+  trustedProxies: "*"
+  logLevel: INFO
+
+# Trusted token issuers (DC_AUTH_ISSUERS). The local IdP must stay the first entry. Add one entry
+# per Entra tenant: {"issuer": "https://login.microsoftonline.com/<tenant>/v2.0",
+# "jwks_uri": "https://login.microsoftonline.com/<tenant>/discovery/v2.0/keys",
+# "audiences": ["<api app id>"], "namespace": "entra", "kind": "entra", "tenant_id": "<tenant>"}
+auth:
+  issuers:
+    - issuer: http://identity:8000
+      jwks_uri: http://identity:8000/.well-known/jwks.json
+      audiences: [contractum]
+      namespace: local
+  # Microsoft Graph for Entra group lookups (identity). Leave clientId empty without Entra.
+  # The client secret is the key graph_client_secret in the identity Secret.
+  graph:
+    clientId: ""
+    baseUrl: https://graph.microsoft.com/v1.0
+    tokenUrlTemplate: https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token
+
+# Secret names (create them before installing; see docs/admin/deploy-kubernetes.md).
+secrets:
+  identity: dc-identity
+  contracts: dc-contracts
+  validation: dc-validation
+  audit: dc-audit
+  mail: dc-mail                   # optional (key smtp_password); mounted only if it exists
+  gatewayTls: dc-gateway-tls      # type kubernetes.io/tls (tls.crt, tls.key)
+  postgres: dc-postgres           # only with postgres.bundled
+  nats: dc-nats                   # only with nats.bundled (key nats.conf)
+
+# Database: one PostgreSQL 18 server with the ltree extension, four databases and roles
+# (identity, contracts, validation, audit). bundled: true runs a single-pod StatefulSet for
+# evaluation; production should point at a managed server (bundled: false).
+postgres:
+  bundled: true
+  host: postgres                  # external server host when bundled is false
+  port: 5432
+  image: postgres:18
+  storage: 10Gi
+  storageClass: ""
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: 1, memory: 1Gi}
+
+# Event bus: NATS 2.15 with JetStream and the per-service users from infra/nats/nats.conf.tmpl.
+nats:
+  bundled: true
+  url: nats://nats:4222           # external server URL when bundled is false
+  image: nats:2.15.2-alpine
+  storage: 5Gi
+  storageClass: ""
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+# Outgoing mail (the mail service). With mailpit.enabled the chart runs a mail catcher instead.
+smtp:
+  host: smtp.example.com
+  port: 587
+  tls: starttls                   # none | starttls | implicit; none only for an in-cluster or loopback host, the mail service refuses to start otherwise
+  username: ""                    # the password is the key smtp_password in the mail Secret
+  from: notifications@example.com
+
+mailpit:
+  enabled: false                  # evaluation only: catches mail, never delivers it
+  image: axllent/mailpit:v1.33.1
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+# Notification delivery (contracts). Production keeps HTTPS-only webhooks. The allowed webhook
+# hosts, retries and templates are runtime settings (docs/admin/settings.md).
+notifications:
+  webhookRequireHttps: true
+  webhookAllowedPrivateHosts: []
+
+identity:
+  replicas: 1
+  resources:
+    requests: {cpu: 250m, memory: 384Mi}
+    limits: {cpu: 1, memory: 1Gi}
+  extraEnv: {}
+contracts:
+  replicas: 1
+  resources:
+    requests: {cpu: 250m, memory: 384Mi}
+    limits: {cpu: 1, memory: 1Gi}
+  extraEnv: {}
+validation:
+  replicas: 1
+  # Each rule worker is capped at workerMemoryBytes (RLIMIT_AS); keep the pod limit well above it.
+  # Rule timeouts count CPU time, so a low CPU limit slows rule checks but does not fail them.
+  workerMemoryBytes: 1073741824
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: 2, memory: 3Gi}
+  extraEnv: {}
+audit:
+  replicas: 1
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 768Mi}
+  extraEnv: {}
+mail:
+  replicas: 1
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 250m, memory: 256Mi}
+apiDocs:
+  enabled: true
+  resources:
+    requests: {cpu: 50m, memory: 96Mi}
+    limits: {cpu: 250m, memory: 256Mi}
+
+ui:
+  replicas: 1
+  localLoginEnabled: true
+  entra:
+    enabled: false
+    clientId: ""
+    authority: ""                 # https://login.microsoftonline.com/<tenant>
+    scopes: "openid profile offline_access"
+    protocol: aad                 # aad for Entra; oidc for a generic OIDC provider
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 250m, memory: 128Mi}
+
+# The bundled gateway: Traefik with the same routing, limits and headers as docker compose.
+# Disable it to use your own ingress; docs/admin/deploy-kubernetes.md lists what it must keep.
+gateway:
+  enabled: true
+  image: traefik:v3.7.17
+  replicas: 1
+  service:
+    type: LoadBalancer            # ClusterIP behind your own load balancer or ingress
+    port: 443
+    annotations: {}
+  resources:
+    requests: {cpu: 100m, memory: 64Mi}
+    limits: {cpu: 1, memory: 256Mi}
+
+# Only the gateway reaches the services; only the services reach Postgres and NATS.
+networkPolicy:
+  enabled: true
+
+migrations:
+  # Runs `migrate upgrade head` for the four databases once per install or upgrade; the services
+  # wait (initContainer) until their database is at head.
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 86400
+  # The four migration init containers and the `done` container of the Job.
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+# The wait-for-migrations init container of every service Deployment.
+waitForMigrations:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+# The gateway's problem-responder (the error pages Traefik forwards to).
+problemResponder:
+  resources:
+    requests: {cpu: 10m, memory: 48Mi}
+    limits: {cpu: 100m, memory: 128Mi}

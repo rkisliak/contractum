@@ -1,0 +1,154 @@
+/*
+ * Choice controls (enterprise radios-checkboxes-toggle.md, UI-SPEC 5.2). Tokens only. 16px box,
+ * 4px radius, gray-500 boundary (>= 3:1), brand when checked. The native checkbox is kept (keyboard, forms,
+ * assistive technology) and drawn with `appearance: none`; the check mark is an icon sitting on
+ * top of the box and shown through the :checked sibling selector.
+ */
+.checkboxField {
+  display: grid;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+}
+
+.checkboxBox {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  /* Centres the 16px box on the first text line (14px x 1.25 = 17.5px). */
+  margin-block-start: calc(
+    (var(--font-size-sm) * var(--line-height-component) - 1rem) / 2
+  );
+}
+
+.checkboxInput {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  border: var(--border-width-hairline) solid var(--color-border-control);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-secondary-medium);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-hover) var(--motion-ease),
+    border-color var(--motion-hover) var(--motion-ease);
+}
+
+.checkboxInput:hover {
+  border-color: var(--color-body);
+}
+
+.checkboxInput:checked {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+}
+
+.checkboxInput:checked:hover {
+  border-color: var(--color-brand-strong);
+  background: var(--color-brand-strong);
+}
+
+.checkboxInvalid,
+.checkboxInvalid:hover {
+  border-color: var(--color-border-danger);
+  background: var(--color-danger-soft);
+}
+
+.checkboxInvalid:checked {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+}
+
+.checkboxInput:disabled,
+.checkboxInput:disabled:hover {
+  border-color: var(--color-border-default-medium);
+  background: var(--color-disabled);
+  box-shadow: var(--shadow-none);
+  cursor: not-allowed;
+}
+
+.checkboxInput:disabled:checked {
+  border-color: var(--color-border-default-medium);
+  background: var(--color-body-subtle);
+}
+
+.checkboxMark {
+  position: absolute;
+  inset: 0.125rem;
+  display: none;
+  color: var(--color-white);
+  pointer-events: none;
+}
+
+.checkboxInput:checked + .checkboxMark {
+  display: block;
+}
+
+.checkboxLabel {
+  min-width: 0;
+  color: var(--color-heading);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  overflow-wrap: anywhere;
+}
+
+.checkboxLabelInvalid {
+  color: var(--color-fg-danger-strong);
+}
+
+.checkboxInput:disabled ~ .checkboxLabel {
+  cursor: not-allowed;
+}
+
+.checkboxHelper {
+  /* Aligned under the label text: box (16px) plus the row gap. */
+  padding-inline-start: calc(1rem + var(--spacing-2));
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.checkboxError {
+  display: flex;
+  gap: var(--spacing-2);
+  color: var(--color-fg-danger-strong);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.checkboxErrorIcon {
+  flex-shrink: 0;
+  margin-block-start: 0.15625rem;
+}
+
+.checkboxErrorText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* C-25: 44px targets on coarse pointers. */
+@media (pointer: coarse) {
+  .checkboxRow {
+    align-items: center;
+  }
+
+  .checkboxBox {
+    margin-block-start: 0;
+  }
+
+  .checkboxLabel {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+  }
+}

@@ -1,0 +1,64 @@
+# Contractum Evaluation and Noncommercial License 1.0
+
+Copyright (c) 2026 Raman Kisliak. All rights not granted below are reserved.
+
+## 1. What you may do
+
+Anyone, including companies, may for free:
+
+- download, install, build and run this software;
+- test, evaluate and validate it, for example in a proof of concept, a pilot or a test
+  environment, and against your own data contracts and pipelines, for up to 90 days per
+  organization (the "evaluation period");
+- read and study the source code;
+- change configuration (environment variables, settings, compose and Helm values) to run it
+  for those purposes;
+- use it for personal, educational, academic or research purposes that are not commercial;
+- share unmodified copies for the purposes above, as long as this license and the copyright notice
+  go with them.
+
+## 2. What you may not do without a commercial license
+
+- modify the source code, or distribute modified copies or derivative works;
+- use the software in production, or to run any part of a business or its operations;
+- sell, rent or license the software, or a product or service that includes it;
+- offer the software, or its functionality, to others as a hosted or managed service;
+- use it in any other way intended for commercial advantage or monetary compensation.
+
+Testing and evaluating the software during the evaluation period to decide whether to buy a
+commercial license is always allowed, even inside a company. "Production" means any use on real
+business data or processes that people or systems rely on, or any use after the evaluation period
+ends. Personal, educational and research use that is not commercial has no time limit.
+
+## 3. Your data
+
+Data contracts, rules, configuration and other content you create or process with the software
+belong to you. They are not modifications or derivative works of the software.
+
+## 4. Third-party components
+
+Third-party components included in or bundled with the software remain under their own licenses.
+They are listed in THIRD_PARTY_NOTICES.md.
+
+## 5. Commercial license
+
+For production or other commercial use, or to evaluate for longer than the evaluation period, ask
+the copyright holder for a commercial license at rkisliak@gmail.com.
+
+## 6. Termination
+
+If you break these terms, your rights under this license end automatically. They are restored if
+you stop the breach within 30 days of being notified of it.
+
+## 7. No warranty and no liability
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+The Python SDK and CLI in clients/python/ are licensed separately under the Apache License 2.0
+(see clients/python/LICENSE).

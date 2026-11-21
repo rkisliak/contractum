@@ -1,0 +1,80 @@
+/* Toast (UI-SPEC 5.6). Tokens only: an alert-coloured overlay, 12px overlay radius, shadow-lg. */
+.viewport {
+  position: fixed;
+  z-index: var(--z-toast);
+  inset-block-start: var(--spacing-6);
+  inset-inline-end: var(--spacing-6);
+  display: grid;
+  gap: var(--spacing-4);
+  width: min(var(--size-toast), calc(100vw - 2 * var(--spacing-6)));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  outline: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  min-width: 0;
+  padding: var(--spacing-4);
+  border: var(--border-width-hairline) solid var(--toast-border);
+  border-radius: var(--radius-overlay);
+  background: var(--toast-fill);
+  box-shadow: var(--shadow-lg);
+  color: var(--toast-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+  transition: opacity var(--motion-overlay) var(--motion-ease);
+}
+
+.toast[data-state="closed"] {
+  opacity: 0;
+}
+
+.success {
+  --toast-fill: var(--color-success-soft);
+  --toast-text: var(--color-fg-success-strong);
+  --toast-border: var(--color-border-success-subtle);
+}
+
+.neutral {
+  --toast-fill: var(--color-neutral-primary-soft);
+  --toast-text: var(--color-heading);
+  --toast-border: var(--color-border-default);
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-block-start: var(--spacing-1);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.description {
+  margin: var(--spacing-1) 0 0;
+}
+
+.close {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}

@@ -1,0 +1,28 @@
+{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "urn:datacontract:payments:refunds",
+  "name": "Payments Refunds",
+  "version": "2.0.1",
+  "status": "active",
+  "domain": "payments",
+  "tags": ["payments", "refunds"],
+  "description": {
+    "purpose": "Records refunds.",
+    "usage": "Finance reporting.",
+    "limitations": "None known."
+  },
+  "schema": [
+    {
+      "name": "refunds",
+      "physicalType": "table",
+      "properties": [
+        {"name": "refund_id", "logicalType": "string", "required": true},
+        {"name": "amount", "logicalType": "number"}
+      ]
+    }
+  ],
+  "customProperties": [
+    {"property": "costCentre", "value": "cc-4711"}
+  ]
+}

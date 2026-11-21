@@ -1,0 +1,21 @@
+[project]
+name = "dc-contracts"
+version = "0.1.0"
+description = "Contracts service: ODCS contract storage and retrieval"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "dc-core",
+  "dc-auth",
+  "dc-odcs",
+  "semver==3.1.1",
+  "cryptography==50.0.2",
+]
+
+[tool.uv.sources]
+dc-core = { workspace = true }
+dc-auth = { workspace = true }
+dc-odcs = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

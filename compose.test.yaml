@@ -1,0 +1,94 @@
+# Test-profile overlay: an in-network e2e runner on the same networks as the services.
+#   docker compose -f compose.yaml -f compose.test.yaml --profile test run --rm e2e pytest -m e2e
+# The Docker socket is mounted here only (never in compose.yaml): the outage tests stop and start
+# containers through it (T-01-32, accepted).
+services:
+  e2e:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: infra/docker/e2e.Dockerfile
+    image: contractum/e2e:dev
+    environment:
+      DC_E2E_GATEWAY_URL: https://traefik
+      DC_E2E_CA_FILE: /run/secrets/ca.crt
+      DC_E2E_MOCK_OIDC_URL: http://mock-oidc:8080/default
+      DC_E2E_ENTRA_OIDC_URL: http://mock-oidc:8080/entra
+      # The issuer the platform trusts: in-network token calls send Host localhost:8443 and
+      # X-Forwarded-Proto https so the mock mints this `iss`.
+      DC_E2E_ENTRA_ISSUER: https://localhost:8443/entra
+      DC_E2E_FAKE_GRAPH_URL: http://fake-graph:8080
+      DC_E2E_MAILPIT_URL: http://mailpit:8025
+      DC_E2E_WEBHOOK_SINK_URL: http://webhook-sink:8080
+      DC_E2E_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-contractum}
+      # Phase 7 harness sizes (Plan 07-09), settable from the host; empty means the module default.
+      DC_E2E_DENIALS: ${DC_E2E_DENIALS:-2000}
+      DC_E2E_DENIAL_CONCURRENCY: ${DC_E2E_DENIAL_CONCURRENCY:-25}
+      DC_E2E_LOAD_ORGS: ${DC_E2E_LOAD_ORGS:-}
+      DC_E2E_LOAD_GRANTS: ${DC_E2E_LOAD_GRANTS:-}
+      DC_E2E_LOAD_REQUESTS: ${DC_E2E_LOAD_REQUESTS:-}
+      DC_E2E_LOAD_CONCURRENCY: ${DC_E2E_LOAD_CONCURRENCY:-}
+      DC_E2E_LOAD_P95_CHECK_MS: ${DC_E2E_LOAD_P95_CHECK_MS:-}
+      DC_E2E_LOAD_P95_FOLDERS_MS: ${DC_E2E_LOAD_P95_FOLDERS_MS:-}
+      DC_E2E_LOAD_P95_AUDIT_MS: ${DC_E2E_LOAD_P95_AUDIT_MS:-}
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: e2e
+      - type: bind
+        source: ./.dev
+        target: /dev-out
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    depends_on:
+      identity:
+        condition: service_healthy
+      validation:
+        condition: service_healthy
+      audit:
+        condition: service_healthy
+      traefik:
+        condition: service_healthy
+      # The merged OpenAPI document (Swagger UI tests, Schemathesis) must be ready.
+      api-docs:
+        condition: service_healthy
+    networks: [edge, backend]
+
+  # Playwright UI e2e runner (Plan 08-09). Edge network only: every UI journey goes through the
+  # gateway like a browser. Chromium maps the browser-visible origin localhost:8443 to the gateway
+  # (ui/playwright.config.ts). It reads only the e2e secrets subpath and writes ./.dev (shared
+  # .dev/admin_password with the Python e2e suite).
+  ui-e2e:
+    profiles: ["test"]
+    build:
+      context: ./ui
+      dockerfile: ../infra/docker/playwright.Dockerfile
+    image: contractum/ui-e2e:dev
+    environment:
+      DC_UI_E2E_BASE_URL: https://localhost:8443
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: e2e
+      - type: bind
+        source: ./.dev
+        target: /dev-out
+      # Traces and failure artifacts, gitignored (ui/test-results).
+      - type: bind
+        source: ./ui/test-results
+        target: /app/test-results
+    depends_on:
+      traefik:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      ui:
+        condition: service_healthy
+    networks: [edge]

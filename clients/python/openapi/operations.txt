@@ -1,0 +1,10 @@
+GET /api/v1/contracts/contracts
+GET /api/v1/contracts/contracts/{contract_id}
+GET /api/v1/contracts/contracts/{contract_id}/diff
+GET /api/v1/contracts/contracts/{contract_id}/versions
+GET /api/v1/contracts/contracts/{contract_id}/versions/{ref}
+GET /api/v1/contracts/contracts/{contract_id}/versions/{ref}/metadata
+GET /api/v1/contracts/contracts/{contract_id}/versions/{ref}/validation-report
+GET /api/v1/identity/auth/policy
+GET /api/v1/identity/folders
+GET /api/v1/identity/me

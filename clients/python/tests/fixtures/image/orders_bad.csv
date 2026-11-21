@@ -1,0 +1,4 @@
+order_id,amount,status
+,10.50,new
+ORD-000002,-5,paid
+ORD-000003,3,lost

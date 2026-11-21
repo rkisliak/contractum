@@ -1,0 +1,73 @@
+{{- /*
+One Job per install or upgrade (the name carries the release revision) runs
+`python -m dc_<svc>.migrate upgrade head` for the four databases in turn. Each step retries while
+the database is still starting (a bundled Postgres comes up alongside it). The services wait in
+their own initContainer, so no pod serves traffic against an old schema, and no two replicas ever
+migrate at once.
+*/ -}}
+{{- $root := . -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-r{{ .Release.Revision }}
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+    app.kubernetes.io/name: migrate
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "dc.labels" . | nindent 8 }}
+        app.kubernetes.io/name: migrate
+        dc.role: app
+    spec:
+      # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
+      automountServiceAccountToken: false
+      restartPolicy: OnFailure
+      {{- include "dc.pullSecrets" . | nindent 6 }}
+      {{- include "dc.appPodSecurity" . | nindent 6 }}
+      initContainers:
+        {{- range $svc := list "identity" "contracts" "validation" "audit" }}
+        - name: {{ $svc }}
+          image: {{ include "dc.image" (list $root $svc) }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              for attempt in $(seq 1 60); do
+                python -m dc_{{ $svc }}.migrate upgrade head && exit 0
+                echo "{{ $svc }}: database not ready (attempt $attempt), retrying in 5 s"
+                sleep 5
+              done
+              exit 1
+          env:
+            - name: DC_SERVICE
+              value: {{ $svc }}
+            {{- include "dc.dbEnv" (list $root $svc) | nindent 12 }}
+          volumeMounts:
+            - {name: secrets-{{ $svc }}, mountPath: /run/secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          resources:
+            {{- toYaml $root.Values.migrations.resources | nindent 12 }}
+          {{- include "dc.containerSecurity" $root | nindent 10 }}
+        {{- end }}
+      containers:
+        - name: done
+          image: {{ include "dc.image" (list . "identity") }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["python", "-c", "print('all four databases are at head')"]
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          {{- include "dc.containerSecurity" . | nindent 10 }}
+      volumes:
+        {{- range $svc := list "identity" "contracts" "validation" "audit" }}
+        - name: secrets-{{ $svc }}
+          secret:
+            secretName: {{ index $root.Values.secrets $svc }}
+            defaultMode: 0440
+        {{- end }}
+        - name: tmp
+          emptyDir: {}

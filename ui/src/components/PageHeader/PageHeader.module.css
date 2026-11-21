@@ -1,0 +1,58 @@
+/* PageHeader (UI-SPEC section 6). Tokens only. Dashboard page title: 24px semibold (cap 28). */
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  min-width: 0;
+}
+
+.titleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  overflow-wrap: anywhere;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}

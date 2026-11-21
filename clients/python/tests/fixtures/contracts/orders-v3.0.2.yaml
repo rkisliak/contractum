@@ -1,0 +1,89 @@
+# The orders object of orders-v3.2.0.yaml in the v3.0.2 shape: the team is a list, property enums
+# are scalars and quality rules name the metric with the old `rule` key.
+apiVersion: v3.0.2
+kind: DataContract
+id: payments.orders
+name: Orders
+version: 1.0.0
+status: active
+team:
+  - username: alice
+    role: owner
+contractCreatedTs: "2026-11-21T09:30:00Z"
+description:
+  purpose: Orders placed through the shop.
+schema:
+  - name: orders
+    physicalName: orders
+    logicalType: object
+    properties:
+      - name: order_id
+        logicalType: string
+        required: true
+        unique: true
+        primaryKey: true
+        primaryKeyPosition: 1
+        logicalTypeOptions:
+          pattern: "^ORD-[0-9]{6}$"
+      - name: customer_email
+        logicalType: string
+        classification: restricted
+        logicalTypeOptions:
+          format: email
+      - name: amount
+        logicalType: number
+        logicalTypeOptions:
+          minimum: 0
+          maximum: 100000
+          multipleOf: 0.01
+        quality:
+          - type: library
+            rule: nullValues
+            mustBe: 0
+            severity: warning
+      - name: quantity
+        logicalType: integer
+        logicalTypeOptions:
+          minimum: 1
+          exclusiveMaximum: 1000
+      - name: status
+        logicalType: string
+        enum:
+          - new
+          - paid
+          - shipped
+      - name: created_at
+        logicalType: timestamp
+      - name: order_date
+        logicalType: date
+      - name: tags
+        logicalType: array
+        logicalTypeOptions:
+          maxItems: 5
+        items:
+          logicalType: string
+      - name: shipping
+        logicalType: object
+        properties:
+          - name: city
+            logicalType: string
+            required: true
+          - name: zip
+            logicalType: string
+            logicalTypeOptions:
+              pattern: "^[0-9]{5}$"
+    quality:
+      - type: library
+        rule: rowCount
+        mustBeGreaterThan: 0
+      - type: library
+        rule: duplicateValues
+        mustBe: 0
+        arguments:
+          properties:
+            - order_id
+      - type: sql
+        query: SELECT COUNT(*) FROM orders WHERE amount < 0
+        mustBe: 0
+      - type: text
+        description: Orders are never deleted, only cancelled.

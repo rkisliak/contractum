@@ -1,0 +1,30 @@
+{
+  "changes": [
+    {
+      "kind": "added",
+      "path": "schema/0"
+    }
+  ],
+  "changes_total": 1,
+  "classifier_version": "1",
+  "counts": {
+    "info": 1
+  },
+  "from": {
+    "content_sha256": "aa",
+    "kind": "version",
+    "ref": "1.1.0",
+    "semver": "1.1.0",
+    "version_id": "a1b2c3d4-0000-4000-8000-000000000009"
+  },
+  "next_cursor": null,
+  "required_bump": "minor",
+  "to": {
+    "content_sha256": "bb",
+    "kind": "version",
+    "ref": "1.2.0",
+    "semver": "1.2.0",
+    "version_id": "a1b2c3d4-0000-4000-8000-000000000001"
+  },
+  "truncated": false
+}

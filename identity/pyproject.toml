@@ -1,0 +1,20 @@
+[project]
+name = "dc-identity"
+version = "0.1.0"
+description = "Identity service: local IdP, folder hierarchy, authorization"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "dc-core",
+  "dc-auth",
+  "dc-odcs",
+  "argon2-cffi==25.1.0",
+]
+
+[tool.uv.sources]
+dc-core = { workspace = true }
+dc-auth = { workspace = true }
+dc-odcs = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

@@ -1,0 +1,254 @@
+/* DataTable (enterprise tables.md, UI-SPEC 5.8, C-17). Tokens only. The table sits in a card-like
+ * wrapper (8px radius, 1px default border, shadow-xs) that scrolls horizontally; the caption reads as
+ * the panel title. */
+.wrapper {
+  display: grid;
+  gap: var(--spacing-4);
+  min-width: 0;
+}
+
+.scroll {
+  /* Contains absolutely positioned descendants (VisuallyHidden labels in cells), which would
+   * otherwise escape the scroll box and widen the page. */
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.caption {
+  /* The caption names the list ("Contracts in the folder"): a 200-character folder name wraps here
+   * instead of setting the table's minimum width (volume audit V-01, R6). */
+  overflow-wrap: anywhere;
+  padding: var(--spacing-4) var(--spacing-6);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  text-align: start;
+}
+
+.hiddenCaption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A secondary line under the name (a description) wraps as body text. */
+.table .rowHeader :where(div, p) {
+  font-weight: var(--font-weight-normal);
+  white-space: normal;
+}
+
+.table thead th {
+  padding: var(--spacing-3) var(--spacing-6);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  background: var(--color-neutral-secondary-soft);
+  color: var(--color-body);
+  font-weight: var(--font-weight-medium);
+  text-align: start;
+  /* A two-word header ("Latest version") may wrap between words so a narrow column fits. */
+  white-space: normal;
+}
+
+.table tbody td,
+.table tbody th {
+  padding: var(--spacing-4) var(--spacing-6);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.table tbody tr:last-child td,
+.table tbody tr:last-child th {
+  border-block-end: 0;
+}
+
+.compact thead th {
+  padding: var(--spacing-2) var(--spacing-4);
+}
+
+.compact tbody td,
+.compact tbody th {
+  padding: var(--spacing-3) var(--spacing-4);
+}
+
+.table tbody tr:hover {
+  background: var(--color-neutral-secondary-soft);
+}
+
+.table tbody tr:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.table .rowHeader {
+  color: var(--color-heading);
+  font-weight: var(--font-weight-medium);
+  /* tables.md: row headers never wrap (a name split at its hyphen reads as two values). */
+  white-space: nowrap;
+}
+
+.table .end {
+  text-align: end;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: inherit;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+}
+
+.notSet {
+  color: var(--color-body);
+}
+
+/*
+ * Inside a cell nothing breaks per character: a column is never narrower than its longest word,
+ * which the automatic table layout needs to give each column a readable width. Identifiers wrap
+ * at separators (Breakable) or truncate with a title (Identifier); the region scrolls when
+ * the whole table cannot fit.
+ */
+.table :is(td, th),
+.table :is(td, th) * {
+  overflow-wrap: normal;
+}
+
+/*
+ * A cell with a word of 40 or more characters (`data-longword`, set by DataTable) is the
+ * exception: that word breaks anywhere and the cell is at most 28rem wide, so one user-supplied
+ * 200-character name or email never makes the table thousands of pixels wide (volume audit
+ * V-01, R6). Every other cell keeps whole words.
+ */
+.table :is(td, th)[data-longword] {
+  max-inline-size: 28rem;
+  /* A name column is `nowrap` by default; with a 200-character name it must wrap. */
+  white-space: normal;
+}
+
+.table :is(td, th)[data-longword],
+.table :is(td, th)[data-longword] * {
+  overflow-wrap: anywhere;
+}
+
+/* A nowrap wrapper inside such a cell (a name next to a badge) wraps too; badges, buttons and Identifier
+ * keep their one line. */
+.table
+  :is(td, th)[data-longword]
+  :not(
+    [data-badge],
+    [data-badge] *,
+    [data-button],
+    [data-button] *,
+    [style*="--identifier-max"],
+    svg,
+    svg *
+  ) {
+  white-space: normal;
+}
+
+/*
+ * Row actions in a top-aligned row sit centred on the row's first text line (14px x 1.5 = 21px)
+ * without changing the row height: a lone 36px button pulls up and down by half the difference;
+ * a group of buttons (a wrapper holding only buttons) does the same as one block, so wrapped
+ * buttons inside it keep their own gap and never overlap.
+ */
+.table tbody :is(td, th) > [data-button],
+.table
+  tbody
+  :is(td, th)
+  > :has(> [data-button]):not(:has(> :not([data-button]))) {
+  margin-block: calc(
+    (var(--font-size-sm) * var(--line-height-body) - 2.25rem) / 2
+  );
+}
+
+.table tbody :is(td, th) > [data-button="icon-32"] {
+  margin-block: calc(
+    (var(--font-size-sm) * var(--line-height-body) - 2rem) / 2
+  );
+}
+
+.table tbody :is(td, th) > [data-button="icon-24"] {
+  margin-block: calc(
+    (var(--font-size-sm) * var(--line-height-body) - 1.5rem) / 2
+  );
+}
+
+/* A group of row actions stays on one line (the column widens instead of stacking buttons). */
+.table
+  tbody
+  :is(td, th)
+  > :has(> [data-button]):not(:has(> :not([data-button]))) {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: var(--spacing-2);
+}
+
+/*
+ * Every cell keeps the body font: identifiers, versions and paths in a table differ only by
+ * tabular figures, so a row never mixes typefaces (code blocks in drawers keep the monospace).
+ */
+.table tbody :where(code, kbd, samp) {
+  font-family: inherit;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A column marked nowrap (and plain numbers) never break over two lines. */
+.table .oneLine {
+  white-space: nowrap;
+}
+
+.whenBy {
+  /* One line when the column has room ("18 Nov 2026, 19:22 by admin"); on a narrow column the
+     actor wraps below as a whole, never mid-date. */
+  display: inline-flex;
+  flex-wrap: wrap;
+  column-gap: 0.3em;
+}
+
+/* formatDateTime joins each part with no-break spaces: it breaks only between date and time. */
+.when {
+  overflow-wrap: normal;
+}
+
+.by {
+  color: var(--color-body);
+  overflow-wrap: anywhere;
+}

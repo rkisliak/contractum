@@ -1,0 +1,53 @@
+/* Rotate page (UI-SPEC 7.3): the sign-in card without the brand panel. Tokens only. */
+.page {
+  display: grid;
+  min-height: 100vh;
+  align-items: center;
+  justify-items: center;
+  padding: var(--spacing-6);
+  background: var(--color-surface-page);
+}
+
+.column {
+  display: grid;
+  gap: var(--spacing-6);
+  width: 100%;
+  max-width: var(--size-auth-card);
+  min-width: 0;
+}
+
+.mark {
+  justify-self: start;
+  border-radius: var(--radius-control);
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.mark:hover {
+  text-decoration: underline;
+}
+
+.lead {
+  margin: var(--spacing-8) 0 var(--spacing-6);
+  color: var(--color-body);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+}
+
+.form {
+  display: grid;
+  gap: var(--spacing-6);
+}
+
+.fields {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.actions {
+  display: grid;
+  gap: var(--spacing-4);
+}

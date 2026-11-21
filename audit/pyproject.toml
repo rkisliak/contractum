@@ -1,0 +1,18 @@
+[project]
+name = "dc-audit"
+version = "0.1.0"
+description = "Audit service: event consumer and audit log storage"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "dc-core",
+  "dc-auth",
+  "jsonpatch==1.45",
+]
+
+[tool.uv.sources]
+dc-core = { workspace = true }
+dc-auth = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

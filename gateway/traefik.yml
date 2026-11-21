@@ -1,0 +1,52 @@
+# Traefik static configuration. The gateway is deliberately thin and replaceable: it does TLS,
+# CORS, body and rate limits and routing only. It performs no authentication (CLAUDE.md: no
+# security control lives only in the gateway).
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+  # Headers whose names alias another header (X_Auth_User for X-Auth-User) are dropped, so a
+  # client cannot spoof a header through a backend that normalises names. `delete` rather than
+  # `reject`: reject would answer with an empty non-problem body (D-18).
+  aliasHeadersStrategy: delete
+
+entryPoints:
+  websecure:
+    address: ":443"
+    http:
+      sanitizePath: true
+      # Traefik applies this filter before routing, where no middleware can render problem+json
+      # (D-18 forbids non-problem gateway errors). Every service already rejects raw paths with
+      # %2F, %5C, %00 or %3B itself, answering 400 invalid-path as problem+json (Plan 02
+      # EncodedPathGuard), so the control stays effective when the gateway is bypassed or
+      # replaced. The four options are therefore stated explicitly as allowed here.
+      encodedCharacters:
+        allowEncodedSlash: true
+        allowEncodedBackSlash: true
+        allowEncodedNullCharacter: true
+        allowEncodedSemicolon: true
+  traefik:
+    # ping only; never published to the host
+    address: ":8080"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: false
+
+ping:
+  entryPoint: traefik
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      # Authorization and Cookie must never reach the logs (A17, T-01-33).
+      defaultMode: drop

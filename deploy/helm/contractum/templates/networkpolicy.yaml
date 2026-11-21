@@ -1,0 +1,80 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- /*
+The compose networks as policies: clients reach only the gateway; the gateway reaches the edge
+and app pods; app pods reach each other, Postgres and NATS. Egress stays open (DNS, a managed
+Postgres or NATS, SMTP, Entra and Microsoft Graph are outside the namespace).
+*/ -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dc-default-deny-ingress
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: contractum
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dc-gateway-from-anywhere
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      dc.role: gateway
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - {port: 443}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dc-edge-and-apps-from-gateway
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: dc.role, operator: In, values: [edge, app]}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {dc.role: gateway}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dc-apps-from-apps-and-docs
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {dc.role: app}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: dc.role, operator: In, values: [app, edge]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dc-backing-from-apps
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {dc.role: backing}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {dc.role: app}
+{{- end }}

@@ -1,0 +1,127 @@
+/* Home (UI-SPEC 7.5) as a dashboard: KPI row, two card panels, quick-link cards. Tokens only. */
+.grid {
+  display: grid;
+  /* One column: the account and access cards each span the content column (layout rule R13). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-6);
+  /* Cards in one row share one height (the tallest). */
+  align-items: stretch;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  gap: var(--spacing-3) var(--spacing-6);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-body-subtle);
+  font-weight: var(--font-weight-medium);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.quick {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+}
+
+.links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--spacing-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Interactive card (cards.md): hover tints the surface and steps the shadow up one level. */
+.link {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-4);
+  height: 100%;
+  padding: var(--spacing-5);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xs);
+  color: var(--color-body);
+  text-decoration: none;
+  transition:
+    background-color var(--motion-hover) var(--motion-ease),
+    box-shadow var(--motion-hover) var(--motion-ease);
+}
+
+.link:hover {
+  background: var(--color-neutral-secondary-medium);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Brand icon shape, MD. */
+.linkIcon {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-softer);
+  color: var(--color-fg-brand-strong);
+}
+
+.linkText {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.linkLabel {
+  color: var(--color-heading);
+  font-weight: var(--font-weight-medium);
+}
+
+.linkChevron {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--color-body);
+}
+
+.link:hover .linkLabel {
+  color: var(--color-fg-brand);
+}
+
+@media (max-width: 1023px) {
+  .grid,
+  .links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The access card spans the whole grid row: its capability table needs the width. */
+.wide {
+  display: grid;
+  grid-column: 1 / -1;
+  min-width: 0;
+}

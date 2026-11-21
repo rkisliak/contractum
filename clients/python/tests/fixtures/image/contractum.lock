@@ -1,0 +1,17 @@
+{
+  "contracts": [
+    {
+      "content_sha256": "3435408cdf309e3f1b48373f22c857c3b1745281e28ab565b73e0bce4fe40d57",
+      "contract_id": "7f3c2a10-5b1e-4c8d-9a64-2d7e0b9c1f33",
+      "file": "contracts/payments.orders-1.0.0-7f3c2a10.yaml",
+      "folder_path": null,
+      "media_type": "application/yaml",
+      "odcs_id": "payments.orders",
+      "ref": "payments.orders",
+      "requested": "latest",
+      "semver": "1.0.0"
+    }
+  ],
+  "lock_version": 1,
+  "server": "https://contractum.example.com"
+}

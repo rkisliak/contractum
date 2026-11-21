@@ -1,0 +1,11 @@
+{
+  "get_grant_api_v1_identity_grants__grant_id__get": {
+    "ui_client": "The folder access tab lists and revokes grants from the folder's grant list (GET /folders/{folder_id}/grants); a single-grant read is for API clients and pipelines that keep a grant id."
+  },
+  "list_cards_route_api_v1_contracts_folders__folder_id__cards_get": {
+    "ui_client": "The Cards screen uses the all-cards list (GET /cards) with its folder filter, which also covers the subtree and the caller's member cards; the per-folder list stays for API clients."
+  },
+  "validate_on_demand_api_v1_validation_folders__folder_id__validate_post": {
+    "ui_client": "Pipeline-facing: engineers validate a local contract file against a folder's rules from CI. The UI validates drafts through POST /contracts/{contract_id}/drafts/{draft_id}/validate, which calls the same validation run."
+  }
+}

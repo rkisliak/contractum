@@ -1,0 +1,28 @@
+# Orders contract owned by the payments team.
+# Comments, key order and formatting must survive storage byte for byte (D-10).
+kind: DataContract
+id: urn:datacontract:payments:orders   # inline comment on the id
+apiVersion: v3.2.0
+name: Payments Orders
+version: "1.0.0"
+status: draft
+domain: payments
+tags: [payments, orders, pii-free]
+description:
+  purpose: Records every order placed through the checkout.
+  usage: Reporting and reconciliation.
+  limitations: Orders older than seven years are archived.
+schema:
+  - name: orders
+    physicalType: table
+    properties:
+      - name: order_id
+        logicalType: string
+        required: true
+      - name: placed_at
+        logicalType: timestamp
+customProperties:
+  - property: costCentre
+    value: cc-4711
+  - property: reviewedOn
+    value: 2026-11-09T10:00:00Z   # must stay a string, never a datetime

@@ -1,0 +1,127 @@
+/* Admin > Settings (quick 261120-0yc). Tokens only. */
+.stack {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.form {
+  display: grid;
+  max-width: var(--size-auth-card);
+  gap: var(--spacing-6);
+}
+
+.fieldRow {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.fieldMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+  color: var(--color-body-subtle);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
+  gap: var(--spacing-3) var(--spacing-6);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-body-subtle);
+  font-weight: var(--font-weight-medium);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Identifiers read in the normal font (D-03), without tabular figures. */
+.ident {
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+
+.counter {
+  color: var(--color-body-subtle);
+}
+
+.windowRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-4);
+}
+
+.preview {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.previewLabel {
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: var(--font-weight-semibold);
+}
+
+.fileInput {
+  max-width: 100%;
+}
+
+/* Notifications (quick 261120-0yd). */
+/* The page stack: every card spans the content column (layout rule R13). */
+.wide {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+/* Reading width for the text fields inside a card. */
+.measure {
+  display: grid;
+  max-width: 56rem;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.placeholders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.previewBox {
+  display: grid;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+}
+
+.previewText {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.subhead {
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: var(--font-weight-semibold);
+}

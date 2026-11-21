@@ -1,0 +1,9 @@
+# Supply-chain policy (T-8-SC). Must exist before the first install.
+minimumReleaseAge: 20160 # 14 days; applies to transitive packages too
+blockExoticSubdeps: true
+strictDepBuilds: true # install fails if any dependency has an unapproved build script
+
+# Security overrides: transitive pins with known CVEs. Remove each once the parent ships the fix.
+overrides:
+  # monaco-editor 0.57.0 pins dompurify 3.4.15 (GHSA-cg2g-xh64-v4q7 CRITICAL, GHSA-mrv2-3pqr-j5jr HIGH)
+  dompurify: 3.4.17

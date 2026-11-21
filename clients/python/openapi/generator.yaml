@@ -1,0 +1,4 @@
+# Config for openapi-python-client (pinned in scripts/generate_client.py, D-45).
+# post_hooks stays empty so the generator never shells out to an unpinned ruff.
+post_hooks: []
+literal_enums: true

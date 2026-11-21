@@ -1,0 +1,201 @@
+# CI only: the job-level mirror of scripts/ci.sh steps 1-8 (lint, unit, integration, ui) plus an
+# image build check. Images are built but never pushed, and no registry login happens here.
+# The cold-start e2e (scripts/ci.sh step 9) lives in e2e-nightly.yml, scanning in security.yml.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-lint:
+    name: python-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: uv lock --check
+        run: uv lock --check
+      - name: uv sync --frozen
+        run: uv sync --frozen
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check --extend-exclude .planning .
+      - name: mypy
+        run: |
+          uv run mypy \
+            shared/dc-core/src shared/dc-auth/src shared/dc-odcs/src shared/dc-rules/src \
+            identity/src contracts/src validation/src audit/src mail/src \
+            gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
+            scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
+            scripts/gen_http_reference.py scripts/publish/leak_check.py
+      - name: lint-imports
+        run: uv run lint-imports
+
+  python-unit:
+    name: python-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: uv sync --frozen
+        run: uv sync --frozen
+      - name: unit tests
+        run: uv run pytest -m "unit and not performance" -q
+
+  python-integration:
+    name: python-integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: uv sync --frozen
+        run: uv sync --frozen
+      - name: integration tests (the runner's Docker daemon serves testcontainers)
+        run: uv run pytest -m "integration and not performance" -q
+
+  ui:
+    name: ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # pnpm must be set up before setup-node so that setup-node can use the pnpm cache.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ui/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - name: Check the pinned toolchain
+        run: |
+          want_node="v$(tr -d '[:space:]' <ui/.nvmrc)"
+          if [ "$(node --version)" != "$want_node" ]; then
+            echo "node $(node --version) is not the pinned $want_node" >&2
+            exit 1
+          fi
+          if [ "$(pnpm --version)" != "12.17.0" ]; then
+            echo "pnpm $(pnpm --version) is not the pinned 12.17.0" >&2
+            exit 1
+          fi
+      - name: pnpm install --frozen-lockfile
+        run: pnpm --dir ui install --frozen-lockfile
+      - name: pnpm ci:static (generated client drift, lint, types, unit tests, build)
+        run: pnpm --dir ui ci:static
+
+  docker-build:
+    name: docker-build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-identity
+          - name: contracts
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-contracts
+          - name: validation
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-validation
+          - name: audit
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-audit
+          - name: mail
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-mail
+          - name: api-docs
+            context: .
+            file: infra/docker/api-docs.Dockerfile
+            target: ""
+            build-args: ""
+          - name: ui
+            context: ui
+            file: infra/docker/ui.Dockerfile
+            target: runtime
+            build-args: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          build-args: ${{ matrix.build-args }}
+          push: false
+          cache-from: type=gha,scope=img-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=img-${{ matrix.name }}
+
+  ci-ok:
+    name: ci-ok
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [python-lint, python-unit, python-integration, ui, docker-build]
+    if: always()
+    steps:
+      - name: Summarise the results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "job results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "ci failed: at least one job did not succeed" >&2
+              exit 1
+            fi
+          done

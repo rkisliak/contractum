@@ -1,0 +1,30 @@
+{
+  "assignments": [
+    {
+      "folder_id": "11111111-2222-4333-8444-555555555555",
+      "folder_path": "acme/payments/ingest",
+      "grant_id": "c1c2c3c4-0000-4000-8000-000000000003",
+      "role": "team_editor",
+      "via_group_id": "g1"
+    }
+  ],
+  "display_name": "Dana Engineer",
+  "global_permissions": [
+    "contract:read"
+  ],
+  "groups": [
+    {
+      "display_name": "Data engineers",
+      "id": "g1",
+      "type": "local_group"
+    }
+  ],
+  "idp": "local",
+  "interactive": true,
+  "preferred_username": null,
+  "principal_id": "00000000-0000-0000-0000-0000000000a1",
+  "principal_type": "user",
+  "read_only": false,
+  "username": "dana",
+  "via": "jwt"
+}

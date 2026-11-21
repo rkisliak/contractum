@@ -1,0 +1,7 @@
+.path {
+  overflow-wrap: normal;
+}
+
+.hidden {
+  color: var(--color-body-subtle);
+}

@@ -1,0 +1,2423 @@
+{
+  "components": {
+    "schemas": {
+      "ContractDiffOut": {
+        "description": "The classified changes between two refs, computed on the fly and never stored (D-156).\n\n``changes`` items have the stored-report change shape (D-148): ``code``, ``class``,\n``element_kind``, ``path``, ``pointer_before``, ``pointer_after``, ``attribute``, ``before``,\n``after`` (values only for allow-listed attributes).",
+        "properties": {
+          "changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "changes_total": {
+            "title": "Changes Total",
+            "type": "integer"
+          },
+          "classifier_version": {
+            "title": "Classifier Version",
+            "type": "string"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "from": {
+            "$ref": "#/components/schemas/ContractDiffSideOut"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "required_bump": {
+            "enum": [
+              "major",
+              "minor",
+              "patch",
+              "none"
+            ],
+            "title": "Required Bump",
+            "type": "string"
+          },
+          "to": {
+            "$ref": "#/components/schemas/ContractDiffSideOut"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "classifier_version",
+          "required_bump",
+          "counts",
+          "changes",
+          "changes_total",
+          "truncated",
+          "next_cursor"
+        ],
+        "title": "ContractDiffOut",
+        "type": "object"
+      },
+      "ContractDiffSideOut": {
+        "description": "One side of a diff: the ref as named and the version or draft it resolved to.",
+        "properties": {
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "version",
+              "draft"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "semver": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semver"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "kind",
+          "version_id",
+          "semver",
+          "content_sha256"
+        ],
+        "title": "ContractDiffSideOut",
+        "type": "object"
+      },
+      "ContractLatestVersionOut": {
+        "description": "The contract's Latest published version (lifecycle metadata, not document content).",
+        "properties": {
+          "semver": {
+            "title": "Semver",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "semver"
+        ],
+        "title": "ContractLatestVersionOut",
+        "type": "object"
+      },
+      "ContractListOut": {
+        "description": "A page of contracts. There is deliberately no total or count (it would leak existence).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContractMetadataOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ContractListOut",
+        "type": "object"
+      },
+      "ContractMetadataOut": {
+        "properties": {
+          "api_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Version"
+          },
+          "content_redacted": {
+            "title": "Content Redacted",
+            "type": "boolean"
+          },
+          "content_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Sha256"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "folder_id": {
+            "format": "uuid",
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContractLatestVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "media_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Type"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "notation": {
+            "title": "Notation",
+            "type": "string"
+          },
+          "odcs_id": {
+            "title": "Odcs Id",
+            "type": "string"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContractVersionOriginOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContractTemplateOriginOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/ContractVersionSummaryOut"
+          }
+        },
+        "required": [
+          "id",
+          "folder_id",
+          "organization_id",
+          "odcs_id",
+          "notation",
+          "name",
+          "status",
+          "api_version",
+          "domain",
+          "tags",
+          "media_type",
+          "content_sha256",
+          "size_bytes",
+          "content_redacted",
+          "template",
+          "origin",
+          "version",
+          "latest_version",
+          "created_by",
+          "created_at",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "ContractMetadataOut",
+        "type": "object"
+      },
+      "ContractTemplateOriginOut": {
+        "description": "The template version a contract was copied from (CONT-02); the content is not linked.",
+        "properties": {
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_id",
+          "version_no"
+        ],
+        "title": "ContractTemplateOriginOut",
+        "type": "object"
+      },
+      "ContractValidationReportOut": {
+        "description": "The stored validation report a version was published with (D-155, VAL-09).\n\n``report`` is validation's D-128 report, passed through as JSON with its ``compatibility`` and\n``ref_facts`` sections; ``pins`` are the rule-set versions it was validated against.",
+        "properties": {
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "dsl_version": {
+            "title": "Dsl Version",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "pins": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Pins",
+            "type": "array"
+          },
+          "report": {
+            "additionalProperties": true,
+            "title": "Report",
+            "type": "object"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_sha": {
+            "title": "Schema Sha",
+            "type": "string"
+          },
+          "semver": {
+            "title": "Semver",
+            "type": "string"
+          },
+          "validated_at": {
+            "format": "date-time",
+            "title": "Validated At",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id",
+          "version_id",
+          "semver",
+          "run_id",
+          "content_sha256",
+          "engine_version",
+          "dsl_version",
+          "schema_sha",
+          "validated_at",
+          "pins",
+          "report"
+        ],
+        "title": "ContractValidationReportOut",
+        "type": "object"
+      },
+      "ContractVersionListOut": {
+        "description": "Every visible version, highest SemVer precedence first (unpaginated, A13).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContractVersionMetadataOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ContractVersionListOut",
+        "type": "object"
+      },
+      "ContractVersionMetadataOut": {
+        "description": "One visible version of a contract, without its document (API-02, D-48).",
+        "properties": {
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "deprecated": {
+            "title": "Deprecated",
+            "type": "boolean"
+          },
+          "deprecated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deprecated At"
+          },
+          "engine_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Version"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "fetch_url": {
+            "title": "Fetch Url",
+            "type": "string"
+          },
+          "lifecycle": {
+            "enum": [
+              "published",
+              "unpublished"
+            ],
+            "title": "Lifecycle",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "odcs_api_version": {
+            "title": "Odcs Api Version",
+            "type": "string"
+          },
+          "pinned_rule_sets": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Rule Sets"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "published_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published By"
+          },
+          "schema_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Sha"
+          },
+          "semver": {
+            "title": "Semver",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "latest",
+              "preview",
+              "older"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "sunset_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sunset Date"
+          },
+          "validation_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Run Id"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "contract_id",
+          "semver",
+          "status",
+          "lifecycle",
+          "deprecated",
+          "deprecated_at",
+          "sunset_date",
+          "content_sha256",
+          "etag",
+          "size_bytes",
+          "media_type",
+          "odcs_api_version",
+          "published_at",
+          "published_by",
+          "fetch_url",
+          "validation_run_id",
+          "pinned_rule_sets",
+          "engine_version",
+          "schema_sha"
+        ],
+        "title": "ContractVersionMetadataOut",
+        "type": "object"
+      },
+      "ContractVersionOriginOut": {
+        "description": "The contract version or draft a contract was copied from (D-44b); the content is not linked.\n\n``version_id`` is provenance only: it names a version or draft of the source contract at the\ntime of the copy.",
+        "properties": {
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id",
+          "version_id"
+        ],
+        "title": "ContractVersionOriginOut",
+        "type": "object"
+      },
+      "ContractVersionSummaryOut": {
+        "properties": {
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "state"
+        ],
+        "title": "ContractVersionSummaryOut",
+        "type": "object"
+      },
+      "IdentityAuthPolicyOut": {
+        "description": "What a sign-in screen may know before anyone is signed in (quick 261120-0ye, D-37).",
+        "properties": {
+          "methods": {
+            "$ref": "#/components/schemas/IdentitySignInMethodsOut"
+          },
+          "password_rules": {
+            "$ref": "#/components/schemas/IdentityPasswordRulesOut"
+          }
+        },
+        "required": [
+          "methods",
+          "password_rules"
+        ],
+        "title": "IdentityAuthPolicyOut",
+        "type": "object"
+      },
+      "IdentityFolderListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IdentityFolderOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "IdentityFolderListOut",
+        "type": "object"
+      },
+      "IdentityFolderOut": {
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "block_inheritance": {
+            "title": "Block Inheritance",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "kind",
+          "slug",
+          "display_name",
+          "path",
+          "archived",
+          "archived_at",
+          "block_inheritance",
+          "created_by",
+          "created_at",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "IdentityFolderOut",
+        "type": "object"
+      },
+      "IdentityMeAssignmentOut": {
+        "properties": {
+          "folder_id": {
+            "format": "uuid",
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "folder_path": {
+            "title": "Folder Path",
+            "type": "string"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "via_group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Group Id"
+          }
+        },
+        "required": [
+          "grant_id",
+          "folder_id",
+          "folder_path",
+          "role",
+          "via_group_id"
+        ],
+        "title": "IdentityMeAssignmentOut",
+        "type": "object"
+      },
+      "IdentityMeGroupOut": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "local_group",
+              "entra_group"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "display_name"
+        ],
+        "title": "IdentityMeGroupOut",
+        "type": "object"
+      },
+      "IdentityMeOut": {
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/IdentityMeAssignmentOut"
+            },
+            "title": "Assignments",
+            "type": "array"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "global_permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Global Permissions",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/IdentityMeGroupOut"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "idp": {
+            "enum": [
+              "local",
+              "entra"
+            ],
+            "title": "Idp",
+            "type": "string"
+          },
+          "interactive": {
+            "title": "Interactive",
+            "type": "boolean"
+          },
+          "preferred_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Username"
+          },
+          "principal_id": {
+            "title": "Principal Id",
+            "type": "string"
+          },
+          "principal_type": {
+            "enum": [
+              "user",
+              "entra_user",
+              "service_account",
+              "service_principal"
+            ],
+            "title": "Principal Type",
+            "type": "string"
+          },
+          "read_only": {
+            "title": "Read Only",
+            "type": "boolean"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "via": {
+            "enum": [
+              "jwt",
+              "pat",
+              "key"
+            ],
+            "title": "Via",
+            "type": "string"
+          }
+        },
+        "required": [
+          "principal_id",
+          "principal_type",
+          "idp",
+          "via",
+          "display_name",
+          "username",
+          "preferred_username",
+          "read_only",
+          "interactive",
+          "groups",
+          "assignments",
+          "global_permissions"
+        ],
+        "title": "IdentityMeOut",
+        "type": "object"
+      },
+      "IdentityPasswordRulesOut": {
+        "properties": {
+          "min_length": {
+            "title": "Min Length",
+            "type": "integer"
+          },
+          "require_digit": {
+            "title": "Require Digit",
+            "type": "boolean"
+          },
+          "require_lower": {
+            "title": "Require Lower",
+            "type": "boolean"
+          },
+          "require_symbol": {
+            "title": "Require Symbol",
+            "type": "boolean"
+          },
+          "require_upper": {
+            "title": "Require Upper",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "min_length",
+          "require_upper",
+          "require_lower",
+          "require_digit",
+          "require_symbol"
+        ],
+        "title": "IdentityPasswordRulesOut",
+        "type": "object"
+      },
+      "IdentitySignInMethodsOut": {
+        "properties": {
+          "local": {
+            "title": "Local",
+            "type": "boolean"
+          },
+          "microsoft": {
+            "title": "Microsoft",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "local",
+          "microsoft"
+        ],
+        "title": "IdentitySignInMethodsOut",
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": true,
+        "description": "RFC 9457 problem details. Extensions such as report, run_id and reasons may appear.",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "items": {
+              "properties": {
+                "detail": {
+                  "type": "string"
+                },
+                "pointer": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pointer",
+                "detail"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "description": "urn:dc:problem:<slug>",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "title": "Problem",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Contractum: data contract governance",
+    "title": "Contractum API",
+    "version": "v1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/contracts/contracts": {
+      "get": {
+        "description": "List and search contracts (D-12): filters, ``q`` text match, keyset pagination.\n\n``require(\"contract:list\")`` admits every authenticated caller; the identity scopes below trim\nthe SQL, so a caller without access gets an empty page (D-35). A row appears when the caller\nholds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a\nLatest. Every row is the contract's head: the Latest once one exists (for every caller), else\nthe newest draft. Its content-derived fields are filled only where the caller holds\n``contract:read`` (D-36) or ``contract:read-published``, and content filters match only those\nrows, so a published-only caller can never match a draft's values.",
+        "operationId": "list_contracts_api_v1_contracts_contracts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "folder_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Folder Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_subtree",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Subtree",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "odcs_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Odcs Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Domain"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tags"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing, expired or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid limit, cursor or filter value"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authorization is temporarily unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Contracts",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/contracts/{contract_id}": {
+      "get": {
+        "description": "Contract metadata of the head row; content-derived fields are null without ``contract:read``.\n\nThe head row is the Latest once the contract has one, else the newest draft (D-36).\n``contract:view`` admits every role that can see contracts; a caller who holds\n``contract:read-published`` only gets the Latest (published content they may fetch anyway),\nand the unknown-contract 404 for a contract without one (RBAC-07, RBAC-09).",
+        "operationId": "get_contract_api_v1_contracts_contracts__contract_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contract_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contract Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractMetadataOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing, expired or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Contract not found, not visible to the caller, or (for a caller who may read published versions only) without a published version"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A dependency (such as the authorization service) is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Contract",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/contracts/{contract_id}/diff": {
+      "get": {
+        "description": "The classified changelog from ``from`` to ``to`` (either order), paged (D-156).",
+        "operationId": "get_contract_diff_api_v1_contracts_contracts__contract_id__diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contract_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contract Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "SemVer, `latest` or a draft id",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "SemVer, `latest` or a draft id",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "description": "SemVer, `latest` or a draft id",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "SemVer, `latest` or a draft id",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDiffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "`If-None-Match` matched the diff's ETag (checked after authorization and visibility); no body"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Contract not found or not visible, or a ref names no version the caller can see (an unpublished version or a draft for a Consumer, an unknown draft id, a ref that is neither `latest`, strict SemVer nor a draft id)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid `limit` (1..1000) or `cursor`, or a missing ref"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authorization is temporarily unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Contract Diff",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/contracts/{contract_id}/versions": {
+      "get": {
+        "description": "Every visible version of the contract, highest SemVer precedence first.",
+        "operationId": "list_contract_versions_api_v1_contracts_contracts__contract_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contract_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contract Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractVersionListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing, expired or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Contract not found or not visible; also for a caller who may only read published versions when the contract has none"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A dependency (such as the authorization service) is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Contract Versions",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/contracts/{contract_id}/versions/{ref}": {
+      "get": {
+        "description": "One published version of the contract, by ``latest`` or SemVer.",
+        "operationId": "get_contract_version_api_v1_contracts_contracts__contract_id__versions__ref__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contract_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contract Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "title": "Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {},
+              "application/x-yaml": {},
+              "application/yaml": {},
+              "text/yaml": {}
+            },
+            "description": "The exact bytes that were published, with the stored media type, a strong ETag and `Cache-Control: private, no-cache`. An Accept preference for the other format returns a converted rendering, which is not byte-faithful."
+          },
+          "304": {
+            "description": "`If-None-Match` matched the representation's current ETag (weak comparison, a list or `*`); no body, same `ETag`, `Vary` and `Cache-Control` as the 200"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing, expired or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Contract not found or not visible, no such published version, or `ref` is neither `latest` nor a strict SemVer string"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Accept names no representation this service can produce"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A dependency (such as the authorization service) is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Contract Version",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/contracts/{contract_id}/versions/{ref}/metadata": {
+      "get": {
+        "description": "The metadata of one visible version, by ``latest`` or SemVer.",
+        "operationId": "get_contract_version_metadata_api_v1_contracts_contracts__contract_id__versions__ref__metadata_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contract_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contract Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "title": "Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractVersionMetadataOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing, expired or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Contract not found or not visible, no such visible version, or `ref` is neither `latest` nor a strict SemVer string"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A dependency (such as the authorization service) is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Contract Version Metadata",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/contracts/contracts/{contract_id}/versions/{ref}/validation-report": {
+      "get": {
+        "description": "The stored report a visible version was published with, by ``latest`` or SemVer (D-155).",
+        "operationId": "get_contract_version_validation_report_api_v1_contracts_contracts__contract_id__versions__ref__validation_report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contract_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contract Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "title": "Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractValidationReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "`If-None-Match` matched the report's ETag (checked after authorization and visibility); no body, same `ETag` and `Cache-Control`"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Contract not found or not visible, no such visible version (also for a Policy Manager without a contract role), or `ref` is neither `latest` nor a strict SemVer string; `validation-report-not-recorded` for a version published before the publish gate recorded its run"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authorization or the validation service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Contract Version Validation Report",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/v1/identity/auth/policy": {
+      "get": {
+        "description": "The sign-in methods currently on and the rules a new password must meet.\n\nPublic on purpose: the sign-in, rotate-password and change-password screens read it, one of\nthem before anyone is signed in. It carries no secret, no tenant and no account detail.",
+        "operationId": "auth_policy_api_v1_identity_auth_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityAuthPolicyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          }
+        },
+        "security": [],
+        "summary": "Sign-in methods and password rules (public)",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/identity/folders": {
+      "get": {
+        "operationId": "list_folders_api_v1_identity_folders_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "parent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Path"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityFolderListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing, expired or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The caller may see the resource but not perform the operation"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid path or cursor"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A dependency (such as the authorization service) is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Folders",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/identity/me": {
+      "get": {
+        "description": "Who the caller is, its groups, its role assignments and its global permissions.",
+        "operationId": "get_me_api_v1_identity_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityMeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request (for example an encoded slash or NUL in the path)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Restricted bootstrap session (password rotation required)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A dependency (such as the authorization service) is unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Me",
+        "tags": [
+          "identity"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "tags": []
+}

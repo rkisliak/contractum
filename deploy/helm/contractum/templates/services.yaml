@@ -1,0 +1,119 @@
+{{- /*
+The four Python services with their own database: identity, contracts, validation, audit.
+Each pod waits (initContainer) until the migration Job has brought its database to head.
+*/ -}}
+{{- $root := . -}}
+{{- range $svc := list "identity" "contracts" "validation" "audit" }}
+{{- $cfg := index $root.Values $svc }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc }}
+  labels:
+    {{- include "dc.labels" $root | nindent 4 }}
+    {{- include "dc.selector" (list $root $svc) | nindent 4 }}
+spec:
+  replicas: {{ $cfg.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dc.selector" (list $root $svc) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dc.labels" $root | nindent 8 }}
+        {{- include "dc.selector" (list $root $svc) | nindent 8 }}
+        dc.role: app
+    spec:
+      # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
+      automountServiceAccountToken: false
+      {{- include "dc.pullSecrets" $root | nindent 6 }}
+      {{- include "dc.appPodSecurity" $root | nindent 6 }}
+      initContainers:
+        - name: wait-for-migrations
+          image: {{ include "dc.image" (list $root $svc) }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          command: ["sh", "-c", "until python -m dc_{{ $svc }}.migrate check; do echo waiting for the {{ $svc }} migrations; sleep 5; done"]
+          env:
+            - name: DC_SERVICE
+              value: {{ $svc }}
+            {{- include "dc.dbEnv" (list $root $svc) | nindent 12 }}
+          volumeMounts:
+            - {name: secrets, mountPath: /run/secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          resources:
+            {{- toYaml $root.Values.waitForMigrations.resources | nindent 12 }}
+          {{- include "dc.containerSecurity" $root | nindent 10 }}
+      containers:
+        - name: {{ $svc }}
+          image: {{ include "dc.image" (list $root $svc) }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          command:
+            {{- include "dc.uvicorn" (list $root (printf "dc_%s.main:create_%s_app" $svc $svc)) | nindent 12 }}
+          ports:
+            - {name: http, containerPort: 8000}
+          env:
+            - name: DC_SERVICE
+              value: {{ $svc }}
+            {{- include "dc.appEnv" $root | nindent 12 }}
+            {{- include "dc.dbEnv" (list $root $svc) | nindent 12 }}
+            - name: DC_NATS_USER
+              value: {{ $svc }}
+            {{- if eq $svc "identity" }}
+            - name: DC_LOCAL_ISSUER
+              value: "http://identity:8000"
+            - name: DC_CONTRACTS_URL
+              value: "http://contracts:8000"
+            - name: DC_VALIDATION_URL
+              value: "http://validation:8000"
+            {{- if $root.Values.auth.graph.clientId }}
+            - name: DC_GRAPH_CLIENT_ID
+              value: {{ $root.Values.auth.graph.clientId | quote }}
+            - name: DC_GRAPH_BASE_URL
+              value: {{ $root.Values.auth.graph.baseUrl | quote }}
+            - name: DC_GRAPH_TOKEN_URL_TEMPLATE
+              value: {{ $root.Values.auth.graph.tokenUrlTemplate | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if eq $svc "contracts" }}
+            - name: DC_MAIL_URL
+              value: "http://mail:8000"
+            - name: DC_VALIDATION_URL
+              value: "http://validation:8000"
+            - name: DC_WEBHOOK_REQUIRE_HTTPS
+              value: {{ $root.Values.notifications.webhookRequireHttps | quote }}
+            - name: DC_WEBHOOK_ALLOWED_PRIVATE_HOSTS
+              value: {{ $root.Values.notifications.webhookAllowedPrivateHosts | toJson | quote }}
+            {{- end }}
+            {{- if eq $svc "validation" }}
+            - name: DC_WORKER_MEMORY_BYTES
+              value: {{ $root.Values.validation.workerMemoryBytes | int64 | quote }}
+            {{- end }}
+            {{- range $k, $v := $cfg.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- include "dc.httpProbes" "http" | nindent 10 }}
+          resources:
+            {{- toYaml $cfg.resources | nindent 12 }}
+          volumeMounts:
+            - {name: secrets, mountPath: /run/secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          {{- include "dc.containerSecurity" $root | nindent 10 }}
+      volumes:
+        {{- include "dc.secretVolume" (list $root $svc) | nindent 8 }}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $svc }}
+  labels:
+    {{- include "dc.labels" $root | nindent 4 }}
+spec:
+  selector:
+    {{- include "dc.selector" (list $root $svc) | nindent 4 }}
+  ports:
+    - {name: http, port: 8000, targetPort: http}
+{{- end }}

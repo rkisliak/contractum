@@ -1,0 +1,14 @@
+Contractum {{ .Chart.AppVersion }} is installing in namespace {{ .Release.Namespace }}.
+
+1. Wait for the migrations and the pods:
+     kubectl -n {{ .Release.Namespace }} get jobs,pods
+{{- if .Values.gateway.enabled }}
+2. Open the gateway ({{ .Values.gateway.service.type }} service "gateway", port {{ .Values.gateway.service.port }}):
+     kubectl -n {{ .Release.Namespace }} get service gateway
+   or, without a load balancer:
+     kubectl -n {{ .Release.Namespace }} port-forward service/gateway 8443:{{ .Values.gateway.service.port }}
+{{- end }}
+3. First sign-in: user "admin" with the bootstrap secret, then choose a new password:
+     kubectl -n {{ .Release.Namespace }} get secret {{ .Values.secrets.identity }} -o jsonpath='{.data.bootstrap_admin_secret}' | base64 -d
+
+Guide: docs/admin/deploy-kubernetes.md

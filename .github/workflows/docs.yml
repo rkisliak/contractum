@@ -1,0 +1,129 @@
+# Docs checks for every pull request and every push to main: markdownlint-cli2 (official image,
+# pinned by digest), typos (uv `docs` dependency group), lychee in offline mode for local links,
+# images and heading anchors (official release binary, SHA-256 verified), the HTTP API reference
+# drift check, and the docs site build with `zensical build --strict`. The CLI reference drift
+# check lives in sdk.yml next to the SDK it documents. External links are checked once a week in
+# docs-links-weekly.yml, never on pull requests.
+#
+# This workflow publishes nothing unless the repository variable DOCS_PAGES_ENABLED is 'true':
+# only then does a push to main deploy the site to GitHub Pages, from the pages-deploy job, which
+# is the only job that holds `pages: write` and `id-token: write`.
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-lint:
+    name: docs-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # To upgrade: take both values from the lychee-v<version> release (the
+      # lychee-x86_64-unknown-linux-gnu.tar.gz asset digest) and change them together.
+      LYCHEE_VERSION: "0.24.2"
+      LYCHEE_SHA256: "1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Config: .markdownlint-cli2.jsonc. To upgrade: pick the new davidanson/markdownlint-cli2
+      # tag and its index digest (`docker buildx imagetools inspect`) and change them together.
+      - name: markdownlint-cli2 (official image, pinned by digest)
+        run: docker run --rm -v "$PWD:/workdir:ro" davidanson/markdownlint-cli2:v0.24.2@sha256:c768e94d8bb161c449bde28f60656929ca1f02c3010a405f65c9cac71563a889
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      # Config: _typos.toml (auto-discovered from the repo root).
+      - name: typos
+        run: uv run --frozen --only-group docs typos
+      - name: Install lychee (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          tarball="$RUNNER_TEMP/lychee.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${LYCHEE_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/lychee-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/lychee-bin" --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
+          echo "$RUNNER_TEMP/lychee-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/lychee-bin/lychee" --version
+      # Local files, images and heading anchors only; no network request is made.
+      - name: lychee (offline)
+        run: lychee --offline --config lychee.toml './**/*.md'
+
+  docs-build:
+    name: docs-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: HTTP API reference drift check
+        run: uv run --frozen --only-group docs python scripts/gen_http_reference.py --check
+      - name: zensical build --strict
+        run: uv run --frozen --only-group docs zensical build --strict
+
+  # Deploys the site to GitHub Pages. Inactive until the repository variable DOCS_PAGES_ENABLED
+  # is 'true' (Pages must be enabled for the repository first), and only ever on a push to main.
+  pages-deploy:
+    name: pages-deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOCS_PAGES_ENABLED == 'true'
+    needs: [docs-lint, docs-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # A deploy that has started is never cancelled; a newer one waits for it.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        id: pages
+      - name: zensical build --strict (Pages site URL)
+        env:
+          DOCS_SITE_URL: ${{ steps.pages.outputs.base_url }}/
+        run: uv run --frozen --only-group docs zensical build --strict
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        id: deployment

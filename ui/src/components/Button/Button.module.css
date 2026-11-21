@@ -1,0 +1,245 @@
+/*
+ * Buttons (enterprise buttons.md). Tokens only. 6px radius, 1px border, medium label on one
+ * line and never shrinking, glint shadow on every filled/outlined variant (not ghost, not
+ * disabled). --btn-border is the border width, so every variant of one size is the same height.
+ */
+.button {
+  --btn-pad-y: var(--spacing-2);
+  --btn-pad-x: var(--spacing-3);
+  --btn-border: var(--border-width-hairline);
+  --btn-font-size: var(--font-size-sm);
+
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding-block: calc(
+    var(--btn-pad-y) - var(--btn-border) + var(--border-width-hairline)
+  );
+  padding-inline: calc(
+    var(--btn-pad-x) - var(--btn-border) + var(--border-width-hairline)
+  );
+  border: var(--btn-border) solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  box-shadow: var(--shadow-none);
+  color: var(--color-heading);
+  cursor: pointer;
+  font-size: var(--btn-font-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-hover) var(--motion-ease),
+    border-color var(--motion-hover) var(--motion-ease),
+    box-shadow var(--motion-hover) var(--motion-ease),
+    color var(--motion-hover) var(--motion-ease);
+}
+
+/* Small: shell, dialogs, tables, toolbars (36px). */
+.small {
+  --btn-pad-y: var(--spacing-2);
+  --btn-pad-x: var(--spacing-3);
+  --btn-font-size: var(--font-size-sm);
+
+  min-height: 2.25rem;
+}
+
+/* Large: sign-in and rotate cards, full width, 16px label. */
+.large {
+  --btn-pad-y: var(--spacing-3);
+  --btn-pad-x: var(--spacing-5);
+  --btn-font-size: var(--font-size-md);
+}
+
+.fullWidth {
+  display: flex;
+  width: 100%;
+}
+
+.contents {
+  display: inline-grid;
+  align-items: center;
+  justify-items: center;
+}
+
+.layer {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  white-space: nowrap;
+}
+
+/* A long label (a verb plus a 200-character name) ends in an ellipsis past this cap; the full text
+ * is the title. The cap is on the label itself and a length (not a percentage of the container),
+ * so a table column never squeezes a button below its text (volume audit V-11, R15). */
+.text {
+  max-inline-size: min(22rem, 70vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* Icon-only: square hit area, aria-label mandatory (by type). */
+.iconOnly {
+  --btn-pad-y: 0;
+  --btn-pad-x: 0;
+
+  padding: 0;
+}
+
+.icon24 {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.icon32 {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icon36 {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+/* Primary = enterprise Brand: brand fill, white label, glint. */
+.primary {
+  background: var(--color-brand);
+  box-shadow: var(--shadow-button);
+  color: var(--color-white);
+}
+
+.primary:hover,
+.primary:active {
+  background: var(--color-brand-strong);
+}
+
+/* Secondary = enterprise Tertiary: card surface, control boundary (>= 3:1), body label, glint. */
+.secondary,
+.outlineNeutral {
+  border-color: var(--color-border-control);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-button);
+  color: var(--color-body);
+}
+
+.secondary:hover,
+.secondary:active,
+.outlineNeutral:hover,
+.outlineNeutral:active {
+  background: var(--color-neutral-tertiary-medium);
+  color: var(--color-heading);
+}
+
+/* Danger: danger fill, white label, glint. */
+.danger {
+  background: var(--color-danger);
+  box-shadow: var(--shadow-button);
+  color: var(--color-white);
+}
+
+.danger:hover,
+.danger:active {
+  background: var(--color-danger-strong);
+}
+
+/* Ghost: icon buttons and toolbars. No shadow, no glint. */
+.ghost {
+  background: transparent;
+  color: var(--color-heading);
+}
+
+.ghost:hover,
+.ghost:active {
+  background: var(--color-neutral-tertiary-medium);
+  color: var(--color-heading);
+}
+
+/* Outline brand and danger: 1px intent boundary on the card surface. */
+.outlineBrand {
+  border-color: var(--color-border-brand);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-button);
+  color: var(--color-fg-brand);
+}
+
+.outlineBrand:hover,
+.outlineBrand:active {
+  background: var(--color-brand-softer);
+  color: var(--color-fg-brand-strong);
+}
+
+.outlineDanger {
+  border-color: var(--color-border-danger);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-button);
+  color: var(--color-fg-danger);
+}
+
+.outlineDanger:hover,
+.outlineDanger:active {
+  background: var(--color-danger-soft);
+  color: var(--color-fg-danger-strong);
+}
+
+/*
+ * Disabled: disabled fill, body-subtle label (>= 3:1, fundamentals over fg-disabled), default
+ * medium border, not-allowed cursor, no shadow. More specific than the variant hover rules.
+ */
+.button:disabled,
+.button:disabled:hover,
+.button:disabled:active {
+  border-color: var(--color-border-default-medium);
+  background: var(--color-disabled);
+  box-shadow: var(--shadow-none);
+  color: var(--color-body-subtle);
+  cursor: not-allowed;
+}
+
+/* A disabled ghost keeps no fill and no border. */
+.ghost:disabled,
+.ghost:disabled:hover,
+.ghost:disabled:active {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* C-25: 44px targets on coarse pointers. */
+@media (pointer: coarse) {
+  .button {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  .iconOnly {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}

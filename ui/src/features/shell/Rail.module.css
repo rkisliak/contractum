@@ -1,0 +1,70 @@
+/*
+ * Icon rail (Enterprise preview). Tokens only. `dark` slate in both themes, gray-300 icons; the
+ * current section is a brand tile with a white icon (plus aria-current, so colour is not the only
+ * cue: the tile is a filled shape). The focus ring is re-pointed to the light rail colour.
+ */
+.rail {
+  --color-focus-ring: var(--color-rail-fg);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  height: 100%;
+  padding: var(--spacing-4) var(--spacing-2);
+  background: var(--color-rail-bg);
+}
+
+.list,
+.bottom {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  color: var(--color-rail-fg);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-hover) var(--motion-ease),
+    color var(--motion-hover) var(--motion-ease);
+}
+
+.item:hover {
+  background: var(--color-rail-hover);
+  color: var(--color-white);
+}
+
+.item {
+  position: relative;
+}
+
+/* A light bar at the rail edge: the brand tile alone is 2.2:1 against the rail. */
+.current::before {
+  position: absolute;
+  inset-block: var(--spacing-2);
+  inset-inline-start: calc(-1 * var(--spacing-2));
+  width: 3px;
+  border-start-end-radius: var(--radius-full);
+  border-end-end-radius: var(--radius-full);
+  background: var(--color-rail-fg);
+  content: "";
+}
+
+.current,
+.current:hover {
+  background: var(--color-brand);
+  box-shadow: var(--shadow-button);
+  color: var(--color-white);
+}

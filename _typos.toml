@@ -1,0 +1,76 @@
+# typos configuration (auto-discovered from the repository root).
+# Run: `uv run --group docs typos` (local) or `uv run --frozen --only-group docs typos` (CI).
+
+[files]
+# The default skips dot-directories; include .github/, .claude/ and .zap/ (the list below then
+# excludes .git/ and the planning and tool-state folders explicitly).
+ignore-hidden = false
+extend-exclude = [
+  ".git/",
+  # Planning, tool state and local development secrets: not project text.
+  ".planning/",
+  ".gsd/",
+  ".dev/",
+  # Lock files: package names and hashes.
+  "*.lock",
+  "ui/pnpm-lock.yaml",
+  # Generated OpenAPI documents and clients: their text comes from the server code.
+  "ui/openapi/",
+  "ui/src/api/schema.gen.ts",
+  "ui/src/routeTree.gen.ts",
+  "clients/python/openapi/",
+  "clients/python/src/contractum/_generated/",
+  # Vendored ODCS JSON Schemas, kept byte for byte as published.
+  "shared/dc-odcs/src/dc_odcs/schemas/",
+  # Data file: a list of common passwords, misspelled on purpose.
+  "identity/src/dc_identity/data/common_passwords.txt",
+  # Test double of Microsoft Graph with recorded payloads.
+  "infra/fake-graph/",
+  # Vendored design skills, hash-locked in skills-lock.json.
+  ".claude/skills/typeui-*/",
+  # Images and diagrams: encoded data, not prose.
+  "*.svg",
+  "*.drawio",
+]
+
+[default]
+extend-ignore-re = [
+  # Short task ids such as 261120-pn7 in comments are not words.
+  '\b[0-9]{6}-[a-z0-9]{3}\b',
+  # Unicode ranges in @font-face rules (U+0100-02BA).
+  'U\+[0-9A-Fa-f]{4}(?:-[0-9A-Fa-f]{4})?',
+  # Hex test ids built on the "ba5e" (base) prefix in the e2e seed data.
+  '\bba5e[0-9a-f]*\b',
+]
+
+[default.extend-words]
+# API term in problem slugs and report fields; renaming it would change the API.
+unparseable = "unparseable"
+# Database product, an ODCS server type.
+vertica = "vertica"
+# "YAML 1.1 look-alikes" in the ODCS loader.
+alikes = "alikes"
+# Azure Kubernetes Service.
+aks = "aks"
+# Unicode category \p{Nd} in regular expressions.
+nd = "nd"
+# SMTP verb.
+helo = "helo"
+# "ALLOWed" in a docstring.
+allo = "allo"
+# "mis-set locale" in a test docstring.
+mis = "mis"
+# "IGNOREs" (ZAP rule actions) in a security report.
+ignor = "ignor"
+# "OTPs" (one-time passwords) in the ASVS standard.
+ot = "ot"
+# Part of "Niño" in the e2e Unicode seed data.
+nin = "nin"
+# "ellipsises" (the label is cut with an ellipsis) in an e2e helper comment.
+ellipsises = "ellipsises"
+# "Caf\u00e9" (Café as a JSON escape) in a byte-fidelity test.
+caf = "caf"
+# "CHECKs" (CHECK constraints) in a test docstring.
+chec = "chec"
+# "Alph", a search prefix in a listing test.
+alph = "alph"

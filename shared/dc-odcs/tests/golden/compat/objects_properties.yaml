@@ -1,0 +1,632 @@
+- name: object removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+      - name: customers
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.customers, code: object-removed, class: breaking}
+- name: object added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+      - name: customers
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.customers, code: object-added, class: info}
+- name: optional property removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: property-removed, class: breaking}
+- name: optional property added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number}
+  expected:
+    - {path: schema.orders.properties.amount, code: property-added, class: info}
+- name: required property added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number, required: true}
+  expected:
+    - {path: schema.orders.properties.amount, code: required-property-added, class: breaking}
+- name: required property removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number, required: true}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: property-removed, class: breaking}
+- name: nested property removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: address
+            logicalType: object
+            properties:
+              - {name: street, logicalType: string}
+              - {name: city, logicalType: string}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: address
+            logicalType: object
+            properties:
+              - {name: street, logicalType: string}
+  expected:
+    - {path: schema.orders.properties.address.properties.city, code: property-removed, class: breaking}
+- name: array items property removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: lines
+            logicalType: array
+            items:
+              logicalType: object
+              properties:
+                - {name: sku, logicalType: string}
+                - {name: qty, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: lines
+            logicalType: array
+            items:
+              logicalType: object
+              properties:
+                - {name: sku, logicalType: string}
+  expected:
+    - {path: schema.orders.properties.lines.items.properties.qty, code: property-removed, class: breaking}
+- name: property rename by id
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: number, id: p-amount}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: total, logicalType: number, id: p-amount}
+  expected:
+    - {path: schema.orders.properties.total, code: property-renamed, class: breaking}
+- name: object rename by id
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        id: o-orders
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: purchases
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        id: o-orders
+  expected:
+    - {path: schema.purchases, code: object-renamed, class: breaking}
+- name: id added is no change
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer, id: p-id}
+        id: o-orders
+  expected: []
+- name: reorder is no change
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number}
+      - name: customers
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: customers
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: number}
+          - {name: id, logicalType: integer}
+  expected: []
+- name: id changed on same name
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: number, id: p-1}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: number, id: p-2}
+  expected:
+    - {path: schema.orders.properties.amount, code: id-changed, class: warning}
+- name: logicalType changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: integer}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: logical-type-changed, class: breaking}
+- name: physicalType widened is breaking
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, physicalType: VARCHAR(50)}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, physicalType: VARCHAR(100)}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: physical-type-changed, class: breaking}
+- name: physicalType case and whitespace only
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, physicalType: varchar(50)}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, physicalType: VARCHAR (50)}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: physical-type-cosmetic, class: info}
+- name: property physicalName changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, physicalName: amt}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, physicalName: amount_col}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: physical-name-changed, class: breaking}
+- name: object physicalName changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        physicalName: tbl_orders
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        physicalName: tbl_orders_v2
+  expected:
+    - {path: schema.orders, code: physical-name-changed, class: breaking}
+- name: object physicalType table to view
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        physicalType: table
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        physicalType: view
+  expected:
+    - {path: schema.orders, code: object-kind-changed, class: warning}
+- name: deprecated property removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number, deprecated: true}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: property-removed, class: breaking}
+- name: encryptedName changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, encryptedName: amt_enc}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, encryptedName: amount_enc}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: physical-name-changed, class: breaking}
+- name: v3.1.0 property removed
+  before:
+    apiVersion: v3.1.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+          - {name: amount, logicalType: number}
+  after:
+    apiVersion: v3.1.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: property-removed, class: breaking}
+- name: logicalType added where absent
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: number}
+  expected:
+    - {path: schema.orders.properties.amount, code: logical-type-changed, class: breaking}

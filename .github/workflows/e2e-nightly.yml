@@ -1,0 +1,129 @@
+# Nightly cold-start e2e: reproduces scripts/ci.sh step 9 on a GitHub runner.
+# Nothing is pushed or published. It never prints `.dev` secrets: no step reads `.dev`, and the
+# failure artifact leaves it out. Runner differences are handled here, so scripts/ci.sh stays
+# unchanged.
+name: e2e-nightly
+
+on:
+  schedule:
+    - cron: "41 1 * * *"
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Run the full gate: bash scripts/ci.sh --full"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-nightly
+  cancel-in-progress: false
+
+jobs:
+  # A scheduled run is skipped when main has not moved since the last green run of this workflow.
+  # A manual dispatch always runs. When in doubt, test rather than skip.
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Decide whether to run
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -u
+          if [ "$EVENT" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Running: triggered by $EVENT." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/e2e-nightly.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""'); then
+            echo "::warning::could not read the last green run, running the e2e anyway"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Running: the last green run could not be read." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$last" = "$GITHUB_SHA" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipped: main has not moved since the last green run ($GITHUB_SHA)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Running: main moved since the last green run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  e2e:
+    name: e2e
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    # The full gate takes about 2.5 h on development hardware and GitHub's cap is 6 h.
+    timeout-minutes: ${{ inputs.full && 340 || 150 }}
+    steps:
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          docker system prune -af
+          df -h /
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      # Node and pnpm are set up on the runner so that scripts/ci.sh takes its native UI path.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ui/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      # compose.test.yaml bind-mounts ./ui/test-results (long syntax, the source is not created),
+      # and a runner-owned .dev makes dev-init chown its mirror files to the runner user.
+      - name: Prepare bind-mount directories
+        run: mkdir -p .dev ui/test-results
+      - name: Run the gate
+        env:
+          FULL: ${{ inputs.full }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            bash scripts/ci.sh --full
+          else
+            CI_E2E=1 bash scripts/ci.sh
+          fi
+      - name: Collect compose diagnostics
+        if: failure()
+        run: |
+          mkdir -p e2e-artifacts
+          docker compose -f compose.yaml -f compose.test.yaml --profile test ps -a > e2e-artifacts/compose-ps.txt 2>&1 || true
+          docker compose -f compose.yaml -f compose.test.yaml --profile test logs --no-color --timestamps > e2e-artifacts/compose-logs.txt 2>&1 || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: e2e-failure-${{ github.run_id }}
+          path: |
+            e2e-artifacts/
+            ui/test-results/
+            ui/playwright-report/
+            .coverage-data/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Tear down the stack
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yaml --profile test down -v --remove-orphans

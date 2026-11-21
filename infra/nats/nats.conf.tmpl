@@ -1,0 +1,83 @@
+# NATS server configuration template. dev-init renders this to /run/secrets/nats.conf on the nats
+# container, replacing every double-brace password placeholder below with that service's
+# generated password.
+#
+# One user per service. Producers may publish only audit.<own service>.> (the multi-token `>` is
+# required: actions are dotted and become several subject tokens, see dc_core.events.subject_for)
+# and may subscribe only to their own reply inbox. The audit user creates the AUDIT stream and
+# consumes it: JetStream API calls plus acknowledgements (T-01-34).
+#
+# The contracts user is the one producer that also consumes (card notices, Phase 04.1, D-99). It
+# runs ONE durable pull consumer, `contracts-notices`, on stream AUDIT, filtered to
+# `audit.contracts.>`, and may do exactly four more things: read that consumer's info, create it,
+# pull its next messages and acknowledge them. Why each subject is shaped as it is:
+#   - the create subject carries the filter token (`...contracts-notices.audit.contracts.>`). The
+#     server refuses a create request whose body filter differs from that token, and refuses
+#     `filter_subjects` on this form, so the permission itself bounds what contracts can read.
+#     Adding a create subject WITHOUT the filter token, or the legacy durable-create API subject,
+#     would let contracts read every service's events: never add one. A server that cannot enforce
+#     this is a blocker, not a reason to widen the list.
+#   - no stream API (create, delete, purge, message get, direct get): the audit service owns AUDIT.
+#   - no `$JS.API.>`: only the audit user holds it.
+#   - `access.contracts.>` (Phase 7, D-171): contracts publishes its own best-effort access events
+#     (contract content reads) to stream ACCESS, which the audit service owns. Never any other
+#     `access.` subject: contracts must not write another service's access events.
+# tests/repo/test_nats_permissions.py pins every list below; the integration test
+# contracts/tests/integration/test_notice_consumer_nats.py starts a server from this file and
+# proves each refusal.
+port: 4222
+http_port: 8222
+
+# Explicit (it equals the NATS default) so the bound on one audit event is a reviewed setting, not
+# an implicit one. Producers keep free text in event snapshots far below this (WR-01).
+max_payload: 1MB
+
+jetstream {
+  store_dir: "/data"
+}
+
+authorization {
+  users = [
+    {
+      user: "identity"
+      password: "{{ identity_nats_password }}"
+      permissions: {
+        publish: { allow: ["audit.identity.>"] }
+        subscribe: { allow: ["_INBOX.>"] }
+      }
+    }
+    {
+      user: "contracts"
+      password: "{{ contracts_nats_password }}"
+      permissions: {
+        publish: {
+          allow: [
+            "audit.contracts.>"
+            "access.contracts.>"
+            "$JS.API.CONSUMER.INFO.AUDIT.contracts-notices"
+            "$JS.API.CONSUMER.CREATE.AUDIT.contracts-notices.audit.contracts.>"
+            "$JS.API.CONSUMER.MSG.NEXT.AUDIT.contracts-notices"
+            "$JS.ACK.AUDIT.contracts-notices.>"
+          ]
+        }
+        subscribe: { allow: ["_INBOX.>"] }
+      }
+    }
+    {
+      user: "validation"
+      password: "{{ validation_nats_password }}"
+      permissions: {
+        publish: { allow: ["audit.validation.>"] }
+        subscribe: { allow: ["_INBOX.>"] }
+      }
+    }
+    {
+      user: "audit"
+      password: "{{ audit_nats_password }}"
+      permissions: {
+        publish: { allow: ["$JS.API.>", "$JS.ACK.>"] }
+        subscribe: { allow: ["_INBOX.>"] }
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+# Code owners for the documentation (GitHub requests a review from them on every pull request
+# that touches these paths). Later lines win over earlier ones.
+
+*.md                          @rkisliak
+/docs/                        @rkisliak
+/mkdocs.yml                   @rkisliak
+/.markdownlint-cli2.jsonc     @rkisliak
+/_typos.toml                  @rkisliak
+/lychee.toml                  @rkisliak
+/.github/workflows/docs*.yml  @rkisliak

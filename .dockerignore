@@ -1,0 +1,13 @@
+.git
+.venv
+.dev
+.planning
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.hypothesis
+**/node_modules
+ui/dist
+ui/test-results
+ui/playwright-report

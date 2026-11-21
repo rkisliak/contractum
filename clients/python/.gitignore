@@ -1,0 +1,15 @@
+# Local environments and tool caches. hatchling reads this file when it builds the sdist, so
+# nothing here can leak into the published source distribution (the SDK is built from this
+# directory, not from the repository root).
+.venv/
+.venv-*/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.import_linter_cache/
+__pycache__/
+.coverage
+.coverage.*
+coverage.xml
+dist/

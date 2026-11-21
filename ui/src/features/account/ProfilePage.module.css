@@ -1,0 +1,8 @@
+/* Profile (quick 261119-16f). Tokens only. */
+
+/* The card spans the page frame (layout rule R13); the field keeps a readable width inside it. */
+.form {
+  display: grid;
+  max-width: var(--size-auth-card);
+  gap: var(--spacing-6);
+}

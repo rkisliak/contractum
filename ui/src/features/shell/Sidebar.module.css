@@ -1,0 +1,164 @@
+/*
+ * Navigation panel (Enterprise preview, sidebars.md). Tokens only. White panel with a
+ * neutral-quaternary right border: the profile card, the product mark, the global search, then
+ * uppercase body-subtle section labels and medium nav items with 20px outline icons. The active
+ * item is a brand-softer rounded fill with fg-brand text and icon, semibold, plus aria-current.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  min-height: 100%;
+  padding: var(--spacing-4) var(--spacing-3);
+  background: var(--color-neutral-primary-soft);
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding-inline: var(--spacing-1);
+  border-radius: var(--radius-control);
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.search {
+  min-width: 0;
+}
+
+.searchLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.searchShell {
+  display: flex;
+  /* The token control height (36px), like every form field. */
+  height: 2.25rem;
+  align-items: center;
+  border: var(--border-width-hairline) solid var(--color-border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-neutral-secondary-medium);
+  box-shadow: var(--shadow-xs);
+  color: var(--color-heading);
+}
+
+.searchShell:hover {
+  border-color: var(--color-body);
+}
+
+.searchShell:focus-within {
+  border-color: var(--color-border-brand);
+  box-shadow: var(--shadow-ring-brand);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  margin-inline-start: var(--spacing-3);
+  color: var(--color-body);
+}
+
+.searchInput {
+  min-width: 0;
+  flex: 1 1 auto;
+  align-self: stretch;
+  padding: 0 var(--spacing-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--font-size-input);
+  line-height: var(--line-height-component);
+}
+
+.searchInput:focus,
+.searchInput:focus-visible {
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--color-body);
+  opacity: 1;
+}
+
+.sidebar {
+  display: grid;
+  align-content: start;
+  gap: var(--spacing-5);
+}
+
+.section {
+  display: grid;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.sectionLabel {
+  padding-inline: var(--spacing-2);
+  padding-block-end: var(--spacing-1);
+  color: var(--color-body-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-caps);
+  line-height: var(--line-height-component);
+  text-transform: uppercase;
+}
+
+.list {
+  display: grid;
+  gap: var(--spacing-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-height: 2.25rem;
+  padding: var(--spacing-2);
+  border-radius: var(--radius-control);
+  color: var(--color-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  text-decoration: none;
+  transition:
+    background-color var(--motion-hover) var(--motion-ease),
+    color var(--motion-hover) var(--motion-ease);
+}
+
+.item:hover {
+  background: var(--color-neutral-tertiary-medium);
+}
+
+.current,
+.current:hover {
+  background: var(--color-brand-softer);
+  color: var(--color-fg-brand);
+  font-weight: var(--font-weight-semibold);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--color-body);
+  transition: color 75ms var(--motion-ease);
+}
+
+.item:hover .icon {
+  color: var(--color-heading);
+}
+
+.current .icon,
+.current:hover .icon {
+  color: var(--color-fg-brand);
+}

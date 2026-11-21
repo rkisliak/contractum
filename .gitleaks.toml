@@ -1,0 +1,192 @@
+# gitleaks configuration (security.yml job `gitleaks`, full git history).
+#
+# The default rule set stays on. Every entry below allowlists exactly one proven test fixture or
+# documentation sample, scoped by file path (and by the shape of the line where the file has real
+# code), for one rule only. Each entry carries a `# reason:` comment and a `description`.
+#
+# Policy (docs/dev/ci-and-github.md):
+#   - Never allowlist a REAL secret. Rotate it, then remove it from history or accept the finding.
+#   - Never paste a secret value here. Scope by path and by line shape instead.
+#   - Dev certificates and keys live in Docker volumes or k8s Secrets, never in git, so no entry
+#     here covers key material.
+#   - Adding an entry needs a reason that says why the value is fake.
+
+title = "contractum gitleaks config"
+
+[extend]
+useDefault = true
+
+# reason: the value is a throwaway password for a user created inside a test container; it is
+# never used anywhere else.
+[[allowlists]]
+description = "Test fixture: throwaway user password in the identity session-limit integration test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^identity/tests/integration/test_session_limits\.py$''']
+regexTarget = "line"
+regexes = ['''change_password\(''']
+
+# reason: the value is a throwaway password for a local user created in a test container.
+[[allowlists]]
+description = "Test fixture: throwaway user password in the identity PAT integration test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^identity/tests/integration/test_pat\.py$''']
+regexTarget = "line"
+regexes = ['''"password"''']
+
+# reason: the value is a fake string handed to a mocked API in a jsdom unit test; it reaches no
+# server.
+[[allowlists]]
+description = "Test fixture: fake password in the account screen unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^ui/src/features/account/account\.test\.tsx$''']
+regexTarget = "line"
+regexes = ['''(new_|current_)?password:\s*"''']
+
+# reason: the value is a fake string handed to a mocked API in a jsdom unit test; it reaches no
+# server.
+[[allowlists]]
+description = "Test fixture: fake password in the admin screen unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^ui/src/features/admin/admin\.test\.tsx$''']
+regexTarget = "line"
+regexes = ['''password:\s*"''']
+
+# reason: the value is a fake string handed to a mocked API in a jsdom unit test; it reaches no
+# server.
+[[allowlists]]
+description = "Test fixture: fake password in the admin detail screen unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^ui/src/features/admin/adminDetail\.test\.tsx$''']
+regexTarget = "line"
+regexes = ['''password:\s*"''']
+
+# reason: the value is a fake string handed to a mocked API in a jsdom unit test; it reaches no
+# server.
+[[allowlists]]
+description = "Test fixture: fake new password in the rotate-password screen unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^ui/src/features/signin/RotatePage\.test\.tsx$''']
+regexTarget = "line"
+regexes = ['''NEW_PASSWORD\s*=\s*"''']
+
+# reason: the string is a made-up PAT-shaped value that proves the log scrubber redacts it; it is
+# not a credential of any system.
+[[allowlists]]
+description = "Test fixture: fake dcp_ token fed to the logging scrubber unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^shared/dc-core/tests/unit/test_logging_scrub\.py$''']
+regexTarget = "line"
+regexes = ['''token\s*=\s*"dcp_''']
+
+# reason: the string is a made-up marker (carries an sk-test prefix) that the fidelity test looks
+# for in stored output to prove it never leaks; it is not a credential of any system.
+[[allowlists]]
+description = "Test fixture: fake marker secret in the contract fidelity integration test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^contracts/tests/integration/test_fidelity\.py$''']
+regexTarget = "line"
+regexes = ['''\bSECRET\s*=\s*"''']
+
+# reason: the string is a made-up marker (carries an sk-test prefix) used by the integration
+# fixtures to prove secrets are never stored or echoed; it is not a credential of any system.
+[[allowlists]]
+description = "Test fixture: fake marker secret in the shared integration conftest"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^tests/integration/conftest\.py$''']
+regexTarget = "line"
+regexes = ['''\bCONTRACT_SECRET\s*=\s*"''']
+
+# reason: false positive. The scanner matched the word "auth" next to a pinned dependency name
+# (argon2-cffi==x.y.z). A package pin is public and not a secret.
+[[allowlists]]
+description = "False positive: dependency pin list in the identity package manifest"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^identity/pyproject\.toml$''']
+regexTarget = "match"
+regexes = ['''(?s)dc-auth",\s+"argon2-cffi==''']
+
+# reason: planning documents describe the design in prose. The match is a dependency list or a
+# field name (a credential kind), not a value.
+[[allowlists]]
+description = "Documentation sample: Phase 1 plan 01 dependency lists"
+targetRules = ["generic-api-key"]
+paths = ['''^\.planning/phases/01-walking-skeleton/01-01-PLAN\.md$''']
+
+# reason: planning documents describe the design in prose. The match is an env var or field name
+# of a test secret, not a value.
+[[allowlists]]
+description = "Documentation sample: Phase 1 plan 12 secret-scan test description"
+targetRules = ["generic-api-key"]
+paths = ['''^\.planning/phases/01-walking-skeleton/01-12-PLAN\.md$''']
+
+# reason: the architecture research note names credential kinds (API keys, PATs) in a roadmap
+# table. No value is present.
+[[allowlists]]
+description = "Documentation sample: architecture research roadmap table"
+targetRules = ["generic-api-key"]
+paths = ['''^\.planning/research/ARCHITECTURE\.md$''']
+
+# reason: the string is a made-up PAT-shaped value (all-hex public id, literal "secret" suffix) that
+# the SDK local-store unit test saves and reads back; it is not a credential of any system.
+[[allowlists]]
+description = "Test fixture: fake dcp_ token in the SDK local token store unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^clients/python/tests/unit/auth/test_local\.py$''']
+regexTarget = "line"
+regexes = ['''token\s*=\s*"dcp_''']
+
+# reason: the string is a made-up PAT-shaped value (all-hex public id joined to a repeated filler
+# character) that the pytest plugin unit test puts in the environment of a fake server; it is not a
+# credential of any system.
+[[allowlists]]
+description = "Test fixture: fake dcp_ token in the SDK pytest plugin unit test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^clients/python/tests/unit/test_pytest_plugin\.py$''']
+regexTarget = "line"
+regexes = ['''"dcp_[0-9a-f]+_"\s*\+\s*"[A-Za-z]"\s*\*\s*\d+''']
+
+# reason: history only (the file no longer holds the line). The value was a canary password
+# handed to a mocked login route in the SDK CLI unit test; it reaches no server.
+[[allowlists]]
+description = "Test fixture: fake canary password in the SDK auth CLI unit test (history)"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^clients/python/tests/unit/cli/test_auth_cli\.py$''']
+regexTarget = "line"
+regexes = ['''\bPASSWORD\s*=\s*"''']
+
+# reason: planning documents describe the design in prose. The match is the name of a credential
+# kind (a SonarQube token kept as a GitHub repo secret), not a value.
+[[allowlists]]
+description = "Documentation sample: security toolset quick-task plan (user setup list)"
+targetRules = ["generic-api-key"]
+paths = ['''^\.planning/quick/261120-pn7-security-toolset-ci-scanners-local-audit/261120-pn7-PLAN\.md$''']
+
+# reason: planning documents describe the design in prose. The research note quotes the shape of
+# the fake SDK test tokens above (an all-hex public id and a literal suffix), not a value.
+[[allowlists]]
+description = "Documentation sample: Phase 15 research note on the fake SDK token fixtures"
+targetRules = ["generic-api-key"]
+paths = ['''^\.planning/(phases|milestones/[^/]+)/15-documentation-overhaul-docs-site-and-repo-cleanup/15-RESEARCH\.md$''']
+
+# reason: the plan's verify command reads a local SonarQube token from a file with command
+# substitution; the matched user part is the expression, not a value.
+[[allowlists]]
+description = "Documentation sample: Phase 15 plan 08 verify command reading a token file"
+condition = "AND"
+targetRules = ["curl-auth-user"]
+paths = ['''^\.planning/(phases|milestones/[^/]+)/15-documentation-overhaul-docs-site-and-repo-cleanup/15-08-PLAN\.md$''']
+regexTarget = "line"
+regexes = ['''curl\s.*-u\s+"\$\(cat\s''']

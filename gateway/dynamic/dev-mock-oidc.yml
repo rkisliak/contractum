@@ -1,0 +1,24 @@
+# DEV ONLY: compose stand-in for Microsoft Entra; omit this file in any non-compose deployment.
+#
+# Makes the mock OIDC provider reachable from a browser so the SPA can run authorization code +
+# PKCE against it. The issuer id is the URL path, and the mock derives `iss` and every discovered
+# endpoint from `Host` and `X-Forwarded-Proto`, so the router matches `/entra/` and strips
+# nothing: a stripped prefix would change `iss`. The issuer every service trusts is therefore
+# https://localhost:8443/entra (compose.yaml, x-app-env). A real tenant is a registry entry with
+# its own authority and has no router here. security-headers is the only middleware: the mock is
+# not an application API, so no CORS, no rate limit and no problem rendering apply.
+# A repo test (tests/repo/test_compose_topology.py) pins that `mock-oidc` appears in the gateway
+# only in this file.
+http:
+  routers:
+    mock-oidc-dev:
+      rule: "PathPrefix(`/entra/`)"
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [security-headers]
+      service: mock-oidc
+  services:
+    mock-oidc:
+      loadBalancer:
+        servers:
+          - url: "http://mock-oidc:8080"

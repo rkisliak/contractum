@@ -1,0 +1,13 @@
+{
+  "methods": {
+    "local": true,
+    "microsoft": false
+  },
+  "password_rules": {
+    "min_length": 12,
+    "require_digit": true,
+    "require_lower": true,
+    "require_symbol": false,
+    "require_upper": true
+  }
+}

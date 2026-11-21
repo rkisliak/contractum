@@ -1,0 +1,290 @@
+{{- /* mail, api-docs, ui and the gateway's problem responder. */ -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mail
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+    {{- include "dc.selector" (list . "mail") | nindent 4 }}
+spec:
+  replicas: {{ .Values.mail.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dc.selector" (list . "mail") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dc.labels" . | nindent 8 }}
+        {{- include "dc.selector" (list . "mail") | nindent 8 }}
+        dc.role: app
+    spec:
+      # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
+      automountServiceAccountToken: false
+      {{- include "dc.pullSecrets" . | nindent 6 }}
+      {{- include "dc.appPodSecurity" . | nindent 6 }}
+      containers:
+        - name: mail
+          image: {{ include "dc.image" (list . "mail") }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["uvicorn", "--factory", "dc_mail.main:create_mail_app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
+          ports:
+            - {name: http, containerPort: 8000}
+          env:
+            - name: DC_SERVICE
+              value: mail
+            {{- include "dc.appEnv" . | nindent 12 }}
+            {{- if .Values.mailpit.enabled }}
+            - {name: DC_SMTP_HOST, value: mailpit}
+            - {name: DC_SMTP_PORT, value: "1025"}
+            - {name: DC_SMTP_TLS, value: none}
+            {{- else }}
+            - name: DC_SMTP_HOST
+              value: {{ .Values.smtp.host | quote }}
+            - name: DC_SMTP_PORT
+              value: {{ .Values.smtp.port | quote }}
+            - name: DC_SMTP_TLS
+              value: {{ .Values.smtp.tls | quote }}
+            {{- with .Values.smtp.username }}
+            - name: DC_SMTP_USERNAME
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+            - name: DC_SMTP_FROM
+              value: {{ .Values.smtp.from | quote }}
+          {{- include "dc.httpProbes" "http" | nindent 10 }}
+          resources:
+            {{- toYaml .Values.mail.resources | nindent 12 }}
+          volumeMounts:
+            - {name: secrets, mountPath: /run/secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          {{- include "dc.containerSecurity" . | nindent 10 }}
+      volumes:
+        - name: secrets
+          secret:
+            secretName: {{ .Values.secrets.mail }}
+            defaultMode: 0440
+            optional: true
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mail
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "dc.selector" (list . "mail") | nindent 4 }}
+  ports:
+    - {name: http, port: 8000, targetPort: http}
+{{- if .Values.apiDocs.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-docs
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+    {{- include "dc.selector" (list . "api-docs") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dc.selector" (list . "api-docs") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dc.labels" . | nindent 8 }}
+        {{- include "dc.selector" (list . "api-docs") | nindent 8 }}
+        dc.role: edge
+      annotations:
+        # The merged document is built once at start: restart on every upgrade.
+        dc/revision: {{ .Release.Revision | quote }}
+    spec:
+      # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
+      automountServiceAccountToken: false
+      {{- include "dc.pullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api-docs
+          image: {{ include "dc.image" (list . "api-docs") }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - {name: DC_API_DOCS_SERVICES, value: "identity,contracts,validation,audit"}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.apiDocs.resources | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+          {{- include "dc.containerSecurity" . | nindent 10 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-docs
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "dc.selector" (list . "api-docs") | nindent 4 }}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+    {{- include "dc.selector" (list . "ui") | nindent 4 }}
+spec:
+  replicas: {{ .Values.ui.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dc.selector" (list . "ui") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dc.labels" . | nindent 8 }}
+        {{- include "dc.selector" (list . "ui") | nindent 8 }}
+        dc.role: edge
+    spec:
+      # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
+      automountServiceAccountToken: false
+      {{- include "dc.pullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: ui
+          image: {{ include "dc.image" (list . "ui") }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - name: DC_UI_LOCAL_LOGIN_ENABLED
+              value: {{ .Values.ui.localLoginEnabled | quote }}
+            - name: DC_UI_API_BASE
+              value: /api/v1
+            - name: DC_UI_ENTRA_ENABLED
+              value: {{ .Values.ui.entra.enabled | quote }}
+            {{- if .Values.ui.entra.enabled }}
+            - name: DC_UI_ENTRA_CLIENT_ID
+              value: {{ .Values.ui.entra.clientId | quote }}
+            - name: DC_UI_ENTRA_AUTHORITY
+              value: {{ .Values.ui.entra.authority | quote }}
+            - name: DC_UI_ENTRA_SCOPES
+              value: {{ .Values.ui.entra.scopes | quote }}
+            - name: DC_UI_ENTRA_PROTOCOL
+              value: {{ .Values.ui.entra.protocol | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /healthz.txt, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz.txt, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.ui.resources | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+          {{- include "dc.containerSecurity" . | nindent 10 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "dc.selector" (list . "ui") | nindent 4 }}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: problem-responder
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+data:
+  responder.py: |-
+{{ .Files.Get "files/problem-responder/responder.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: problem-responder
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+    {{- include "dc.selector" (list . "problem-responder") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dc.selector" (list . "problem-responder") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dc.labels" . | nindent 8 }}
+        {{- include "dc.selector" (list . "problem-responder") | nindent 8 }}
+        dc.role: edge
+      annotations:
+        checksum/code: {{ .Files.Get "files/problem-responder/responder.py" | sha256sum }}
+    spec:
+      # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
+      automountServiceAccountToken: false
+      {{- include "dc.pullSecrets" . | nindent 6 }}
+      {{- include "dc.appPodSecurity" . | nindent 6 }}
+      containers:
+        - name: problem-responder
+          # Reuses the identity image (stdlib-only code from the ConfigMap), as in compose.
+          image: {{ include "dc.image" (list . "identity") }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["uvicorn", "responder:app", "--app-dir", "/opt/problem-responder", "--host", "0.0.0.0", "--port", "8080", "--no-server-header"]
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.problemResponder.resources | nindent 12 }}
+          volumeMounts:
+            - {name: code, mountPath: /opt/problem-responder, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          {{- include "dc.containerSecurity" . | nindent 10 }}
+      volumes:
+        - name: code
+          configMap: {name: problem-responder}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: problem-responder
+  labels:
+    {{- include "dc.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "dc.selector" (list . "problem-responder") | nindent 4 }}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

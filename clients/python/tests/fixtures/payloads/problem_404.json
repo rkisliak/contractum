@@ -1,0 +1,7 @@
+{
+  "detail": "No such contract.",
+  "request_id": "req-1",
+  "status": 404,
+  "title": "Not found",
+  "type": "urn:dc:problem:not-found"
+}

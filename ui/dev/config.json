@@ -1,0 +1,9 @@
+{
+  "entraEnabled": false,
+  "entraClientId": "",
+  "entraAuthority": "",
+  "entraScopes": "openid profile",
+  "entraProtocol": "oidc",
+  "localLoginEnabled": true,
+  "apiBase": "/api/v1"
+}

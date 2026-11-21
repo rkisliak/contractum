@@ -1,0 +1,58 @@
+.venv/
+__pycache__/
+*.pyc
+.dev/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+dist/
+build/
+
+# GSD tool runtime state (regenerated)
+.planning/state.json
+
+# UI (Phase 8): installed packages and Playwright output never reach git or ruff
+node_modules/
+ui/test-results/
+ui/playwright-report/
+
+# coverage data and reports
+.coverage-data/
+htmlcov/
+# SonarQube inputs: pytest-cov XML (ui/coverage is ignored in ui/.gitignore)
+/coverage.xml
+
+# TypeScript incremental build state
+*.tsbuildinfo
+
+# Local secrets and key material: never commit (real secrets live in Docker volumes / k8s Secrets)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Scanner output (Trivy SARIF/JSON written by CI or local runs; ZAP, gitleaks, CodeQL and
+# Schemathesis reports go to .security-reports/)
+*.sarif
+.security-reports/
+.coverage
+.coverage.*
+clients/python/coverage.xml
+clients/python/.venv-*/
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# GSD runtime state (local tool state, never shared)
+.gsd/
+# GSD milestone lock file (runtime lock, regenerated)
+.planning/milestone.lock
+# Docs site build output (written by `zensical build`)
+/site/

@@ -1,0 +1,772 @@
+- name: maxLength 50 to 40 tightened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {maxLength: 50}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {maxLength: 40}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+- name: maxLength 50 to 49 tightened by exact number
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {maxLength: 50}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {maxLength: 49}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+- name: maxLength 50 to 60 widened
+  before:
+    apiVersion: v3.1.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {maxLength: 50}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.1.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {maxLength: 60}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-widened, class: warning}
+- name: maximum 10 to 10.0 is no change
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: number
+            logicalTypeOptions: {maximum: 10}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: number
+            logicalTypeOptions: {maximum: 10.0}
+          - {name: id, logicalType: integer}
+  expected: []
+- name: minLength raised tightened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {minLength: 1}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {minLength: 3}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+- name: minLength lowered widened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {minLength: 3}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {minLength: 1}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-widened, class: warning}
+- name: minimum added tightened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: integer}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {minimum: 0}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+- name: minimum removed widened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {minimum: 0}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: integer}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-widened, class: warning}
+- name: maximum to exclusiveMaximum same value tightened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {maximum: 10}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {exclusiveMaximum: 10}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+- name: exclusiveMinimum to minimum same value widened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {exclusiveMinimum: 5}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {minimum: 5}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-widened, class: warning}
+- name: lower raised and upper raised is one of each
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {minimum: 1, maximum: 10}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {minimum: 5, maximum: 20}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+    - {path: schema.orders.properties.amount, code: constraint-widened, class: warning}
+- name: date bound changed is conservatively breaking
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: date
+            logicalTypeOptions: {minimum: '2020-01-01'}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: date
+            logicalTypeOptions: {minimum: '2021-01-01'}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: constraint-tightened, class: breaking}
+- name: pattern added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {pattern: '^[A-Z]+$'}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: pattern-added, class: breaking}
+- name: pattern removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {pattern: '^[A-Z]+$'}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: pattern-removed, class: warning}
+- name: pattern changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {pattern: '^[A-Z]+$'}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {pattern: '^[A-Z0-9]+$'}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: pattern-changed, class: warning}
+- name: format added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {format: email}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: format-changed, class: breaking}
+- name: format removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            logicalTypeOptions: {format: email}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: format-changed, class: warning}
+- name: multipleOf changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {multipleOf: 5}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: integer
+            logicalTypeOptions: {multipleOf: 10}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: multiple-of-changed, class: breaking}
+- name: uniqueItems flipped on
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: array
+            logicalTypeOptions: {uniqueItems: false}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: array
+            logicalTypeOptions: {uniqueItems: true}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: unique-items-changed, class: breaking}
+- name: enum value removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+              - {value: PAID}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount.enum.PAID, code: enum-value-removed, class: breaking}
+- name: enum value added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+              - {value: PAID}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount.enum.PAID, code: enum-value-added, class: warning}
+- name: enum introduced
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+              - {value: PAID}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: enum-added, class: breaking}
+- name: enum removed entirely
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+              - {value: PAID}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: enum-removed, class: warning}
+- name: default timezone changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: timestamp
+            logicalTypeOptions: {defaultTimezone: UTC}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: timestamp
+            logicalTypeOptions: {defaultTimezone: Europe/Berlin}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: timezone-changed, class: warning}
+- name: enum reorder is no change
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: NEW}
+              - {value: PAID}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: amount
+            logicalType: string
+            enum:
+              - {value: PAID}
+              - {value: NEW}
+          - {name: id, logicalType: integer}
+  expected: []

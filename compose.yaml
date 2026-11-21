@@ -1,0 +1,710 @@
+# Contractum: the whole platform with one `docker compose up`.
+#
+# Secrets: none has a value or a default anywhere. The `dev-init` one-shot generates every secret
+# and certificate into the `dev-secrets` volume; each consumer mounts only its own subdirectory
+# at /run/secrets (a volume subpath), read-only. Only Traefik publishes a host port (8443 -> 443).
+# Pin images by tag here; pin digests once the images are built in CI.
+
+# Pins the compose project name whatever the checkout folder is called: volumes, containers and the
+# e2e outage tests (DC_E2E_COMPOSE_PROJECT) depend on it.
+name: contractum
+
+x-app-env: &app-env
+  DC_NATS_URL: nats://nats:4222
+  DC_AUTH_IDENTITY_INTERNAL_URL: http://identity:8000
+  # Trusted issuers: the local IdP (identity) and two dev mock IdPs, never enabled outside compose:
+  # a generic OIDC one and an Entra-shaped one (kind entra, the dev tenant). A real tenant is one
+  # more entry of the same shape with its own tenant_id; no service code changes (AUTH-03).
+  # The Entra entry's issuer is the browser-visible https://localhost:8443/entra (the SPA runs PKCE
+  # against the mock through the gateway's dev-only router) while its jwks_uri stays in-network.
+  # There is exactly one entry: IssuerRegistry refuses a second one for the same tenant.
+  DC_AUTH_ISSUERS: >-
+    [{"issuer":"http://identity:8000","jwks_uri":"http://identity:8000/.well-known/jwks.json","audiences":["contractum"],"namespace":"local"},
+    {"issuer":"http://mock-oidc:8080/default","jwks_uri":"http://mock-oidc:8080/default/jwks","audiences":["contractum"],"namespace":"mock"},
+    {"issuer":"https://localhost:8443/entra","jwks_uri":"http://mock-oidc:8080/entra/jwks","audiences":["aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"],"namespace":"entra","kind":"entra","tenant_id":"11111111-2222-4333-8444-555555555555"}]
+
+x-healthcheck-defaults: &hc-defaults
+  interval: 5s
+  timeout: 5s
+  retries: 30
+  start_period: 5s
+
+services:
+  dev-init:
+    image: contractum/identity:dev
+    pull_policy: never
+    user: "0:0"
+    command: ["python", "/opt/infra/dev-init/generate.py"]
+    restart: "no"
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /out
+      - type: bind
+        source: ./infra
+        target: /opt/infra
+        read_only: true
+      - type: bind
+        source: ./.dev
+        target: /out-host
+        bind:
+          create_host_path: true
+    networks: [backend]
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      # PostgreSQL 18 images keep PGDATA below /var/lib/postgresql/18/docker.
+      - pgdata:/var/lib/postgresql
+      - type: bind
+        source: ./infra/postgres/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: postgres
+    healthcheck:
+      # TCP on purpose: during first-time initialisation the temporary server listens on the unix
+      # socket only, so a socket check would report ready before the roles and databases exist.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+    networks: [backend]
+
+  nats:
+    image: nats:2.15.2-alpine
+    command: ["-c", "/run/secrets/nats.conf"]
+    volumes:
+      - natsdata:/data
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: nats
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+    networks: [backend]
+
+  mock-oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:6.1.5
+    environment:
+      SERVER_PORT: "8080"
+      JSON_CONFIG_PATH: /config/config.json
+    volumes:
+      - type: bind
+        source: ./infra/mock-oidc
+        target: /config
+        read_only: true
+    # edge too: the gateway's dev-only router (gateway/dynamic/dev-mock-oidc.yml) reaches it there.
+    networks: [backend, edge]
+
+  # Compose-only Microsoft Graph stand-in (D-60): identity's real client calls it. Backend network
+  # only, no published port, no gateway route, so its test mutators are unreachable from outside.
+  # Reuses the identity image (FastAPI + uvicorn already there) with the app bind-mounted.
+  fake-graph:
+    image: contractum/identity:dev
+    pull_policy: never
+    command:
+      - uvicorn
+      - app:app
+      - --app-dir
+      - /opt/fake-graph
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --no-server-header
+    restart: unless-stopped
+    environment:
+      FAKE_GRAPH_CLIENT_ID: identity-graph-dev
+    volumes:
+      - type: bind
+        source: ./infra/fake-graph
+        target: /opt/fake-graph
+        read_only: true
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: fake-graph
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+    networks: [backend]
+
+  # Compose-only mail catcher (SC5): the mail service sends here, the e2e runner reads it over
+  # HTTP. Backend network only, no published port, no gateway route.
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      <<: *hc-defaults
+    networks: [backend]
+
+  # Compose-only webhook receiver (SC5): records card webhook deliveries and can be told to fail
+  # the next ones. Backend network only, no published port, no gateway route, no secret.
+  webhook-sink:
+    image: contractum/identity:dev
+    pull_policy: never
+    command:
+      - uvicorn
+      - app:app
+      - --app-dir
+      - /opt/webhook-sink
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --no-server-header
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./infra/webhook-sink
+        target: /opt/webhook-sink
+        read_only: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+    networks: [backend]
+
+  # The mail service (D-105): sends the plain-text notices contracts hands it. Internal route only,
+  # authorized by the identity PDP (mail:send); no database, no secret mount, backend network only.
+  mail:
+    build:
+      context: .
+      dockerfile: infra/docker/service.Dockerfile
+      args:
+        PACKAGE: dc-mail
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
+    image: contractum/mail:dev
+    command:
+      - uvicorn
+      - --factory
+      - dc_mail.main:create_mail_app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --no-server-header
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DC_SERVICE: mail
+      DC_SMTP_HOST: mailpit
+      DC_SMTP_PORT: "1025"
+      DC_SMTP_TLS: none
+      DC_SMTP_FROM: notifications@contractum.local
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      identity:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    networks: [backend]
+
+  identity-migrate:
+    image: contractum/identity:dev
+    pull_policy: never
+    command: ["python", "-m", "dc_identity.migrate", "upgrade", "head"]
+    restart: "no"
+    environment:
+      DC_SERVICE: identity
+      DC_DB_HOST: postgres
+      DC_DB_NAME: identity
+      DC_DB_USER: identity
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: identity
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  identity:
+    build:
+      context: .
+      dockerfile: infra/docker/service.Dockerfile
+      args:
+        PACKAGE: dc-identity
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
+    image: contractum/identity:dev
+    command:
+      - uvicorn
+      - --factory
+      - dc_identity.main:create_identity_app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - 172.28.0.10
+      - --no-server-header
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DC_SERVICE: identity
+      DC_DB_HOST: postgres
+      DC_DB_NAME: identity
+      DC_DB_USER: identity
+      DC_NATS_USER: identity
+      DC_LOCAL_ISSUER: http://identity:8000
+      # dev-init always writes this file: it equals the current public key outside a rotation (the
+      # JWKS drops a duplicate kid) and holds the old key's public half for 24 h after a rotation.
+      DC_JWT_PREVIOUS_PUBLIC_KEY_FILE: /run/secrets/jwt_previous_public_key.pem
+      # The test stack signs the same users in many times (API seeding, parallel Playwright
+      # workers); the product default of 5 would evict live browser sessions mid-run. The default
+      # is proven by identity's integration tests.
+      DC_MAX_SESSIONS_PER_USER: "100"
+      # Directory for the Entra issuer: the compose fake Graph (the secret is the graph_client_secret
+      # file under /run/secrets, generated by dev-init).
+      DC_GRAPH_BASE_URL: http://fake-graph:8080/v1.0
+      DC_GRAPH_TOKEN_URL_TEMPLATE: http://fake-graph:8080/{tenant_id}/oauth2/v2.0/token
+      DC_GRAPH_CLIENT_ID: identity-graph-dev
+      # Deleting a folder asks contracts and validation what it still holds (request time only, so
+      # no depends_on: contracts already depends on identity and a cycle would never start).
+      DC_CONTRACTS_URL: http://contracts:8000
+      DC_VALIDATION_URL: http://validation:8000
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: identity
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      identity-migrate:
+        condition: service_completed_successfully
+      fake-graph:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks: [edge, backend]
+
+  contracts-migrate:
+    image: contractum/contracts:dev
+    pull_policy: never
+    command: ["python", "-m", "dc_contracts.migrate", "upgrade", "head"]
+    restart: "no"
+    environment:
+      DC_SERVICE: contracts
+      DC_DB_HOST: postgres
+      DC_DB_NAME: contracts
+      DC_DB_USER: contracts
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: contracts
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  contracts:
+    build:
+      context: .
+      dockerfile: infra/docker/service.Dockerfile
+      args:
+        PACKAGE: dc-contracts
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
+    image: contractum/contracts:dev
+    command:
+      - uvicorn
+      - --factory
+      - dc_contracts.main:create_contracts_app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - 172.28.0.10
+      - --no-server-header
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DC_SERVICE: contracts
+      DC_DB_HOST: postgres
+      DC_DB_NAME: contracts
+      DC_DB_USER: contracts
+      DC_NATS_USER: contracts
+      # Notices (Phase 04.1): email goes through the mail service to Mailpit, webhooks to the
+      # compose sink. Dev-only values: the sink is the one private host allowed, plain http is
+      # accepted and the retry schedule is seconds so the e2e journey proves retries quickly.
+      # Production keeps the code defaults (no allow-list, https required, minutes to hours).
+      # The webhook_secret_key and mail_api_key are files under /run/secrets (dev-init).
+      DC_MAIL_URL: http://mail:8000
+      # Publish asks validation (Phase 5). No depends_on on purpose: with validation down, publish
+      # fails closed (503) and saves degrade, but contracts still starts.
+      DC_VALIDATION_URL: http://validation:8000
+      DC_WEBHOOK_REQUIRE_HTTPS: "false"
+      DC_WEBHOOK_ALLOWED_PRIVATE_HOSTS: '["webhook-sink"]'
+      DC_NOTIFY_RETRY_SCHEDULE_S: "[2,3,5]"
+      DC_NOTIFY_MAX_ATTEMPTS: "5"
+      DC_NOTIFY_POLL_INTERVAL_S: "1"
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: contracts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      contracts-migrate:
+        condition: service_completed_successfully
+      # Token verification fetches identity's JWKS: start after it is healthy (WR-04).
+      identity:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks: [edge, backend]
+
+  validation-migrate:
+    image: contractum/validation:dev
+    pull_policy: never
+    command: ["python", "-m", "dc_validation.migrate", "upgrade", "head"]
+    restart: "no"
+    environment:
+      DC_SERVICE: validation
+      DC_DB_HOST: postgres
+      DC_DB_NAME: validation
+      DC_DB_USER: validation
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: validation
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  validation:
+    build:
+      context: .
+      dockerfile: infra/docker/service.Dockerfile
+      args:
+        PACKAGE: dc-validation
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
+    image: contractum/validation:dev
+    command:
+      - uvicorn
+      - --factory
+      - dc_validation.main:create_validation_app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - 172.28.0.10
+      - --no-server-header
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DC_SERVICE: validation
+      DC_DB_HOST: postgres
+      DC_DB_NAME: validation
+      DC_DB_USER: validation
+      DC_NATS_USER: validation
+      # Rule worker RLIMIT_AS (1 GiB): pinned so the memory outcome of a hostile rule does not
+      # depend on the code default (measured in plan 05-04; Linux only).
+      DC_WORKER_MEMORY_BYTES: "1073741824"
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: validation
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      validation-migrate:
+        condition: service_completed_successfully
+      # Token verification fetches identity's JWKS: start after it is healthy (WR-04).
+      identity:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks: [edge, backend]
+
+  audit-migrate:
+    image: contractum/audit:dev
+    pull_policy: never
+    command: ["python", "-m", "dc_audit.migrate", "upgrade", "head"]
+    restart: "no"
+    environment:
+      DC_SERVICE: audit
+      DC_DB_HOST: postgres
+      DC_DB_NAME: audit
+      DC_DB_USER: audit
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: audit
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  audit:
+    build:
+      context: .
+      dockerfile: infra/docker/service.Dockerfile
+      args:
+        PACKAGE: dc-audit
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
+    image: contractum/audit:dev
+    command:
+      - uvicorn
+      - --factory
+      - dc_audit.main:create_audit_app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - 172.28.0.10
+      - --no-server-header
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DC_SERVICE: audit
+      DC_DB_HOST: postgres
+      DC_DB_NAME: audit
+      DC_DB_USER: audit
+      DC_NATS_USER: audit
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: audit
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      audit-migrate:
+        condition: service_completed_successfully
+      # Token verification fetches identity's JWKS: start after it is healthy (WR-04).
+      identity:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks: [edge, backend]
+
+  # Renders RFC 9457 bodies for errors Traefik itself generates (D-18). Reuses the identity image
+  # (stdlib-only code mounted read-only, no new dependency) and sits on the edge network only.
+  problem-responder:
+    image: contractum/identity:dev
+    pull_policy: never
+    command:
+      - uvicorn
+      - responder:app
+      - --app-dir
+      - /opt/problem-responder
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --no-server-header
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./gateway/problem-responder
+        target: /opt/problem-responder
+        read_only: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      <<: *hc-defaults
+    networks: [edge]
+
+  # The one merged OpenAPI document and the vendored Swagger UI (PLAT-06, D-176..D-178). Fetches
+  # each service's own document on the backend network at start, merges them and stays unhealthy
+  # (serving no document) on a collision. The merge runs once per container start: `restart: true`
+  # restarts it only when Compose itself restarts or re-creates a dependency (`docker compose
+  # restart`/`up`). A dependency restarted by its own `restart: unless-stopped` policy, or updated
+  # outside Compose, leaves the old document served, and a collision stays unhealthy until
+  # api-docs is restarted (`docker compose restart api-docs`).
+  api-docs:
+    build:
+      context: .
+      dockerfile: infra/docker/api-docs.Dockerfile
+    image: contractum/api-docs:dev
+    restart: unless-stopped
+    environment:
+      DC_API_DOCS_SERVICES: identity,contracts,validation,audit
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      <<: *hc-defaults
+    depends_on:
+      identity:
+        condition: service_healthy
+        restart: true
+      contracts:
+        condition: service_healthy
+        restart: true
+      validation:
+        condition: service_healthy
+        restart: true
+      audit:
+        condition: service_healthy
+        restart: true
+    networks: [edge, backend]
+
+  # The web UI (UI-04, D-UI-08-04, D-UI-08-10): the built single-page app behind unprivileged nginx.
+  # Edge network only, no published port, no secret and no volume. The root filesystem is read-only
+  # and /tmp is a tmpfs: the entrypoint writes /tmp/ui/config.json and the security header files
+  # from the public DC_UI_* values at start and refuses to start on an invalid one. Entra stays off
+  # here until the sign-in plans turn it on with the browser-visible mock authority.
+  ui:
+    build:
+      context: ./ui
+      dockerfile: ../infra/docker/ui.Dockerfile
+      target: runtime
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
+    image: contractum/ui:dev
+    restart: unless-stopped
+    environment:
+      # Entra sign-in against the compose stand-in (Plan 08-12): the SPA runs authorization code +
+      # PKCE with the public client ui-alice at the browser-visible issuer. Public identifiers only;
+      # a real tenant sets its own client id and https://login.microsoftonline.com/<tenant>.
+      DC_UI_ENTRA_ENABLED: "true"
+      DC_UI_ENTRA_CLIENT_ID: ui-alice
+      DC_UI_ENTRA_AUTHORITY: https://localhost:8443/entra
+      DC_UI_ENTRA_SCOPES: openid profile offline_access
+      DC_UI_ENTRA_PROTOCOL: oidc
+      DC_UI_LOCAL_LOGIN_ENABLED: "true"
+      DC_UI_API_BASE: /api/v1
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz.txt"]
+      <<: *hc-defaults
+    networks: [edge]
+
+  traefik:
+    image: traefik:v3.7.17
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./gateway/traefik.yml
+        target: /etc/traefik/traefik.yml
+        read_only: true
+      - type: bind
+        source: ./gateway/dynamic
+        target: /etc/traefik/dynamic
+        read_only: true
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets
+        read_only: true
+        volume:
+          subpath: traefik
+    ports:
+      - "8443:443"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      <<: *hc-defaults
+    depends_on:
+      dev-init:
+        condition: service_completed_successfully
+      problem-responder:
+        condition: service_healthy
+      ui:
+        condition: service_healthy
+    networks:
+      edge:
+        ipv4_address: 172.28.0.10
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+  backend:
+    internal: true
+
+volumes:
+  dev-secrets:
+  pgdata:
+  natsdata:

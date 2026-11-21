@@ -1,0 +1,324 @@
+/*
+ * "Your access" (shared by the folder Access tab and the home access card). Tokens only.
+ * A short summary, one compact table (tables.md, compact padding) whose rows expand like a flush
+ * accordion (accordion.md: 16px chevron, 0 -> 180deg), and quiet text disclosures.
+ */
+.root {
+  display: grid;
+  gap: var(--spacing-4);
+  min-width: 0;
+}
+
+.summaryBlock {
+  display: grid;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-body-subtle);
+  overflow-wrap: anywhere;
+}
+
+.strong {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-heading);
+  font-weight: var(--font-weight-medium);
+}
+
+.roles {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.role > [data-badge] {
+  flex-shrink: 0;
+}
+
+.roleText {
+  min-width: 0;
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+.link {
+  /* A box of its own, so a long folder name that wraps does not overlap its neighbours. */
+  display: inline-block;
+  max-inline-size: 100%;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  color: var(--color-fg-brand);
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link:hover {
+  color: var(--color-fg-brand-strong);
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- table (tables.md, compact) ---------- */
+/* Positioned, so the visually hidden cell text stays inside the scroll box (not the page). */
+.scroll {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.table thead th {
+  padding: var(--spacing-2) var(--spacing-4);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  background: var(--color-neutral-secondary-soft);
+  color: var(--color-body);
+  font-weight: var(--font-weight-medium);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table thead th.capCol {
+  width: 6.5rem;
+  text-align: center;
+}
+
+.table tbody th,
+.table tbody td {
+  padding: var(--spacing-3) var(--spacing-4);
+  border-block-end: var(--border-width-hairline) solid
+    var(--color-border-default);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table tbody:last-child tr:last-child th,
+.table tbody:last-child tr:last-child td,
+.table tbody:last-child tr:has(+ .panelRow[hidden]) th,
+.table tbody:last-child tr:has(+ .panelRow[hidden]) td {
+  border-block-end: 0;
+}
+
+.table tbody > tr:first-child:hover {
+  background: var(--color-neutral-secondary-soft);
+}
+
+.rowHeader {
+  color: var(--color-heading);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.expand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  line-height: inherit;
+  text-align: start;
+}
+
+.expand:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.rowChevron {
+  flex-shrink: 0;
+  color: var(--color-body);
+  transition: transform var(--motion-hover) var(--motion-ease);
+}
+
+.rowChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* The partial-access line, indented under the area name (past the chevron). */
+.note {
+  padding-inline-start: calc(1rem + var(--spacing-2));
+  color: var(--color-body-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  white-space: normal;
+}
+
+.capCell {
+  text-align: center;
+}
+
+/* Marks sit on the row's first text line (14px x 1.5). */
+.capCell > svg {
+  display: inline-block;
+  vertical-align: top;
+  margin-block: calc((1lh - 1rem) / 2);
+}
+
+.check {
+  color: var(--color-fg-success-strong);
+}
+
+.dash {
+  color: var(--color-body-subtle);
+}
+
+.panelRow > td {
+  padding-block-start: 0;
+  padding-inline-start: calc(var(--spacing-4) + 1rem + var(--spacing-2));
+}
+
+.lists {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.listTitle {
+  margin: 0 0 var(--spacing-1);
+  color: var(--color-body-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Short labels flow into as many ~14rem columns as fit, so a long area stays a few lines tall. */
+.list {
+  margin: 0;
+  padding: 0;
+  color: var(--color-body);
+  list-style: none;
+  columns: 14rem 3;
+  column-gap: var(--spacing-8);
+}
+
+.list > li {
+  break-inside: avoid;
+}
+
+.listMuted {
+  color: var(--color-body-subtle);
+}
+
+/* ---------- quiet disclosures (flush accordion) ---------- */
+.disclosure {
+  min-width: 0;
+}
+
+.disclosureSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  border-radius: var(--radius-sm);
+  color: var(--color-fg-brand);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  list-style: none;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosureSummary:hover {
+  color: var(--color-fg-brand-strong);
+}
+
+.disclosureSummary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.quiet {
+  color: var(--color-body);
+  font-size: var(--font-size-xs);
+}
+
+.quiet:hover {
+  color: var(--color-heading);
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform var(--motion-hover) var(--motion-ease);
+}
+
+.disclosure[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+
+.disclosurePanel {
+  display: grid;
+  gap: var(--spacing-3);
+  min-width: 0;
+  padding-block-start: var(--spacing-3);
+}
+
+.technical {
+  display: grid;
+  gap: var(--spacing-1);
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.techRow {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
+  gap: var(--spacing-1) var(--spacing-4);
+  min-width: 0;
+}
+
+.techRow dt,
+.techRow dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.code {
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 40rem) {
+  .techRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

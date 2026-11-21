@@ -1,0 +1,100 @@
+/*
+ * ProblemAlert (UI-SPEC 5.4). Tokens only. Long detail, slug and request id wrap anywhere; the
+ * copy control stays beside the id and never shrinks.
+ */
+.detail {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.errors {
+  margin: var(--spacing-2) 0 0;
+  padding-inline-start: var(--spacing-4);
+}
+
+.error {
+  overflow-wrap: anywhere;
+}
+
+.errorLabel {
+  font-weight: var(--font-weight-semibold);
+}
+
+.pointer {
+  font-family: var(--font-family-monospace);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2) var(--spacing-4);
+  margin-block-start: var(--spacing-3);
+  min-width: 0;
+}
+
+.requestId {
+  display: flex;
+  /* On a narrow card the label, id and copy button wrap onto lines instead of squeezing the id
+     into a one-character column. */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.requestIdLabel {
+  flex-shrink: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.requestIdValue {
+  min-width: 0;
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Support details for a problem the user can fix themselves: one quiet, collapsed line. */
+.details {
+  margin-block-start: var(--spacing-2);
+  min-width: 0;
+}
+
+.detailsSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  list-style: none;
+}
+
+.detailsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.detailsSummary:hover {
+  text-decoration: underline;
+}
+
+.detailsSummary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform var(--motion-hover) var(--motion-ease);
+}
+
+.details[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+
+.details > .meta {
+  margin-block-start: var(--spacing-2);
+}

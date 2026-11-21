@@ -1,0 +1,135 @@
+# Weekly version updates. Nothing merges automatically and no merge automation is configured.
+# Cooldown applies to version updates only: GitHub never delays security updates.
+# Groups apply to version updates only (minor and patch). No group targets security updates, so
+# every security update is its own pull request.
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      uv-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        # Exact pins per CLAUDE.md: these always get their own PR, majors included.
+        exclude-patterns:
+          - "fastapi"
+          - "jsonschema-rs"
+          - "cel-expr-python"
+
+  # The SDK (clients/python) is outside the server workspace with its own uv.lock. Its dependencies
+  # use ranges (D-03), so no exact-pin exclusions apply here.
+  - package-ecosystem: "uv"
+    directory: "/clients/python"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      sdk-uv-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  # The CLI image (clients/python/Dockerfile): python base image and the pinned uv image.
+  - package-ecosystem: "docker"
+    directory: "/clients/python"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      sdk-docker-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  # pnpm uses the npm ecosystem. The 14-day cooldown matches minimumReleaseAge (20160 minutes) in
+  # ui/pnpm-workspace.yaml: Dependabot's pnpm run honours that policy, so a shorter cooldown would
+  # only propose versions pnpm refuses.
+  # mcr.microsoft.com/playwright (infra/docker/playwright.Dockerfile) must equal @playwright/test
+  # (tests/repo/test_compose_topology.py enforces it): such PRs need the paired change by hand.
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  # Dependabot matches *.Dockerfile in this directory.
+  # The node image must equal ui/.nvmrc, engines.node in ui/package.json and ui/CLAUDE.md, and the
+  # playwright image must equal @playwright/test: such PRs need the paired change by hand.
+  - package-ecosystem: "docker"
+    directory: "/infra/docker"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      docker-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      docker-compose-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  # The chart is deploy/helm/contractum.
+  - package-ecosystem: "helm"
+    directories:
+      - "/deploy/helm/*"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      helm-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      github-actions-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]

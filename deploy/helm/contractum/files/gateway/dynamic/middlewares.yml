@@ -1,0 +1,72 @@
+http:
+  middlewares:
+    # Re-renders the statuses the gateway itself generates (413 from body-limit, 429 from the rate
+    # limiters, 5xx for upstream failures) as RFC 9457 problems (D-18). Statuses services render
+    # with specific detail (400, 401, 403, 404, 405, 406, 409, 415, 422) are deliberately not
+    # intercepted and pass through unchanged. errorRequestHeaders forwards only X-Request-ID: when
+    # unset Traefik forwards every request header, including Authorization and Cookie, to the
+    # error page service (T-01-62).
+    gateway-problems:
+      errors:
+        status: ["413", "429", "500-599"]
+        service: problem-responder
+        query: "/{status}"
+        errorRequestHeaders: ["X-Request-ID"]
+    # HSTS on every response the gateway sends, errors it generates itself included (D-UI-08-08).
+    # It is a transport property, not an authorization control: a replacement gateway must set the
+    # same header. It is the outermost middleware of every router, so a 404, 413 or 429 that
+    # gateway-problems re-renders still carries it. The UI's own security headers (CSP and the
+    # rest) come from nginx in the ui container, not from here.
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+    # Used by the catch-all router: whatever path was requested, the responder renders a 404.
+    replace-path-404:
+      replacePath:
+        path: /404
+    # 413 when the request body exceeds 2 MiB.
+    body-limit:
+      buffering:
+        maxRequestBodyBytes: 2097152
+    rl-default:
+      rateLimit:
+        average: 50
+        period: 1s
+        burst: 100
+    # Static UI assets only (the ui router). A cold page load fetches the HTML, config.json, fonts
+    # and dozens of hashed JS and CSS chunks at once; under rl-default that tripped 429s, and many
+    # browsers behind one NAT share the per-IP bucket. Assets are immutable files, so a looser
+    # bucket here costs nothing on the API side, whose limits stay rl-default and rl-auth.
+    rl-ui:
+      rateLimit:
+        average: 300
+        period: 1s
+        burst: 600
+    # Credential endpoints: stricter.
+    rl-auth:
+      rateLimit:
+        average: 5
+        period: 1s
+        burst: 10
+    # A headers middleware with CORS options answers preflight OPTIONS itself and does not pass
+    # them to any service, so services need no OPTIONS handler.
+    cors:
+      headers:
+        accessControlAllowOriginList: ["http://localhost:5173"]
+        accessControlAllowMethods: [GET, POST, PATCH, PUT, DELETE]
+        # If-Match / If-None-Match: the draft and fetch routes use conditional requests.
+        # ETag, Deprecation and Sunset: validators and lifecycle flags a browser script may read.
+        accessControlAllowHeaders: [Authorization, Content-Type, Accept, If-Match, If-None-Match]
+        accessControlExposeHeaders: [X-Request-ID, Location, ETag, Deprecation, Sunset]
+        accessControlMaxAge: 600
+        addVaryHeader: true
+    # Defence in depth: services never read these headers, but nothing client-supplied that looks
+    # like an identity assertion is forwarded.
+    strip-identity-headers:
+      headers:
+        customRequestHeaders:
+          X-User: ""
+          X-Forwarded-User: ""
+          X-Remote-User: ""
+          X-Principal: ""

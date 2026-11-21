@@ -1,0 +1,252 @@
+/*
+ * data-contracts-enterprise token sheet (.claude/skills/typeui-design-system, adopted 2026-11-15,
+ * replacing Atlas). Colour values are the colors.md registry, light in :root and dark under
+ * prefers-color-scheme (brand #1447E6 is an accent only: primary buttons, links, active nav,
+ * avatar, badges, focus; never a large surface). Components never write raw hex, colour functions, px font sizes or
+ * ad-hoc shadows; stylelint enforces it. tokens.test.ts asserts every hex against the registry
+ * and the measured WCAG contrast of every shipped pairing in BOTH themes.
+ *
+ * Where the skill and typeui-fundamentals disagree the fundamentals win (recorded in the test):
+ * - control boundaries (inputs, checkboxes, outline buttons) use --color-border-control, the
+ *   registry gray-500 (light body-subtle, dark fg-disabled), because border-default-medium is
+ *   1.2:1 and fails SC 1.4.11;
+ * - focus is one 2px outline in --color-focus-ring (light brand, dark border-brand) with a 2px
+ *   offset, not the 4px brand-medium ring, which is 1.4:1;
+ * - disabled labels use body-subtle (>= 3:1), not fg-disabled;
+ * - dark --color-border-danger is the registry fg-danger-strong (#BE123C is 2.8:1 on dark cards);
+ * - there is no warning button: white on warning is 2.8:1.
+ *
+ * User-approved deviation (2026-11-18): the light-theme accent is one step deeper than the
+ * registry's #1447E6, which read too bright. brand, fg-brand, border-brand and focus-ring use the
+ * registry brand-strong #193CB8, and their hover/strong variants the registry's next shade
+ * #1C398E (dark brand-soft). Only registry values are used; the dark theme is unchanged.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* colour: text */
+  --color-white: #FFFFFF;
+  --color-heading: #111827;
+  --color-body: #4B5563;
+  --color-body-subtle: #6B7280; /* meta text on primary/secondary surfaces only, never on tertiary */
+  --color-fg-brand: #193CB8;
+  --color-fg-brand-strong: #1C398E;
+  --color-fg-danger: #BE123C;
+  --color-fg-danger-strong: #881337;
+  --color-fg-success-strong: #065F46;
+  --color-fg-warning: #7C2D12;
+  --color-fg-info: #312E81;
+  /* colour: surfaces */
+  --color-surface-page: #F9FAFB; /* neutral-secondary-soft light; neutral-primary dark */
+  --color-neutral-primary: #FFFFFF;
+  --color-neutral-primary-soft: #FFFFFF;
+  --color-neutral-primary-medium: #FFFFFF;
+  --color-neutral-secondary-soft: #F9FAFB;
+  --color-neutral-secondary-medium: #F9FAFB;
+  --color-neutral-tertiary-soft: #F3F4F6;
+  --color-neutral-tertiary: #F3F4F6;
+  --color-neutral-tertiary-medium: #F3F4F6;
+  --color-neutral-quaternary: #E5E7EB;
+  --color-brand-softer: #EEF6FF;
+  --color-brand-soft: #DBEAFE;
+  --color-brand: #193CB8;
+  --color-brand-strong: #1C398E;
+  --color-success-soft: #ECFDF5;
+  --color-success-medium: #D0FAE5;
+  --color-success: #007A55;
+  --color-danger-soft: #FEF0F2;
+  --color-danger-medium: #FFE4E6;
+  --color-danger: #C70036;
+  --color-danger-strong: #A50036;
+  --color-warning-soft: #FFF7ED;
+  --color-warning-medium: #FFEDD5;
+  --color-dark: #1F2937;
+  --color-disabled: #F3F4F6;
+  /* colour: borders */
+  --color-border-default: #E5E7EB; /* decorative separators and card edges */
+  --color-border-default-medium: #E5E7EB;
+  --color-border-default-strong: #E5E7EB;
+  --color-border-control: #6B7280; /* interactive boundaries, >= 3:1 (fundamentals) */
+  --color-border-brand: #193CB8;
+  --color-border-brand-subtle: #BEDBFF;
+  --color-border-success-subtle: #A7F3D0;
+  --color-border-danger: #BE123C;
+  --color-border-danger-subtle: #FECDD3;
+  --color-border-warning-subtle: #FED7AA;
+  --color-focus-ring: #193CB8;
+  /*
+   * Icon rail (Enterprise preview): `dark` slate background in both themes, gray-300 icons,
+   * the active item a `brand` tile with a white icon, hover dark-strong.
+   */
+  --color-rail-bg: #1F2937;
+  --color-rail-fg: #D1D5DC;
+  --color-rail-hover: #374151;
+  /* button glint (colors.md), only ever read through --shadow-button */
+  --color-1-400: rgb(255 255 255 / 0.25);
+  --color-1-700: rgb(0 0 0 / 0.12);
+  --scrim: rgb(0 0 0 / 0.5);
+
+  /* type: Inter, 12/14/16/20/24/32 */
+  --font-family:
+    "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-monospace:
+    SFMono-Regular, Menlo, Monaco, Consolas, "Roboto Mono", "Ubuntu Mono",
+    "Lucida Console", "Courier New", monospace;
+  --font-size-xs: 0.75rem; /* 12, badges, captions, all-caps labels only */
+  --font-size-sm: 0.875rem; /* 14, UI base */
+  --font-size-md: 1rem; /* 16, large buttons, card headings on mobile */
+  --font-size-lg: 1.25rem; /* 20, card and section headings */
+  --font-size-xl: 1.5rem; /* 24, page h1 (dashboard cap 28) */
+  --font-size-2xl: 2rem; /* 32, KPI figures only */
+  --font-size-input: 0.875rem; /* 16 on small screens so iOS does not zoom */
+  --line-height-heading: 1.25;
+  --line-height-component: 1.25;
+  --line-height-body: 1.5;
+  --line-height-code: 1.5;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --letter-spacing-normal: 0;
+  --letter-spacing-caps: 0.025rem; /* 0.4px, uppercase labels */
+
+  /* spacing (4px grid) */
+  --border-width-hairline: 1px;
+  --border-width-emphasis: 2px;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-14: 3.5rem;
+  --spacing-16: 4rem;
+  /* A FormField label line plus its label-to-control gap: where the control's top sits. */
+  --field-control-offset: calc(
+    var(--font-size-sm) * var(--line-height-component) + var(--spacing-2)
+  );
+
+  /* radius: 6px controls, 8px cards, 12px overlays; nested = outer - inset */
+  --radius-sm: 4px; /* checkboxes, tiny elements, code chips */
+  --radius-control: 6px; /* buttons, inputs, badges, menu items, tabs */
+  --radius-card: 8px; /* cards, tables, alerts, panels */
+  --radius-overlay: 12px; /* dialogs, drawers, menus, popovers, toasts */
+  --inset-overlay: 4px; /* menu/list padding inside an overlay */
+  --radius-overlay-inner: calc(var(--radius-overlay) - var(--inset-overlay)); /* 8 */
+  --inset-card: 4px; /* segmented controls inside a card-radius track */
+  --radius-card-inner: calc(var(--radius-card) - var(--inset-card)); /* 4 */
+  --radius-full: 9999px;
+
+  /* shadows (shadows.md) */
+  --shadow-none: none;
+  --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  /* every button except ghost and disabled (buttons.md glint) */
+  --shadow-button:
+    var(--shadow-xs), inset var(--color-1-400) 0 6px 0 -5px,
+    var(--color-1-700) 0 4px 10px -5px;
+  /* input focus: brand border plus a 1px ring = 2px emphasis (inputs.md, borders.md) */
+  --shadow-ring-brand: 0 0 0 1px var(--color-border-brand);
+  --shadow-ring-danger: 0 0 0 1px var(--color-border-danger);
+
+  /* focus (components use: outline: var(--focus-ring-width) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset)) */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* layout */
+  --size-topbar: 3.5rem;
+  --size-sidebar: 16rem;
+  --size-sidebar-rail: 3.5rem;
+  --size-drawer: 20rem;
+  --size-content-max: 80rem;
+  --size-auth-card: 28rem;
+  --size-hero-panel: 30rem;
+  --size-toast: 22.5rem;
+
+  /* layers (C-24: poppers inside a dialog portal into the dialog) */
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-skip-link: 500;
+
+  /* motion */
+  --motion-hover: 150ms;
+  --motion-overlay: 200ms;
+  --motion-ease: ease-out;
+}
+
+/* Dark theme: automatic, registry dark column. Raised surfaces get lighter, never darker. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-heading: #FFFFFF;
+    --color-body: #9CA3AF;
+    --color-body-subtle: #9CA3AF;
+    --color-fg-brand: #51A2FF;
+    --color-fg-brand-strong: #BEDBFF;
+    --color-fg-danger: #F43F5E;
+    --color-fg-danger-strong: #F87171;
+    --color-fg-success-strong: #10B981;
+    --color-fg-warning: #FBBF24;
+    --color-fg-info: #93C5FD;
+    --color-surface-page: #030712;
+    --color-neutral-primary: #030712;
+    --color-neutral-primary-soft: #101828;
+    --color-neutral-primary-medium: #1E2939;
+    --color-neutral-secondary-soft: #101828;
+    --color-neutral-secondary-medium: #1E2939;
+    --color-neutral-tertiary-soft: #101828;
+    --color-neutral-tertiary: #1E2939;
+    --color-neutral-tertiary-medium: #333E4F;
+    --color-neutral-quaternary: #333E4F;
+    --color-brand-softer: #162455;
+    --color-brand-soft: #1C398E;
+    --color-brand: #155DFC;
+    --color-brand-strong: #1447E6;
+    --color-success-soft: #002C22;
+    --color-success-medium: #004F3B;
+    --color-success: #009966;
+    --color-danger-soft: #4D0218;
+    --color-danger-medium: #8B0836;
+    --color-danger: #C70036;
+    --color-danger-strong: #A50036;
+    --color-warning-soft: #7C2D12;
+    --color-warning-medium: #7C2D12;
+    --color-dark: #1F2937;
+    --color-disabled: #1F2937;
+    --color-border-default: #1F2937;
+    --color-border-default-medium: #374151;
+    --color-border-default-strong: #4B5563;
+    --color-border-control: #6B7280;
+    --color-border-brand: #51A2FF;
+    --color-border-brand-subtle: #1C398E;
+    --color-border-success-subtle: #064E3B;
+    --color-border-danger: #F87171; /* registry #BE123C is 2.8:1 on dark cards; fg-danger-strong dark instead */
+    --color-border-danger-subtle: #881337;
+    --color-border-warning-subtle: #7C2D12;
+    --color-focus-ring: #51A2FF;
+    --color-1-400: rgb(255 255 255 / 0.12);
+    --color-1-700: rgb(0 0 0 / 0.25);
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --font-size-input: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-hover: 0ms;
+    --motion-overlay: 0ms;
+  }
+}

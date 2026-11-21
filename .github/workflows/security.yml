@@ -1,0 +1,410 @@
+# Scanning only: nothing is pushed, published or deployed.
+# Trivy and gitleaks run as the official CLI release binaries (version and SHA-256 pinned below),
+# not through wrapper actions. Code scanning gets Trivy and gitleaks results (SARIF), CodeQL runs
+# as advanced setup, and dependency review checks the dependency changes of every pull request.
+# pip-audit (PyPA, against the uv lock) and `pnpm audit` (ui, production, high) gate known
+# vulnerable dependencies. The sonarqube job is prepared but inactive until the repository
+# variable SONAR_ENABLED is 'true'. The nightly DAST (Schemathesis and OWASP ZAP) lives in
+# dast-nightly.yml. Ignore lists and how to run each tool locally: docs/dev/ci-and-github.md.
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # To upgrade: take both values from trivy_<version>_checksums.txt of the release (the
+  # Linux-64bit tarball line) and change them together. Never use 0.69.4, 0.69.5 or 0.69.6.
+  TRIVY_VERSION: "0.76.2"
+  TRIVY_SHA256: "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf"
+  # To upgrade: take both values from gitleaks_<version>_checksums.txt of the release (the
+  # linux_x64.tar.gz line) and change them together.
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  # PyPA's pip-audit, run through uvx outside the workspace lock. To upgrade: pick the latest
+  # release on PyPI and re-run the job.
+  PIP_AUDIT_VERSION: "2.10.1"
+
+jobs:
+  trivy-fs-report:
+    name: trivy-fs-report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Trivy (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tarball="$RUNNER_TEMP/trivy.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${TRIVY_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/trivy-bin/trivy" --version
+      # Covers uv.lock, ui/pnpm-lock.yaml, secrets, and misconfig in the Dockerfiles, compose and
+      # deploy/helm. Report only: findings land in code scanning.
+      - name: Trivy filesystem scan (SARIF)
+        run: trivy fs --scanners vuln,secret,misconfig --format sarif --output trivy-fs.sarif --exit-code 0 --ignorefile .trivyignore .
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        if: always() && hashFiles('trivy-fs.sarif') != ''
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  # The gate covers vulnerabilities and secrets (the CVE gate). Misconfig findings, which include
+  # deliberate dev-only choices such as root test-runner images, go only to code scanning through
+  # the report job above, where they are triaged or dismissed. Gating on them would need entries
+  # in .trivyignore, which must stay empty.
+  trivy-fs-gate:
+    name: trivy-fs-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Trivy (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tarball="$RUNNER_TEMP/trivy.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${TRIVY_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/trivy-bin/trivy" --version
+      - name: Trivy filesystem gate (fixable CRITICAL/HIGH vulnerabilities and secrets)
+        run: trivy fs --scanners vuln,secret --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 --ignorefile .trivyignore --format table .
+
+  # Report only. Unfixed OS CVEs are ignored as noise nobody can act on, and the secret scanner
+  # proves that no secret is baked into an image. The builds reuse the gha cache scopes of ci.yml.
+  trivy-image:
+    name: trivy-image (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-identity
+          - name: contracts
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-contracts
+          - name: validation
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-validation
+          - name: audit
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-audit
+          - name: mail
+            context: .
+            file: infra/docker/service.Dockerfile
+            target: ""
+            build-args: PACKAGE=dc-mail
+          - name: api-docs
+            context: .
+            file: infra/docker/api-docs.Dockerfile
+            target: ""
+            build-args: ""
+          - name: ui
+            context: ui
+            file: infra/docker/ui.Dockerfile
+            target: runtime
+            build-args: ""
+          # The contractum CLI image (clients/python), released from sdk-release.yml.
+          - name: contractum-cli
+            context: clients/python
+            file: clients/python/Dockerfile
+            target: ""
+            build-args: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          build-args: ${{ matrix.build-args }}
+          push: false
+          load: true
+          tags: contractum-ci/${{ matrix.name }}:scan
+          cache-from: type=gha,scope=img-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=img-${{ matrix.name }}
+      - name: Install Trivy (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tarball="$RUNNER_TEMP/trivy.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${TRIVY_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/trivy-bin/trivy" --version
+      - name: Trivy image scan (SARIF)
+        env:
+          IMAGE: contractum-ci/${{ matrix.name }}:scan
+        run: trivy image --scanners vuln,secret --ignore-unfixed --format sarif --output trivy-image.sarif --exit-code 0 "$IMAGE"
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        if: always() && hashFiles('trivy-image.sarif') != ''
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image-${{ matrix.name }}
+
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No PR comment: that would need pull-requests write.
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+        with:
+          fail-on-severity: high
+
+  codeql:
+    name: codeql (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}
+
+  # Scans the FULL git history (fetch-depth 0) so that a secret removed from the tree later is
+  # still found. Findings are redacted everywhere. A real secret is never allowlisted: rotate it.
+  # Only proven test fixtures are allowlisted in .gitleaks.toml, each with a reason.
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tarball="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/gitleaks-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/gitleaks-bin" gitleaks
+          echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gitleaks-bin/gitleaks" version
+      - name: gitleaks (full history, redacted, gate on findings)
+        run: gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts="--all" --report-format sarif --report-path gitleaks.sarif --exit-code 1 .
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  # Known vulnerabilities in the Python dependencies, from the uv lock. Workspace members are not
+  # on PyPI, so they are left out of the export (--no-emit-workspace) and --strict can hold.
+  # Ignores live in .pip-audit-ignore: an advisory ID and an expiry per line, a reason above it.
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            clients/python/uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      # Two locks: the server workspace and the contractum package (clients/python has its own
+      # uv.lock outside the workspace). Each is audited separately, so pins never clash.
+      - name: Export the locked requirements
+        run: |
+          set -euo pipefail
+          uv export --frozen --all-packages --all-groups --no-hashes --no-emit-workspace -o requirements-audit.txt
+          (cd clients/python && uv export --frozen --all-groups --no-hashes --no-emit-project -o ../../requirements-audit-cli.txt)
+      - name: Audit the locked requirements
+        run: |
+          set -euo pipefail
+          today=$(date -u +%F)
+          ignore_args=()
+          while IFS= read -r raw; do
+            line="${raw%%#*}"
+            read -r id expiry _ <<< "$line"
+            [ -n "${id:-}" ] || continue
+            case "${expiry:-}" in
+              exp:[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+              *) echo "::error::.pip-audit-ignore: $id needs an expiry like exp:2027-01-31" >&2; exit 1 ;;
+            esac
+            if [[ "${expiry#exp:}" < "$today" ]]; then
+              echo "::error::.pip-audit-ignore: $id expired on ${expiry#exp:}; fix or review the entry" >&2
+              exit 1
+            fi
+            ignore_args+=(--ignore-vuln "$id")
+          done < .pip-audit-ignore
+          for req in requirements-audit.txt requirements-audit-cli.txt; do
+            echo "== $req"
+            uvx "pip-audit==${PIP_AUDIT_VERSION}" -r "$req" --strict --no-deps --disable-pip --desc "${ignore_args[@]}"
+          done
+
+  # Known vulnerabilities in the UI production dependencies, from ui/pnpm-lock.yaml. The audit
+  # reads the lockfile, so nothing is installed.
+  pnpm-audit:
+    name: pnpm-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # pnpm must be set up before setup-node so that setup-node can use the pnpm cache.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ui/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - name: pnpm audit (production dependencies, high and critical)
+        run: pnpm --dir ui audit --prod --audit-level high
+
+  # PREPARED, INACTIVE. Runs only after the repository variable SONAR_ENABLED is set to 'true' (see
+  # "SonarQube Cloud activation" in docs/dev/ci-and-github.md). It also never runs for a pull
+  # request from a fork, which has no access to the token. Official SonarSource action, pinned by
+  # SHA. contents: read only: the scanner reports to SonarQube Cloud, not to GitHub.
+  sonarqube:
+    name: sonarqube
+    if: vars.SONAR_ENABLED == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: uv sync --frozen
+        run: uv sync --frozen
+      # Release coverage is unit plus integration, appended to one data file (the same selection as
+      # the full gate in scripts/ci.sh): integration-only code (routes, units of work, repositories)
+      # would otherwise read as uncovered. The runner's Docker daemon serves testcontainers. `timing`
+      # tests assert CPU or wall-clock budgets and stay untraced, as in the full gate.
+      - name: Python unit tests with coverage
+        run: uv run pytest -m "unit and not timing and not performance" -q --cov --cov-report=
+      - name: Python integration tests with coverage, appended
+        run: uv run pytest -m "integration and not timing and not performance" -q --cov --cov-append --cov-report=
+      - name: Combined Python coverage report (coverage.xml)
+        run: uv run coverage xml -o coverage.xml
+      # SDK coverage (clients/python) is also unit plus integration combined (D-48): the integration
+      # run needs the compose stack. `.dev` holds the generated secrets: nothing here prints it, and
+      # the stack is torn down with its volumes before the scan.
+      - name: Prepare bind-mount directories
+        run: mkdir -p .dev ui/test-results
+      - name: Start the compose stack
+        run: docker compose -f compose.yaml -f compose.test.yaml up -d --build --wait --wait-timeout 600
+      - name: Stack smoke
+        run: bash scripts/skeleton-smoke.sh
+      - name: SDK unit + integration coverage (clients/python/coverage.xml)
+        env:
+          CONTRACTUM_IT_URL: https://localhost:8443
+          CONTRACTUM_IT_CA: ${{ github.workspace }}/.dev/ca.crt
+          CONTRACTUM_IT_ADMIN_PASSWORD_FILE: ${{ github.workspace }}/.dev/admin_password
+        run: bash clients/python/scripts/combined_coverage.sh --require-integration
+      - name: Tear down the stack
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yaml --profile test down -v --remove-orphans
+      # pnpm must be set up before setup-node so that setup-node can use the pnpm cache.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ui/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - name: pnpm install --frozen-lockfile
+        run: pnpm --dir ui install --frozen-lockfile
+      # ui/vitest.config.ts writes coverage/lcov.info with repo-root paths (ui/src/...), so no
+      # reporter override here.
+      - name: UI unit tests with coverage (ui/coverage/lcov.info)
+        run: pnpm --dir ui exec vitest run --coverage
+      - name: SonarQube Cloud scan
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}

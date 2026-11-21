@@ -1,0 +1,28 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: payments.orders
+name: Orders
+version: 1.0.0
+status: active
+contractCreatedTs: "2026-11-21T09:30:00Z"
+description:
+  purpose: Orders placed through the shop.
+schema:
+  - name: orders
+    physicalName: orders
+    logicalType: object
+    properties:
+      - name: order_id
+        logicalType: string
+        required: true
+        unique: true
+      - name: amount
+        logicalType: number
+        logicalTypeOptions:
+          minimum: 0
+      - name: status
+        logicalType: string
+        enum:
+          - value: new
+          - value: paid
+          - value: shipped

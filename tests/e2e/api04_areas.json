@@ -1,0 +1,76 @@
+{
+  "description": "The API-04 gap audit as data (D-181 part 1): every area named in REQUIREMENTS API-04 with a representative read and, where the area writes, its representative writes. kind is the permission's access class (a POST that validates without storing is a read). The principal matrix (test_phase7_principal_matrix.py) runs every operation as each principal type; tests/repo/test_operation_exemptions.py proves each operation exists in the merged document and each permission matches dc_auth.roles.",
+  "areas": {
+    "folders": [
+      {"method": "GET", "path": "/api/v1/identity/folders/{folder_id}", "kind": "read", "permission": "folder:read"},
+      {"method": "POST", "path": "/api/v1/identity/folders", "kind": "write", "permission": "folder:create"}
+    ],
+    "groups": [
+      {"method": "GET", "path": "/api/v1/identity/groups/{group_id}", "kind": "read", "permission": "group:read"},
+      {"method": "POST", "path": "/api/v1/identity/groups", "kind": "write", "permission": "group:create"},
+      {"method": "PATCH", "path": "/api/v1/identity/groups/{group_id}", "kind": "write", "permission": "group:manage"}
+    ],
+    "grants": [
+      {"method": "GET", "path": "/api/v1/identity/folders/{folder_id}/grants", "kind": "read", "permission": "grant:read"},
+      {"method": "POST", "path": "/api/v1/identity/folders/{folder_id}/grants", "kind": "write", "permission": "grant:manage"},
+      {"method": "DELETE", "path": "/api/v1/identity/grants/{grant_id}", "kind": "write", "permission": "grant:manage"}
+    ],
+    "tokens": [
+      {"method": "GET", "path": "/api/v1/identity/service-accounts/{service_account_id}/keys", "kind": "read", "permission": "service-account:read"},
+      {"method": "POST", "path": "/api/v1/identity/service-accounts/{service_account_id}/keys", "kind": "write", "permission": "service-account:manage-keys"},
+      {"method": "DELETE", "path": "/api/v1/identity/service-accounts/{service_account_id}/keys/{key_id}", "kind": "write", "permission": "service-account:manage-keys"}
+    ],
+    "contracts": [
+      {"method": "GET", "path": "/api/v1/contracts/contracts/{contract_id}", "kind": "read", "permission": "contract:view"},
+      {"method": "POST", "path": "/api/v1/contracts/folders/{folder_id}/contracts", "kind": "write", "permission": "contract:create"}
+    ],
+    "versions": [
+      {"method": "GET", "path": "/api/v1/contracts/contracts/{contract_id}/versions", "kind": "read", "permission": "contract:read-published"},
+      {"method": "GET", "path": "/api/v1/contracts/contracts/{contract_id}/versions/{ref}", "kind": "read", "permission": "contract:read-published"},
+      {"method": "PUT", "path": "/api/v1/contracts/contracts/{contract_id}/drafts/{draft_id}", "kind": "write", "permission": "contract:update"}
+    ],
+    "publish/promote/unpublish/deprecate": [
+      {"method": "GET", "path": "/api/v1/contracts/contracts/{contract_id}/versions/{ref}/metadata", "kind": "read", "permission": "contract:read-published"},
+      {"method": "POST", "path": "/api/v1/contracts/contracts/{contract_id}/drafts/{draft_id}/publish", "kind": "write", "permission": "contract:publish"},
+      {"method": "POST", "path": "/api/v1/contracts/contracts/{contract_id}/versions/{ref}/deprecate", "kind": "write", "permission": "contract:publish"}
+    ],
+    "templates": [
+      {"method": "GET", "path": "/api/v1/contracts/templates/{template_id}", "kind": "read", "permission": "template:read-published"},
+      {"method": "POST", "path": "/api/v1/contracts/folders/{folder_id}/templates", "kind": "write", "permission": "template:create"}
+    ],
+    "rules": [
+      {"method": "GET", "path": "/api/v1/validation/rule-sets/{rule_set_id}/versions/{version_no}", "kind": "read", "permission": "ruleset:read"},
+      {"method": "PUT", "path": "/api/v1/validation/rule-sets/{rule_set_id}/draft/rules/{rule_key}", "kind": "write", "permission": "ruleset:update"}
+    ],
+    "rule sets": [
+      {"method": "GET", "path": "/api/v1/validation/rule-sets/{rule_set_id}", "kind": "read", "permission": "ruleset:read"},
+      {"method": "POST", "path": "/api/v1/validation/folders/{folder_id}/rule-sets", "kind": "write", "permission": "ruleset:create"}
+    ],
+    "validation": [
+      {"method": "POST", "path": "/api/v1/validation/folders/{folder_id}/validate", "kind": "read", "permission": "contract:validate"},
+      {"method": "POST", "path": "/api/v1/contracts/contracts/{contract_id}/drafts/{draft_id}/validate", "kind": "read", "permission": "contract:read"},
+      {"method": "GET", "path": "/api/v1/contracts/contracts/{contract_id}/versions/{ref}/validation-report", "kind": "read", "permission": "contract:read-published"}
+    ],
+    "audit queries": [
+      {"method": "GET", "path": "/api/v1/audit/events", "kind": "read", "permission": "audit:list"},
+      {"method": "GET", "path": "/api/v1/audit/events/{event_id}", "kind": "read", "permission": "audit:list"}
+    ]
+  },
+  "interactive_only": [
+    "pat:manage",
+    "me:update",
+    "pat:revoke-any",
+    "card:manage-secret",
+    "user:create",
+    "user:update",
+    "user:deactivate",
+    "grant:manage",
+    "group:manage",
+    "entra:manage",
+    "service-account:create",
+    "service-account:manage",
+    "service-account:manage-keys",
+    "service-account:deactivate",
+    "settings:write"
+  ]
+}

@@ -1,0 +1,92 @@
+# The orders object of orders-v3.2.0.yaml in the v3.1.0 shape: the team is an object and property
+# enums are scalars (the v3.1.0 schema has no property enum; the SDK reads the scalar form).
+apiVersion: v3.1.0
+kind: DataContract
+id: payments.orders
+name: Orders
+version: 1.0.0
+status: active
+team:
+  name: payments
+  description: The payments data engineers.
+  members:
+    - username: alice
+      role: owner
+contractCreatedTs: "2026-11-21T09:30:00Z"
+description:
+  purpose: Orders placed through the shop.
+schema:
+  - name: orders
+    physicalName: orders
+    logicalType: object
+    properties:
+      - name: order_id
+        logicalType: string
+        required: true
+        unique: true
+        primaryKey: true
+        primaryKeyPosition: 1
+        logicalTypeOptions:
+          pattern: "^ORD-[0-9]{6}$"
+      - name: customer_email
+        logicalType: string
+        classification: restricted
+        logicalTypeOptions:
+          format: email
+      - name: amount
+        logicalType: number
+        logicalTypeOptions:
+          minimum: 0
+          maximum: 100000
+          multipleOf: 0.01
+        quality:
+          - type: library
+            metric: nullValues
+            mustBe: 0
+            severity: warning
+      - name: quantity
+        logicalType: integer
+        logicalTypeOptions:
+          minimum: 1
+          exclusiveMaximum: 1000
+      - name: status
+        logicalType: string
+        enum:
+          - new
+          - paid
+          - shipped
+      - name: created_at
+        logicalType: timestamp
+      - name: order_date
+        logicalType: date
+      - name: tags
+        logicalType: array
+        logicalTypeOptions:
+          maxItems: 5
+        items:
+          logicalType: string
+      - name: shipping
+        logicalType: object
+        properties:
+          - name: city
+            logicalType: string
+            required: true
+          - name: zip
+            logicalType: string
+            logicalTypeOptions:
+              pattern: "^[0-9]{5}$"
+    quality:
+      - type: library
+        metric: rowCount
+        mustBeGreaterThan: 0
+      - type: library
+        metric: duplicateValues
+        mustBe: 0
+        arguments:
+          properties:
+            - order_id
+      - type: sql
+        query: SELECT COUNT(*) FROM orders WHERE amount < 0
+        mustBe: 0
+      - type: text
+        description: Orders are never deleted, only cancelled.

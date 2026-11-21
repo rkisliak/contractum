@@ -1,0 +1,239 @@
+/*
+ * Form fields (enterprise inputs.md; UI-SPEC 5.2 behaviour). Tokens only. 6px radius,
+ * neutral-secondary-medium fill, shadow-xs, a gray-500 control boundary (>= 3:1, fundamentals over
+ * border-default-medium), and on focus a brand border plus a 1px brand ring (2px emphasis).
+ * The shell owns the border, fill and focus ring so a trailing control (password reveal) sits
+ * inside the same boundary; the inner input has no border and no outline of its own.
+ */
+.field {
+  display: grid;
+  /*
+   * The frame never stretches: in a grid or flex row next to a taller field (one with helper
+   * or error text) the label and the control stay at the top, so every control in the row
+   * shares the same top and height and helper text only grows the space below it.
+   */
+  align-content: start;
+  align-self: start;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.label {
+  color: var(--color-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+}
+
+.labelInvalid {
+  color: var(--color-fg-danger-strong);
+}
+
+.optional {
+  color: var(--color-body);
+  font-weight: var(--font-weight-normal);
+}
+
+.helper {
+  /* spacing-1 above the helper, on top of the grid gap that follows the control. */
+  margin-block-start: calc(var(--spacing-1) - var(--spacing-2));
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.error {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-block-start: calc(var(--spacing-1) - var(--spacing-2));
+  color: var(--color-fg-danger-strong);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  /* Centres the 16px glyph on the first text line (14px x 1.5 = 21px). */
+  margin-block-start: 0.15625rem;
+}
+
+.errorText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shell {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  border: var(--border-width-hairline) solid var(--color-border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-neutral-secondary-medium);
+  box-shadow: var(--shadow-xs);
+  color: var(--color-heading);
+  transition:
+    border-color var(--motion-hover) var(--motion-ease),
+    box-shadow var(--motion-hover) var(--motion-ease);
+}
+
+.shell:hover {
+  border-color: var(--color-body);
+}
+
+/*
+ * Focus: brand border plus a 1px brand ring on the shell (2px brand, >= 3:1 on both sides),
+ * drawn for any focus inside the field; the inner control has no outline of its own.
+ */
+.shell:focus-within {
+  border-color: var(--color-border-brand);
+  box-shadow: var(--shadow-ring-brand);
+}
+
+.shellInvalid,
+.shellInvalid:hover {
+  border-color: var(--color-border-danger);
+  background: var(--color-danger-soft);
+}
+
+.shellInvalid:focus-within {
+  border-color: var(--color-border-danger);
+  box-shadow: var(--shadow-ring-danger);
+}
+
+.shellDisabled,
+.shellDisabled:hover {
+  border-color: var(--color-border-default-medium);
+  background: var(--color-disabled);
+  box-shadow: var(--shadow-none);
+  color: var(--color-body-subtle);
+}
+
+/* Read-only: same look as a filled field, selectable and focusable, no hover change. */
+.shellReadOnly:hover {
+  border-color: var(--color-border-control);
+}
+
+.input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-size: var(--font-size-input);
+  line-height: var(--line-height-component);
+  /* A long value scrolls inside the field and never truncates the layout. */
+  text-overflow: clip;
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.input::placeholder {
+  color: var(--color-body);
+  opacity: 1;
+}
+
+.input:disabled {
+  color: var(--color-body-subtle);
+  cursor: not-allowed;
+}
+
+/*
+ * Default and Small are both exactly 36px (border included), the Small button height:
+ * fundamentals require an input beside a button to match its height, which wins over the 10px
+ * padding in inputs.md. The shell owns the height so text inputs, selects and the password field
+ * are identical; the control fills it and centres its text. A textarea shell grows instead.
+ */
+.shellDefault,
+.shellSmall {
+  height: 2.25rem;
+}
+
+.shellDefault .input,
+.shellSmall .input {
+  align-self: stretch;
+  padding: 0 var(--spacing-3);
+}
+
+.shellMultiline {
+  height: auto;
+}
+
+.shellMultiline .input {
+  padding: var(--spacing-2) var(--spacing-3);
+}
+
+.shell .inputWithTrailing {
+  padding-inline-end: var(--spacing-2);
+}
+
+.trailing {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-inline-end: var(--spacing-1);
+}
+
+@media (pointer: coarse) {
+  .shellDefault,
+  .shellSmall {
+    height: 2.75rem;
+  }
+
+  .shellMultiline {
+    height: auto;
+  }
+}
+
+/* Native select (UI-SPEC 5.2): no platform chrome, trailing chevron at the inset. */
+.select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.shellDefault .select,
+.shellSmall .select {
+  padding-inline-end: var(--spacing-10);
+}
+
+.shell:has(.select) {
+  position: relative;
+}
+
+.selectChevron {
+  position: absolute;
+  inset-inline-end: var(--spacing-3);
+  color: var(--color-body);
+  pointer-events: none;
+}
+
+.textarea {
+  min-height: 5rem;
+  resize: vertical;
+  line-height: var(--line-height-body);
+}
+
+.mono {
+  font-family: var(--font-family-monospace);
+  line-height: var(--line-height-code);
+}
+
+/* A label kept for assistive technology only (FormField `labelHidden`): the clip pattern. */
+.labelHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

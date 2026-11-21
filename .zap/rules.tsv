@@ -1,0 +1,106 @@
+# ZAP rule configuration, read by scripts/zap-scan.sh (zap-baseline.py and zap-api-scan.py -c) and
+# by scripts/zap_gate.py, which fails the nightly DAST run on any High alert not covered here.
+#
+# Format: tab separated columns, one rule per line:
+#
+#   <plugin id> <TAB> <IGNORE|INFO|WARN|FAIL|OUTOFSCOPE> <TAB> (<reason>)      whole alert id
+#   <plugin id> <TAB> OUTOFSCOPE <TAB> <URL regex>                              per URL
+#
+# Run `zap-baseline.py -g gen.conf` in the ZAP image to list every plugin id with its name.
+#
+# OUTOFSCOPE is ZAP's own row type: the third column is a regex that ZAP matches with re.match
+# against the alert URL, so nothing may follow it on the line. It starts with ^https:// and ends
+# with $. ZAP's rows cannot name a parameter, so two comments carry the rest. Both are read by
+# scripts/zap_gate.py, which is the authoritative decision (ZAP's JSON report keeps every alert):
+#   - a reason comment (the word "reason" and a colon after the hash) gives the reason for every
+#     OUTOFSCOPE row after it in the same paragraph. A blank line ends a paragraph.
+#   - a params comment (the word "params" and a colon after the hash) directly above a row lists
+#     the parameter names exactly as ZAP reports them, comma separated. An instance is covered
+#     only when its plugin, URL and parameter all match a row.
+#
+# Policy (docs/dev/ci-and-github.md):
+#   - Every IGNORE and OUTOFSCOPE row carries a reason. The reason says why the alert is a false
+#     positive here, never "fix later". scripts/zap_gate.py exits 2 on a row without one.
+#   - A whole-id IGNORE is for false positives that cannot be located; a located one is listed per
+#     URL and parameter, so a new instance anywhere else still fails the gate.
+#   - IGNORE and OUTOFSCOPE are for false positives only. A real finding is fixed, or listed as a
+#     decision in the dated audit report (private notes) and left visible (WARN is the default).
+#   - Plugin ids, not alert names, are matched.
+#
+
+# SQL Injection (quick 261120-pn7, audited 2026-11-20): false positive. ZAP reports it when the
+# bodies of two boolean probes match, but every probed endpoint answers a 422 problem that does
+# not echo the input (the only difference is the per-request request_id), or ignores the junk
+# value. No query is built from request data (SQLAlchemy bound parameters everywhere, no f-string
+# SQL); CodeQL py/sql-injection (security-extended, in CI) and Schemathesis cover the rest.
+# The rows below are the 33 instances of the audit run, narrowed to URL and parameter (quick
+# 261120-s0p). A new instance on another URL or parameter fails the gate.
+# reason: ZAP boolean-diff false positive: 422 bodies differ only by request_id; all SQL uses bound parameters
+# GET /api/v1/contracts/contracts
+# params: cursor, status
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/contracts(\?.*)?$
+# GET /api/v1/contracts/folders/{id}/cards
+# params: cursor, limit
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/folders/[^/?]+/cards(\?.*)?$
+# GET /api/v1/identity/entra/directory/search
+# params: owner_folder_id
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/entra/directory/search(\?.*)?$
+# GET /api/v1/identity/entra/groups
+# params: cursor, limit
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/entra/groups(\?.*)?$
+# GET /api/v1/identity/entra/service-principals
+# params: limit
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/entra/service-principals(\?.*)?$
+# GET /api/v1/identity/entra/users
+# params: cursor
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/entra/users(\?.*)?$
+# GET and POST /api/v1/identity/folders
+# params: cursor, path, display_name, parent_id, slug
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/folders(\?.*)?$
+# GET /api/v1/identity/groups
+# params: cursor
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/groups(\?.*)?$
+# GET /api/v1/identity/pats
+# params: cursor
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/pats(\?.*)?$
+# GET /api/v1/identity/service-accounts
+# params: cursor, limit
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/service-accounts(\?.*)?$
+# POST /api/v1/contracts/contracts/{id}/drafts
+# params: bump
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/contracts/[^/?]+/drafts$
+# POST /api/v1/contracts/contracts/{id}/subscriptions/{id}/remove
+# params: reason
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/contracts/[^/?]+/subscriptions/[^/?]+/remove$
+# POST /api/v1/contracts/contracts/{id}/versions/{id}/deprecate
+# params: reason
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/contracts/[^/?]+/versions/[^/?]+/deprecate$
+# POST /api/v1/contracts/contracts/{id}/versions/{id}/unpublish
+# params: John Doe
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/contracts/[^/?]+/versions/[^/?]+/unpublish$
+# POST /api/v1/contracts/folders/{id}/contracts/from-template
+# params: odcs_id, template_id, template_version
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/folders/[^/?]+/contracts/from-template$
+# POST /api/v1/contracts/folders/{id}/contracts/from-version
+# params: odcs_id, source_version
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/folders/[^/?]+/contracts/from-version$
+# POST /api/v1/contracts/governance/rule-set-dry-runs
+# params: rule_set_id, version
+40018	OUTOFSCOPE	^https://traefik/api/v1/contracts/governance/rule-set-dry-runs$
+# POST /api/v1/identity/folders/{id}/grants
+# params: principal_id, principal_type, role
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/folders/[^/?]+/grants$
+# POST /api/v1/identity/principals/names
+# params: ids[0]
+40018	OUTOFSCOPE	^https://traefik/api/v1/identity/principals/names$
+
+# Path Traversal (quick 261120-pn7, audited 2026-11-20): false positive. One alert on POST
+# /api/v1/identity/principals/names (ids[0]) that appeared in one of two runs. The route parses each id
+# as local:, sa: or entra: plus a UUID and never touches the file system; probed with names, ../ and
+# file:// values it answered the same empty list. File serving is covered by CodeQL py/path-injection
+# (CI), the docs server's explicit file allow-list and the dot-segment tests of
+# tests/e2e/test_gateway.py.
+# reason: ZAP false positive: principals/names never reads files and answers a constant list for traversal strings
+# POST /api/v1/identity/principals/names
+# params: ids[0]
+6	OUTOFSCOPE	^https://traefik/api/v1/identity/principals/names$

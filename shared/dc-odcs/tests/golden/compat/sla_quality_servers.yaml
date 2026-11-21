@@ -1,0 +1,427 @@
+- name: sla value changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    slaProperties:
+      - {property: freshness, value: 24, unit: h}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    slaProperties:
+      - {property: freshness, value: 48, unit: h}
+  expected:
+    - {path: slaProperties.freshness, code: sla-changed, class: warning}
+- name: sla removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    slaProperties:
+      - {property: freshness, value: 24, unit: h}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    slaProperties: []
+  expected:
+    - {path: slaProperties.freshness, code: sla-removed, class: warning}
+- name: sla added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    slaProperties: []
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    slaProperties:
+      - {property: freshness, value: 24, unit: h}
+  expected:
+    - {path: slaProperties.freshness, code: sla-added, class: info}
+- name: quality threshold loosened
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality:
+          - {name: row_count, type: library, metric: rowCount, mustBeGreaterThan: 100}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality:
+          - {name: row_count, type: library, metric: rowCount, mustBeGreaterThan: 10}
+  expected:
+    - {path: schema.orders.quality.row_count, code: quality-changed, class: warning}
+- name: quality rule removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality:
+          - {name: row_count, type: library, metric: rowCount, mustBeGreaterThan: 100}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality: []
+  expected:
+    - {path: schema.orders.quality.row_count, code: quality-removed, class: warning}
+- name: quality rule added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality: []
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality:
+          - {name: row_count, type: library, metric: rowCount, mustBeGreaterThan: 100}
+  expected:
+    - {path: schema.orders.quality.row_count, code: quality-added, class: info}
+- name: quality severity changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality:
+          - {name: row_count, type: library, metric: rowCount, mustBeGreaterThan: 100, severity: warning}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+        quality:
+          - {name: row_count, type: library, metric: rowCount, mustBeGreaterThan: 100, severity: error}
+  expected:
+    - {path: schema.orders.quality.row_count, code: quality-changed, class: warning}
+- name: server removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db1, port: 5432, database: d, schema: public}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers: []
+  expected:
+    - {path: servers.prod, code: server-removed, class: breaking}
+- name: server added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers: []
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db1, port: 5432, database: d, schema: public}
+  expected:
+    - {path: servers.prod, code: server-added, class: info}
+- name: server host changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db1, port: 5432, database: d, schema: public}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db2, port: 5432, database: d, schema: public}
+  expected:
+    - {path: servers.prod, code: server-changed, class: warning}
+- name: server description changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db1, port: 5432, database: d, schema: public, description: a}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db1, port: 5432, database: d, schema: public, description: b}
+  expected:
+    - {path: servers.prod, code: metadata-changed, class: info}
+- name: server type changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: postgres, host: db1, port: 5432, database: d, schema: public}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    servers:
+      - {server: prod, type: mysql, host: db1, port: 5432, database: d, schema: public}
+  expected:
+    - {path: servers.prod, code: server-changed, class: warning}
+- name: access role changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    roles:
+      - {role: reader, access: read}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    roles:
+      - {role: reader, access: write}
+  expected:
+    - {path: roles.reader, code: access-role-changed, class: warning}
+- name: access role removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    roles:
+      - {role: reader, access: read}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    roles: []
+  expected:
+    - {path: roles.reader, code: access-role-removed, class: warning}
+- name: access role added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    roles: []
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: id, logicalType: integer}
+    roles:
+      - {role: reader, access: read}
+  expected:
+    - {path: roles.reader, code: metadata-changed, class: info}

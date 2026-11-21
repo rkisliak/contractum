@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Folder hierarchy and inherited grants</title>
+<desc id="d">A folder tree ROOT, two Organizations, Projects and Teams. A grant at the Finance Organization flows down to its Projects and Teams; it never reaches ROOT or the sibling Marketing Organization.</desc>
+<rect x="0" y="0" width="1200" height="640" fill="#FFFFFF"/>
+<defs><marker id="arrow-7C3AED" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7C3AED"/></marker>
+<marker id="arrow-DC2626" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/></marker>
+<marker id="arrow-475569" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+<text x="600" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A">Grants flow down the folder tree, never up or sideways</text>
+<text x="600" y="58" text-anchor="middle" font-size="14" font-weight="400" fill="#475569">Example: the group finance-admins holds org_admin on the Finance Organization.</text>
+<path d="M600,156 C600,186 330,170 330,200" fill="none" stroke="#475569" stroke-width="2"/>
+<path d="M600,156 C600,186 870,170 870,200" fill="none" stroke="#475569" stroke-width="2"/>
+<path d="M330,256 C330,286 200,290 200,320" fill="none" stroke="#7C3AED" stroke-width="2"/>
+<path d="M330,256 C330,286 460,290 460,320" fill="none" stroke="#7C3AED" stroke-width="2"/>
+<path d="M870,256 C870,286 870,290 870,320" fill="none" stroke="#475569" stroke-width="2"/>
+<path d="M200,376 C200,406 100,410 100,440" fill="none" stroke="#7C3AED" stroke-width="2"/>
+<path d="M200,376 C200,406 275,410 275,440" fill="none" stroke="#7C3AED" stroke-width="2"/>
+<path d="M460,376 C460,406 460,410 460,440" fill="none" stroke="#7C3AED" stroke-width="2"/>
+<path d="M870,376 C870,406 870,410 870,440" fill="none" stroke="#475569" stroke-width="2"/>
+<rect x="510.0" y="100" width="180" height="56" rx="12" fill="#94A3B8" fill-opacity="0.08" stroke="#94A3B8" stroke-width="2"/>
+<text x="600.0" y="124.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">ROOT</text>
+<text x="600.0" y="142.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">global roles live here</text>
+<rect x="230.0" y="200" width="200" height="56" rx="12" fill="#7C3AED" fill-opacity="0.22" stroke="#7C3AED" stroke-width="2"/>
+<text x="330.0" y="224.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Organization: Finance</text>
+<text x="330.0" y="242.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">org_admin granted here</text>
+<rect x="230.0" y="200" width="200" height="56" rx="12" fill="none" stroke="#7C3AED" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.080;0.120;0.240;1" values="0;0;1;0;0"/></rect>
+<rect x="770.0" y="200" width="200" height="56" rx="12" fill="#94A3B8" fill-opacity="0.05" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="870.0" y="224.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Organization: Marketing</text>
+<text x="870.0" y="242.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">no access</text>
+<rect x="115.0" y="320" width="170" height="56" rx="12" fill="#7C3AED" fill-opacity="0.1" stroke="#7C3AED" stroke-width="2"/>
+<text x="200.0" y="344.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Project: Payments</text>
+<text x="200.0" y="362.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">inherited</text>
+<rect x="115.0" y="320" width="170" height="56" rx="12" fill="none" stroke="#7C3AED" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.170;0.210;0.330;1" values="0;0;1;0;0"/></rect>
+<rect x="375.0" y="320" width="170" height="56" rx="12" fill="#7C3AED" fill-opacity="0.1" stroke="#7C3AED" stroke-width="2"/>
+<text x="460.0" y="344.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Project: Ledger</text>
+<text x="460.0" y="362.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">inherited</text>
+<rect x="375.0" y="320" width="170" height="56" rx="12" fill="none" stroke="#7C3AED" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.260;0.300;0.420;1" values="0;0;1;0;0"/></rect>
+<rect x="785.0" y="320" width="170" height="56" rx="12" fill="#94A3B8" fill-opacity="0.05" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="870.0" y="344.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Project: Campaigns</text>
+<text x="870.0" y="362.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">no access</text>
+<rect x="20.0" y="440" width="160" height="56" rx="12" fill="#7C3AED" fill-opacity="0.1" stroke="#7C3AED" stroke-width="2"/>
+<text x="100.0" y="464.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Team: Cards</text>
+<text x="100.0" y="482.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">inherited</text>
+<rect x="20.0" y="440" width="160" height="56" rx="12" fill="none" stroke="#7C3AED" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.350;0.390;0.510;1" values="0;0;1;0;0"/></rect>
+<rect x="195.0" y="440" width="160" height="56" rx="12" fill="#7C3AED" fill-opacity="0.1" stroke="#7C3AED" stroke-width="2"/>
+<text x="275.0" y="464.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Team: Fraud</text>
+<text x="275.0" y="482.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">inherited</text>
+<rect x="195.0" y="440" width="160" height="56" rx="12" fill="none" stroke="#7C3AED" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.440;0.480;0.600;1" values="0;0;1;0;0"/></rect>
+<rect x="380.0" y="440" width="160" height="56" rx="12" fill="#7C3AED" fill-opacity="0.1" stroke="#7C3AED" stroke-width="2"/>
+<text x="460.0" y="464.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Team: Close</text>
+<text x="460.0" y="482.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">inherited</text>
+<rect x="380.0" y="440" width="160" height="56" rx="12" fill="none" stroke="#7C3AED" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.530;0.570;0.690;1" values="0;0;1;0;0"/></rect>
+<rect x="790.0" y="440" width="160" height="56" rx="12" fill="#94A3B8" fill-opacity="0.05" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="870.0" y="464.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">Team: Web</text>
+<text x="870.0" y="482.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">no access</text>
+<rect x="40" y="112" width="200" height="56" rx="12" fill="#7C3AED" fill-opacity="0.18" stroke="#7C3AED" stroke-width="2"/>
+<text x="140.0" y="136.0" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A">grant</text>
+<text x="140.0" y="154.0" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">org_admin → finance-admins</text>
+<path d="M140,168 L230,205" fill="none" stroke="#7C3AED" stroke-width="2" marker-end="url(#arrow-7C3AED)"/>
+<circle cx="52" cy="112" r="13" fill="#7C3AED"/>
+<text x="52" y="117" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">1</text>
+<path d="M430,214 C560,170 640,170 770,214" fill="none" stroke="#DC2626" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="600" y="238" text-anchor="middle" font-size="14" font-weight="700" fill="#DC2626">✕  never sideways</text>
+<path d="M300,200 C300,150 420,128 508,128" fill="none" stroke="#DC2626" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="392" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="#DC2626">✕  never upward</text>
+<circle cx="330" cy="270" r="13" fill="#7C3AED"/>
+<text x="330" y="275" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">2</text>
+<circle cx="730" cy="262" r="13" fill="#DC2626"/>
+<text x="730" y="267" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">3</text>
+<circle r="6" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" opacity="0"><animateMotion dur="12s" repeatCount="indefinite" calcMode="linear" keyPoints="0.0000;0.0000;1.0000;1.0000" keyTimes="0.0000;0.0600;0.1700;1.0000" path="M330,256 L330,256 L200,320 L200,320"/><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0.000;0.060;0.065;0.170;0.180;1.000" values="0;0;1;1;0;0"/></circle>
+<circle r="6" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" opacity="0"><animateMotion dur="12s" repeatCount="indefinite" calcMode="linear" keyPoints="0.0000;0.0000;1.0000;1.0000" keyTimes="0.0000;0.1500;0.2600;1.0000" path="M330,256 L330,256 L460,320 L460,320"/><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0.000;0.150;0.155;0.260;0.270;1.000" values="0;0;1;1;0;0"/></circle>
+<circle r="6" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" opacity="0"><animateMotion dur="12s" repeatCount="indefinite" calcMode="linear" keyPoints="0.0000;0.0000;1.0000;1.0000" keyTimes="0.0000;0.2400;0.3500;1.0000" path="M200,376 L200,376 L100,440 L100,440"/><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0.000;0.240;0.245;0.350;0.360;1.000" values="0;0;1;1;0;0"/></circle>
+<circle r="6" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" opacity="0"><animateMotion dur="12s" repeatCount="indefinite" calcMode="linear" keyPoints="0.0000;0.0000;1.0000;1.0000" keyTimes="0.0000;0.3300;0.4400;1.0000" path="M200,376 L200,376 L275,440 L275,440"/><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0.000;0.330;0.335;0.440;0.450;1.000" values="0;0;1;1;0;0"/></circle>
+<circle r="6" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" opacity="0"><animateMotion dur="12s" repeatCount="indefinite" calcMode="linear" keyPoints="0.0000;0.0000;1.0000;1.0000" keyTimes="0.0000;0.4200;0.5300;1.0000" path="M460,376 L460,376 L460,440 L460,440"/><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0.000;0.420;0.425;0.530;0.540;1.000" values="0;0;1;1;0;0"/></circle>
+<circle r="6" fill="#DC2626" stroke="#FFFFFF" stroke-width="2" opacity="0"><animateMotion dur="12s" repeatCount="indefinite" calcMode="linear" keyPoints="0.0000;0.0000;1.0000;1.0000" keyTimes="0.0000;0.6000;0.7200;1.0000" path="M430,214 L430,214 L600,182 L600,182"/><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0.000;0.600;0.605;0.780;0.800;1.000" values="0;0;1;1;0;0"/></circle>
+<rect x="40" y="520" width="1120" height="104" rx="12" fill="#94A3B8" fill-opacity="0.05" stroke="#94A3B8" stroke-width="2"/>
+<text x="600.0" y="577.0" text-anchor="middle" font-size="15" font-weight="700" fill="#0F172A"></text>
+<circle cx="64" cy="541" r="9" fill="#7C3AED"/>
+<text x="64" y="545" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">1</text>
+<text x="84" y="546" text-anchor="start" font-size="13" font-weight="400" fill="#0F172A">A role is granted on one folder, to a user, a group or a machine identity. Each role may only be granted at its own level.</text>
+<circle cx="64" cy="563" r="9" fill="#7C3AED"/>
+<text x="64" y="567" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
+<text x="84" y="568" text-anchor="start" font-size="13" font-weight="400" fill="#0F172A">It applies to that folder and every folder below it. The Finance admins manage Payments, Ledger and their Teams.</text>
+<circle cx="64" cy="585" r="9" fill="#DC2626"/>
+<text x="64" y="589" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">3</text>
+<text x="84" y="590" text-anchor="start" font-size="13" font-weight="400" fill="#0F172A">It never reaches a parent or a sibling. Marketing stays invisible: its folders answer 404, as if they did not exist.</text>
+<text x="64" y="612" text-anchor="middle" font-size="13" font-weight="400" fill="#475569">■</text>
+<text x="84" y="612" text-anchor="start" font-size="13" font-weight="400" fill="#475569">A block flag on an Organization or Team cuts grants made above it (except Global admin). Grants at or below it still apply.</text>
+</svg>

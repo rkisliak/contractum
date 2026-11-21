@@ -1,0 +1,14 @@
+/* Folder dialogs. Tokens only. */
+.form {
+  display: grid;
+  gap: var(--spacing-6);
+}
+
+.kind {
+  color: var(--color-body);
+}
+
+.kind strong {
+  color: var(--color-heading);
+  font-weight: var(--font-weight-semibold);
+}

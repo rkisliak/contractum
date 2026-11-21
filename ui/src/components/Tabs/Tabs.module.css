@@ -1,0 +1,76 @@
+/* Tabs and TabNav (enterprise tabs.md underline variant). Tokens only. Medium 14px labels, 2px
+ * indicator, rounded top corners; the active tab also gets aria-selected/aria-current, so colour is
+ * never the only cue (the 2px bar is the shape cue). */
+.root,
+.nav {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.list {
+  /*
+   * One row that scrolls sideways when the tabs do not fit (a phone), never a second row of tabs.
+   * The hairline is a background on the bottom edge, so the scroll box does not clip the active
+   * tab's 2px indicator, which is drawn over it.
+   */
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--spacing-1);
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  background: linear-gradient(
+      var(--color-border-default),
+      var(--color-border-default)
+    )
+    bottom / 100% var(--border-width-hairline) no-repeat;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 0;
+  border-block-end: var(--border-width-emphasis) solid transparent;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: transparent;
+  color: var(--color-body);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color var(--motion-hover) var(--motion-ease),
+    border-color var(--motion-hover) var(--motion-ease);
+}
+
+.tab:hover {
+  border-block-end-color: var(--color-border-default-strong);
+  color: var(--color-heading);
+}
+
+.tab[data-state="active"],
+.tab[aria-current="page"] {
+  border-block-end-color: var(--color-border-brand);
+  color: var(--color-fg-brand);
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panel:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Inside the scrolling row the focus ring is drawn inset, so the row never clips it. */
+.tab:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}

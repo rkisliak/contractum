@@ -1,0 +1,70 @@
+/* Card (enterprise cards.md): 1px default border, 8px radius, shadow-xs, card surface, no hover on a
+ * static card. Tokens only. */
+.card {
+  display: grid;
+  /* A card stretched to its row's height keeps its content at the top. */
+  align-content: start;
+  gap: var(--spacing-4);
+  min-width: 0;
+  margin: 0;
+  padding: var(--spacing-6);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xs);
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.title {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  overflow-wrap: anywhere;
+}
+
+/* The standalone auth cards carry the page h1 (24/600). */
+.titlePage {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  overflow-wrap: anywhere;
+}
+
+.body {
+  min-width: 0;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+}
+
+/* A dashboard block: the title sits in a grey strip like a table head, one step darker (neutral-tertiary,
+ * border-default bottom edge, 12px x 24px), and the body keeps the card padding. */
+.banded {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.band {
+  padding: var(--spacing-3) var(--spacing-6);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-default);
+  background: var(--color-neutral-tertiary);
+}
+
+.banded > .body,
+.banded > .footer {
+  padding: var(--spacing-6);
+}
+
+.banded > .footer {
+  padding-top: 0;
+}

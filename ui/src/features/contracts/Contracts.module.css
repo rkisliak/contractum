@@ -1,0 +1,301 @@
+/* Contract screens. Tokens only. */
+.stack {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.stackTight {
+  display: grid;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.toolbarField {
+  flex: 1 1 14rem;
+  max-width: 24rem;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.ident {
+  /* Identifiers read in the normal font (D-03). Tabular figures are switched off: they widen the hyphens of a UUID until it looks monospaced. */
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font-family: var(--font-family-monospace);
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-body);
+}
+
+.rowLink {
+  color: var(--color-fg-brand);
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+}
+
+.rowLink:hover {
+  color: var(--color-fg-brand-strong);
+  text-decoration-thickness: 2px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
+  gap: var(--spacing-3) var(--spacing-6);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-body-subtle);
+  font-weight: var(--font-weight-medium);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sectionHeading {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+}
+
+.groupHeading {
+  margin: var(--spacing-4) 0 var(--spacing-2);
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.findings {
+  display: grid;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+/* Grid items default to their min-content width; a group holding a scroll box must shrink. */
+.findings > *,
+.stack > *,
+.stackTight > * {
+  min-width: 0;
+}
+
+/* Findings of an older revision: muted and set apart, not dimmed (opacity would fail contrast). */
+.staleGroup {
+  padding: var(--spacing-2);
+  border: 1px dashed var(--color-border-default);
+  background: var(--color-neutral-secondary-soft);
+}
+
+/* A raw findings table scrolls inside its own box on a narrow screen, never the page. */
+.tableScroll {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.findingTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.findingTable th,
+.findingTable td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-default);
+  text-align: start;
+  vertical-align: top;
+}
+
+.findingTable th {
+  color: var(--color-body);
+  font-weight: var(--font-weight-medium);
+  background: var(--color-neutral-secondary-soft);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--spacing-6);
+  /* Cards in one row share one height (the tallest). */
+  align-items: stretch;
+}
+
+.sources {
+  display: grid;
+  /* Wide enough that every option title stays on one line; rows keep equal columns. */
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sources legend {
+  /* Reads as a field label: same size, weight and spacing as FormField labels. */
+  margin-bottom: var(--spacing-2);
+  padding: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-component);
+}
+
+.sourceOption {
+  display: grid;
+  align-content: start;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  background: var(--color-neutral-primary-soft);
+  cursor: pointer;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+
+.sourceOption:has(input:checked) {
+  border-color: var(--color-brand);
+  background: var(--color-brand-softer);
+}
+
+/* Body text on the brand-softer fill is under 4.5:1. */
+.sourceOption:has(input:checked) .muted {
+  color: var(--color-fg-brand-strong);
+}
+
+.sourceTitle {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+  color: var(--color-heading);
+  font-weight: var(--font-weight-semibold);
+}
+
+.form {
+  display: grid;
+  gap: var(--spacing-5);
+  max-width: 56rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--spacing-4);
+}
+
+.changeList {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changeItem {
+  display: grid;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.editorToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/* An empty live region takes no room (it stays in the accessibility tree to announce). */
+.status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.status {
+  min-height: 1.25rem;
+  margin: 0;
+  color: var(--color-body);
+}
+
+.fileInput {
+  font: inherit;
+}
+
+@media (max-width: 640px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A row of buttons and checkboxes only is centred; a row with labelled fields aligns to the top. */
+.toolbar:has([data-field]) {
+  align-items: flex-start;
+}
+
+/*
+ * Rows that mix labelled fields with buttons, checkboxes or links: the rows align to the top, so
+ * every field control shares one top whatever helper text follows it, and each non-field item is
+ * set below the label line, level with (or centred on) the 36px controls.
+ */
+.toolbar:has([data-field])
+  > :not([data-field], :has([data-field]), [data-button]) {
+  display: flex;
+  min-height: 2.25rem;
+  align-items: center;
+  margin-block-start: var(--field-control-offset);
+}
+
+.toolbar:has([data-field]) > [data-button] {
+  margin-block-start: var(--field-control-offset);
+}
+
+.toolbar:has([data-field]) > [data-button="icon-32"] {
+  margin-block-start: calc(var(--field-control-offset) + 0.125rem);
+}
+
+.toolbar:has([data-field]) > [data-button="icon-24"] {
+  margin-block-start: calc(var(--field-control-offset) + 0.375rem);
+}
+
+/* Column captions above a side-by-side comparison (the 412 conflict dialog). */
+.diffCaptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-heading);
+}

@@ -1,0 +1,453 @@
+{
+  "$defs": {
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "failed_percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failed Percent"
+        },
+        "failed_rows": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failed Rows"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "observed": {
+          "default": null,
+          "title": "Observed"
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        },
+        "sampled": {
+          "default": false,
+          "title": "Sampled",
+          "type": "boolean"
+        },
+        "samples": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SampleOut"
+          },
+          "title": "Samples",
+          "type": "array"
+        },
+        "severity": {
+          "default": "error",
+          "title": "Severity",
+          "type": "string"
+        },
+        "skipped_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Skipped Reason"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "warning",
+            "skipped",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "threshold": {
+          "default": null,
+          "title": "Threshold"
+        },
+        "total_rows": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Rows"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "rule",
+        "status"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "ContractInfo": {
+      "additionalProperties": false,
+      "description": "Which contract version was tested and where it came from.",
+      "properties": {
+        "content_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Sha256"
+        },
+        "contract_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contract Id"
+        },
+        "deprecated": {
+          "default": false,
+          "title": "Deprecated",
+          "type": "boolean"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "odcs_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Odcs Id"
+        },
+        "semver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semver"
+        },
+        "source": {
+          "enum": [
+            "server",
+            "lock",
+            "file"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "sunset_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sunset Date"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ContractInfo",
+      "type": "object"
+    },
+    "DatasetInfo": {
+      "additionalProperties": false,
+      "description": "What was tested; row counts are None when unknown.",
+      "properties": {
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "rows_tested": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rows Tested"
+        },
+        "rows_total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rows Total"
+        },
+        "sampled": {
+          "default": false,
+          "title": "Sampled",
+          "type": "boolean"
+        },
+        "schema_only": {
+          "default": false,
+          "title": "Schema Only",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DatasetInfo",
+      "type": "object"
+    },
+    "SampleOut": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "title": "Row",
+          "type": "integer"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "row"
+      ],
+      "title": "SampleOut",
+      "type": "object"
+    },
+    "Summary": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "default": 0,
+          "title": "Error",
+          "type": "integer"
+        },
+        "failed": {
+          "default": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "ok": {
+          "default": true,
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "passed": {
+          "default": 0,
+          "title": "Passed",
+          "type": "integer"
+        },
+        "skipped": {
+          "default": 0,
+          "title": "Skipped",
+          "type": "integer"
+        },
+        "total": {
+          "default": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "warning": {
+          "default": 0,
+          "title": "Warning",
+          "type": "integer"
+        }
+      },
+      "title": "Summary",
+      "type": "object"
+    },
+    "ToolInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "contractum",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "title": "ToolInfo",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The typed result of a test run.",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "contract": {
+      "$ref": "#/$defs/ContractInfo"
+    },
+    "dataset": {
+      "$ref": "#/$defs/DatasetInfo"
+    },
+    "duration_ms": {
+      "default": 0,
+      "title": "Duration Ms",
+      "type": "integer"
+    },
+    "object": {
+      "title": "Object",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "summary": {
+      "$ref": "#/$defs/Summary"
+    },
+    "tool": {
+      "$ref": "#/$defs/ToolInfo"
+    }
+  },
+  "required": [
+    "tool",
+    "contract",
+    "dataset",
+    "object",
+    "summary",
+    "checks",
+    "started_at"
+  ],
+  "title": "Report",
+  "type": "object"
+}

@@ -1,0 +1,27 @@
+{
+  "content_sha256": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff",
+  "contract_id": "3f2c1b9e-6a4d-4c58-9d0e-2b7a1c5e8f10",
+  "deprecated": true,
+  "deprecated_at": "2026-11-20T08:00:00.123456789Z",
+  "engine_version": "1.0.0",
+  "etag": "\"c0ffee\"",
+  "fetch_url": "/api/v1/contracts/contracts/3f2c1b9e-6a4d-4c58-9d0e-2b7a1c5e8f10/versions/1.2.0",
+  "lifecycle": "published",
+  "media_type": "application/yaml",
+  "odcs_api_version": "v3.0.2",
+  "pinned_rule_sets": [
+    {
+      "rule_set_id": "x",
+      "version": 1
+    }
+  ],
+  "published_at": "2026-11-21T09:30:15.123456Z",
+  "published_by": "dana",
+  "schema_sha": "abc123",
+  "semver": "1.2.0",
+  "size_bytes": 2048,
+  "status": "latest",
+  "sunset_date": "2027-03-01",
+  "validation_run_id": "b1b2c3d4-0000-4000-8000-000000000002",
+  "version_id": "a1b2c3d4-0000-4000-8000-000000000001"
+}

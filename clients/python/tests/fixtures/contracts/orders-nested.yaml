@@ -1,0 +1,65 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: payments.orders-nested
+name: Orders with nested properties
+version: 1.0.0
+status: active
+contractCreatedTs: "2026-11-21T09:30:00Z"
+description:
+  purpose: Orders with a shipping address, tags and order lines.
+schema:
+  - name: orders
+    logicalType: object
+    properties:
+      - name: order_id
+        logicalType: string
+        required: true
+      - name: shipping
+        logicalType: object
+        properties:
+          - name: city
+            logicalType: string
+            required: true
+          - name: zip
+            logicalType: string
+            logicalTypeOptions:
+              pattern: "^[0-9]{5}$"
+          - name: geo
+            logicalType: object
+            properties:
+              - name: lat
+                logicalType: number
+                logicalTypeOptions:
+                  minimum: -90
+                  maximum: 90
+      - name: tags
+        logicalType: array
+        items:
+          logicalType: string
+          logicalTypeOptions:
+            pattern: "^[a-z]+$"
+      - name: lines
+        logicalType: array
+        logicalTypeOptions:
+          minItems: 1
+        items:
+          logicalType: object
+          properties:
+            - name: sku
+              logicalType: string
+              required: true
+              logicalTypeOptions:
+                pattern: "^SKU-"
+            - name: qty
+              logicalType: integer
+              logicalTypeOptions:
+                minimum: 1
+      - name: contact
+        logicalType: object
+        classification: restricted
+        properties:
+          - name: email
+            logicalType: string
+            required: true
+            logicalTypeOptions:
+              format: email

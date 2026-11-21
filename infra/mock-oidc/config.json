@@ -1,0 +1,168 @@
+{
+  "interactiveLogin": false,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "tokenExpiry": 900,
+      "requestMappings": [
+        {
+          "requestParam": "grant_type",
+          "match": "client_credentials",
+          "claims": {
+            "sub": "e2e-non-admin",
+            "aud": ["contractum"],
+            "ptype": "user",
+            "name": "E2E Non-Admin",
+            "scope": "api",
+            "roles": ["global_admin"],
+            "groups": ["admins"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "entra",
+      "tokenExpiry": 900,
+      "requestMappings": [
+        {
+          "requestParam": "scope",
+          "match": "alice-idtoken",
+          "claims": {
+            "sub": "alice-pairwise-sub",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "a11ce000-0000-4000-8000-000000000001",
+            "name": "Alice",
+            "uti": "uti-alice-idtoken",
+            "preferred_username": "alice@dev.example"
+          }
+        },
+        {
+          "requestParam": "scope",
+          "match": "alice-wrong-aud",
+          "claims": {
+            "sub": "alice-pairwise-sub",
+            "aud": [
+              "ffffffff-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "a11ce000-0000-4000-8000-000000000001",
+            "name": "Alice",
+            "uti": "uti-alice-wrong-aud",
+            "preferred_username": "alice@dev.example",
+            "scp": "access_as_user"
+          }
+        },
+        {
+          "requestParam": "scope",
+          "match": "alice",
+          "claims": {
+            "sub": "alice-pairwise-sub",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "a11ce000-0000-4000-8000-000000000001",
+            "name": "Alice",
+            "uti": "uti-alice",
+            "preferred_username": "alice@dev.example",
+            "scp": "access_as_user"
+          }
+        },
+        {
+          "requestParam": "scope",
+          "match": "bob",
+          "claims": {
+            "sub": "bob-pairwise-sub",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "b0b00000-0000-4000-8000-000000000002",
+            "name": "Bob",
+            "uti": "uti-bob",
+            "preferred_username": "bob@dev.example",
+            "scp": "access_as_user"
+          }
+        },
+        {
+          "requestParam": "scope",
+          "match": "carol",
+          "claims": {
+            "sub": "carol-pairwise-sub",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "ca201000-0000-4000-8000-000000000003",
+            "name": "Carol",
+            "uti": "uti-carol",
+            "preferred_username": "carol@dev.example",
+            "scp": "access_as_user"
+          }
+        },
+        {
+          "requestParam": "scope",
+          "match": "pipeline",
+          "claims": {
+            "sub": "5e2b1ce0-0000-4000-8000-000000000004",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "5e2b1ce0-0000-4000-8000-000000000004",
+            "name": "Pipeline",
+            "uti": "uti-pipeline",
+            "idtyp": "app",
+            "roles": [
+              "Contracts.Access"
+            ]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "ui-alice",
+          "claims": {
+            "sub": "alice-pairwise-sub",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "a11ce000-0000-4000-8000-000000000001",
+            "name": "Alice",
+            "uti": "uti-alice",
+            "preferred_username": "alice@dev.example",
+            "scp": "access_as_user"
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "ui-bob",
+          "claims": {
+            "sub": "bob-pairwise-sub",
+            "aud": [
+              "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+            ],
+            "ver": "2.0",
+            "tid": "11111111-2222-4333-8444-555555555555",
+            "oid": "b0b00000-0000-4000-8000-000000000002",
+            "name": "Bob",
+            "uti": "uti-bob",
+            "preferred_username": "bob@dev.example",
+            "scp": "access_as_user"
+          }
+        }
+      ]
+    }
+  ]
+}

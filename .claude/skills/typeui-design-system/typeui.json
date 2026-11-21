@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "source": "workspace-visual-schema",
+  "name": "data-contracts-enterprise",
+  "slug": "enterprise",
+  "project": {
+    "name": "Enterprise",
+    "logoUrl": null
+  },
+  "importSource": {
+    "type": "manual",
+    "importedAt": "2026-11-15T08:51:27.388Z",
+    "sourceName": "TypeUI design skill: Enterprise"
+  },
+  "components": [
+    "color",
+    "typography",
+    "layout",
+    "radius",
+    "shadow",
+    "borders",
+    "button",
+    "button-group",
+    "card",
+    "input",
+    "alert",
+    "badge",
+    "list",
+    "avatar",
+    "icon-shape",
+    "accordion",
+    "dropdown",
+    "modal",
+    "tabs",
+    "table",
+    "pagination",
+    "sidebar",
+    "radio",
+    "checkbox",
+    "toggle",
+    "tooltip",
+    "popovers",
+    "content"
+  ]
+}

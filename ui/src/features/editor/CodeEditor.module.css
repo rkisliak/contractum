@@ -1,0 +1,66 @@
+/* Editor frame and the plain stand-in. Tokens only. */
+.frame {
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  background: var(--color-neutral-primary-soft);
+  min-width: 0;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+/*
+ * fit="fill": down to the bottom of the window, never under 20rem. The top and the space kept after
+ * the editor come from useViewportFill; the page's own bottom padding is the gutter, so only the
+ * editor scrolls and the page does not.
+ */
+.fill {
+  height: max(
+    20rem,
+    calc(100dvh - var(--editor-fill-top, 0px) - var(--editor-fill-after, 0px))
+  );
+}
+
+/* fit="tall": a large fixed height for an editor that has content after it. */
+.tall {
+  height: max(20rem, 60dvh);
+}
+
+/* fit="container": fills a flex-column parent (the full-screen editor dialog body). */
+.container {
+  flex: 1 1 0;
+  min-height: 12rem;
+}
+
+/* The full-screen dialog's action row: wraps on a phone. */
+.dialogToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.plain {
+  display: block;
+  width: 100%;
+  min-height: 20rem;
+  padding: var(--spacing-3);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  background: var(--color-neutral-primary-soft);
+  color: var(--color-heading);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-code);
+  border-radius: var(--radius-card);
+}
+
+.plainDiff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+}
+
+.plainDiff pre {
+  margin: 0;
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-sm);
+}

@@ -1,0 +1,94 @@
+/*
+ * Alert (enterprise alerts.md, UI-SPEC 5.4). Tokens only. 16px padding, 8px card radius, 1px
+ * subtle intent border, soft intent fill, never nested.
+ * Links inside use the intent foreground colour and stay underlined at rest (5.3).
+ */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  min-width: 0;
+  padding: var(--spacing-4);
+  border: var(--border-width-hairline) solid var(--alert-border);
+  border-radius: var(--radius-card);
+  background: var(--alert-fill);
+  box-shadow: var(--shadow-none);
+  color: var(--alert-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.alert + .alert {
+  margin-block-start: var(--spacing-4);
+}
+
+.info {
+  --alert-fill: var(--color-brand-softer);
+  --alert-text: var(--color-fg-brand-strong);
+  --alert-border: var(--color-border-brand-subtle);
+}
+
+.success {
+  --alert-fill: var(--color-success-soft);
+  --alert-text: var(--color-fg-success-strong);
+  --alert-border: var(--color-border-success-subtle);
+}
+
+.warning {
+  --alert-fill: var(--color-warning-soft);
+  --alert-text: var(--color-fg-warning);
+  --alert-border: var(--color-border-warning-subtle);
+}
+
+.danger {
+  --alert-fill: var(--color-danger-soft);
+  --alert-text: var(--color-fg-danger-strong);
+  --alert-border: var(--color-border-danger-subtle);
+}
+
+.neutral {
+  --alert-fill: var(--color-neutral-secondary-medium);
+  --alert-text: var(--color-heading);
+  --alert-border: var(--color-border-default);
+}
+
+.icon {
+  flex-shrink: 0;
+  /* Centres the 16px glyph on the first text line (line height is 1.5 x 14px = 21px). */
+  margin-block-start: calc(
+    (var(--font-size-sm) * var(--line-height-body) - 1rem) / 2
+  );
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.body {
+  font-weight: var(--font-weight-normal);
+}
+
+.body a,
+.action a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-block-start: var(--spacing-3);
+}
+
+.dismiss {
+  flex-shrink: 0;
+  color: inherit;
+}

@@ -1,0 +1,40 @@
+# Intentional disagreements between the platform classifier and datacontract-cli 1.2.9.
+# One row per (path, code); `path: "*"` means the same code at any path. `code` is the platform
+# code at that path (`none` when the platform reports nothing at the oracle's path). Every row
+# needs a one-line reason; an unused row fails the oracle test.
+- path: schema.orders.properties.amount
+  code: physical-type-cosmetic
+  reason: a case or whitespace only physicalType change is info (D-145); the oracle compares the text and errors
+- path: schema.orders.properties.amount
+  code: property-added
+  reason: a new optional property is info for consumers (D-145); the oracle errors for the producer perspective
+- path: schema.customers
+  code: object-added
+  reason: a new object is info for consumers (D-145); the oracle errors for the producer perspective
+- path: schema.orders.properties.amount
+  code: none
+  reason: a rename through an equal id is one property-renamed change at the new name; the oracle has no ids and reports remove plus add
+- path: schema.orders
+  code: none
+  reason: a rename through an equal id is one object-renamed change at the new name; the oracle reports remove plus add
+- path: servers.prod
+  code: server-removed
+  reason: removing a server is breaking per D-145; the oracle does not test servers
+- path: schema.orders.properties.amount
+  code: physical-name-changed
+  reason: encryptedName is classified with physicalName (D-145 discretion, A3); the oracle has no rule for it
+- path: schema.orders.properties.emb
+  code: vector-shape-changed
+  reason: a changed embedding model or distance metric changes what the vectors mean; the oracle has no rule for it
+- path: schema.orders.properties.amount
+  code: primary-key-position-changed
+  reason: primaryKeyPosition changes are breaking per D-145; the oracle leaves them untested
+- path: schema.orders.properties.amount
+  code: multiple-of-changed
+  reason: multipleOf added or changed is breaking (A6); the oracle has no rule for it
+- path: schema.orders.properties.amount
+  code: format-changed
+  reason: format added or changed is breaking (A6); the oracle has no rule for it
+- path: schema.orders.quality
+  code: quality-added
+  reason: a new quality rule is info for consumers (D-145); the oracle errors for the producer perspective

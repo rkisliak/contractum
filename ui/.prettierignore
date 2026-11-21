@@ -1,0 +1,11 @@
+dist
+node_modules
+pnpm-lock.yaml
+test-results
+playwright-report
+src/routeTree.gen.ts
+src/api/schema.gen.ts
+openapi
+# Hand-generated Atlas token sheet: Prettier lowercases hex, the sheet keeps registry case (UI-SPEC section 4).
+src/styles/tokens.css
+coverage

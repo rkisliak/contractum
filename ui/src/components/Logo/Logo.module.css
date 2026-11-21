@@ -1,0 +1,38 @@
+/*
+ * The Contractum seal and wordmark. Tokens only: the rosette is brand, the inner ring a soft brand
+ * tint, the check white; on the always-dark slate the seal turns white with a brand check.
+ */
+.mark {
+  flex: none;
+  display: block;
+}
+
+.light {
+  --logo-seal: var(--color-brand);
+  --logo-ring: var(--color-brand-soft);
+  --logo-check: var(--color-white);
+}
+
+/* On the always-dark slate: a white seal with a brand ring and check. */
+.rail {
+  --logo-seal: var(--color-white);
+  --logo-ring: var(--color-brand-soft);
+  --logo-check: var(--color-brand);
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/* The wordmark is set in Saira 700 (self-hosted, fonts.css), squarer than the Inter UI text. */
+.wordmark {
+  font-family: "Saira", var(--font-sans, sans-serif);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.wordStrong {
+  font-weight: 700;
+}

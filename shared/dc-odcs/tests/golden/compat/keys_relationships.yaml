@@ -1,0 +1,318 @@
+- name: required switched on
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, required: true}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: required-added, class: breaking}
+- name: required switched off
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, required: true}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: required-removed, class: breaking}
+- name: required false to absent is no change
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, required: false}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  expected: []
+- name: unique switched on
+  before:
+    apiVersion: v3.1.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.1.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, unique: true}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: unique-added, class: breaking}
+- name: unique switched off
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, unique: true}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: unique-removed, class: breaking}
+- name: primaryKey switched on
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, primaryKey: true}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: primary-key-changed, class: breaking}
+- name: primaryKeyPosition changed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, primaryKey: true, primaryKeyPosition: 1}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: amount, logicalType: string, primaryKey: true, primaryKeyPosition: 2}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: schema.orders.properties.amount, code: primary-key-position-changed, class: breaking}
+- name: relationship added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: customer_id, logicalType: integer}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: customer_id
+            logicalType: integer
+            relationships:
+              - {type: foreignKey, to: customers.id}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: 'schema.orders.properties.customer_id.relationships[">customers.id"]', code: relationship-added,
+      class: warning}
+- name: relationship removed
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: customer_id
+            logicalType: integer
+            relationships:
+              - {type: foreignKey, to: customers.id}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - {name: customer_id, logicalType: integer}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: 'schema.orders.properties.customer_id.relationships[">customers.id"]', code: relationship-removed,
+      class: breaking}
+- name: relationship retargeted by id
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: customer_id
+            logicalType: integer
+            relationships:
+              - {type: foreignKey, to: customers.id, id: r-1}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: customer_id
+            logicalType: integer
+            relationships:
+              - {type: foreignKey, to: clients.id, id: r-1}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: 'schema.orders.properties.customer_id.relationships[">clients.id"]', code: relationship-retargeted,
+      class: breaking}
+- name: relationship type added
+  before:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: customer_id
+            logicalType: integer
+            relationships:
+              - {to: customers.id}
+          - {name: id, logicalType: integer}
+  after:
+    apiVersion: v3.2.0
+    kind: DataContract
+    id: orders-contract
+    version: 1.0.0
+    status: active
+    schema:
+      - name: orders
+        logicalType: object
+        properties:
+          - name: customer_id
+            logicalType: integer
+            relationships:
+              - {type: foreignKey, to: customers.id}
+          - {name: id, logicalType: integer}
+  expected:
+    - {path: 'schema.orders.properties.customer_id.relationships[">customers.id"]', code: relationship-changed,
+      class: warning}

@@ -1,0 +1,257 @@
+/* Audit explorer. Tokens only. */
+.stack {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.filters {
+  display: grid;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-neutral-primary-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--spacing-4);
+  align-items: start;
+}
+
+.withAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacing-2);
+  align-items: start;
+}
+
+/* Level with the field control (below the label), not the label or the helper. */
+.withAction > [data-button] {
+  margin-block-start: var(--field-control-offset);
+}
+
+.filterActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.ident {
+  /* Identifiers read in the normal font (D-03). Tabular figures are switched off: they widen the hyphens of a UUID until it looks monospaced. */
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font-family: var(--font-family-monospace);
+  /* Identifiers wrap at their dots (Breakable), never mid-word. */
+  overflow-wrap: normal;
+}
+
+.instant {
+  white-space: nowrap;
+}
+
+/* Table cells keep the body font: identifiers only differ by tabular figures. */
+.idText {
+  overflow-wrap: normal;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.via {
+  color: var(--color-body);
+}
+
+/* An action id wraps at its dots (Breakable) and keeps tabular figures. */
+.actionText {
+  overflow-wrap: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The actor and how they signed in on one line ("admin via jwt"); the sign-in method stays muted. */
+.actor {
+  white-space: nowrap;
+}
+
+.link {
+  overflow-wrap: normal;
+  color: var(--color-fg-brand);
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: var(--color-fg-brand-strong);
+}
+
+.rowButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-fg-brand);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rowButton:hover {
+  color: var(--color-fg-brand-strong);
+}
+
+.detailStack {
+  display: grid;
+  gap: var(--spacing-6);
+  min-width: 0;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  gap: var(--spacing-2) var(--spacing-6);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-body-subtle);
+  font-weight: var(--font-weight-medium);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.factRow {
+  display: contents;
+}
+
+.utc,
+.secondary {
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+}
+
+.secondary {
+  display: block;
+  font-variant-numeric: normal;
+}
+
+.section {
+  display: grid;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.paneTitle {
+  margin: 0 0 var(--spacing-2);
+  color: var(--color-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.changeTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.changeTable th,
+.changeTable td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-default);
+  text-align: start;
+  vertical-align: top;
+  /* Words stay whole ("Change" never splits); long values break at any point only past that. */
+  overflow-wrap: break-word;
+}
+
+.changeTable thead th {
+  white-space: nowrap;
+}
+
+.changeTable thead th {
+  color: var(--color-heading);
+  font-weight: var(--font-weight-semibold);
+}
+
+.changeTable tbody th {
+  font-weight: var(--font-weight-normal);
+}
+
+.oldValue code,
+.newValue code {
+  font-family: var(--font-family-monospace);
+  white-space: pre-wrap;
+}
+
+.oldValue code {
+  color: var(--color-fg-danger-strong);
+  text-decoration: line-through;
+}
+
+.newValue code {
+  color: var(--color-fg-success-strong);
+}
+
+.none {
+  color: var(--color-body);
+  font-style: italic;
+}
+
+.sideBySide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-4);
+}
+
+.json {
+  max-height: 24rem;
+  margin: 0;
+  padding: var(--spacing-3);
+  overflow: auto;
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  background: var(--color-neutral-secondary-medium);
+  color: var(--color-heading);
+  font-family: var(--font-family-monospace);
+  font-size: var(--font-size-sm);
+  white-space: pre;
+  border-radius: var(--radius-card);
+}
+
+@media (max-width: 767px) {
+  .sideBySide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

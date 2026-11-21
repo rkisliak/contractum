@@ -1,0 +1,167 @@
+{
+  "tenants": [
+    "11111111-2222-4333-8444-555555555555"
+  ],
+  "groups": {
+    "9a0f0000-0000-4000-8000-0000000000a1": {
+      "displayName": "Data Eng",
+      "mail": "data-eng@contoso.test"
+    },
+    "5ea2c4e2-0000-4000-8000-0000000000b1": {
+      "displayName": "Searchable Analysts",
+      "mail": "searchable-analysts@contoso.test",
+      "description": "Analysts for the directory search demo"
+    },
+    "9a0f0000-0000-4000-8000-0000000000a2": {
+      "displayName": "Data Eng Platform",
+      "mail": "data-eng-platform@contoso.test",
+      "memberOf": [
+        "9a0f0000-0000-4000-8000-0000000000a1"
+      ]
+    },
+    "c70e0000-0000-4000-8000-0000000000c1": {
+      "displayName": "Large Crew",
+      "mail": "large-crew@contoso.test",
+      "generated_members": 250
+    },
+    "ba5e0000-0000-4000-8000-000000000001": {
+      "displayName": "Volume Entra big group",
+      "mail": "volume-entra-big-group@contoso.test",
+      "description": "A directory group with 600 members for the volume audit",
+      "generated_members": 600,
+      "member_oid_prefix": "ba5e0004",
+      "member_name_prefix": "Volume Member",
+      "member_mail_prefix": "volume-member"
+    }
+  },
+  "directoryRoleId": "0e1e0000-0000-4000-8000-000000000001",
+  "users": {
+    "a11ce000-0000-4000-8000-000000000001": {
+      "displayName": "Alice",
+      "accountEnabled": true,
+      "groups": [
+        "9a0f0000-0000-4000-8000-0000000000a1"
+      ],
+      "mail": "alice@contoso.test",
+      "userPrincipalName": "alice@contoso.test"
+    },
+    "b0b00000-0000-4000-8000-000000000002": {
+      "displayName": "Bob",
+      "accountEnabled": true,
+      "groups": [],
+      "mail": "bob@contoso.test",
+      "userPrincipalName": "bob@contoso.test"
+    },
+    "ca201000-0000-4000-8000-000000000003": {
+      "displayName": "Carol",
+      "accountEnabled": true,
+      "groups": [
+        "9a0f0000-0000-4000-8000-0000000000a1"
+      ],
+      "generated_groups": 250,
+      "mail": "carol@contoso.test",
+      "userPrincipalName": "carol@contoso.test"
+    },
+    "5ea2c4e1-0000-4000-8000-000000000011": {
+      "displayName": "Searchable Dana",
+      "accountEnabled": true,
+      "groups": [],
+      "mail": "searchable.dana@contoso.test",
+      "userPrincipalName": "searchable.dana@contoso.test"
+    },
+    "5ea2c4e1-0000-4000-8000-000000000012": {
+      "displayName": "Searchable Eli",
+      "accountEnabled": true,
+      "groups": [],
+      "mail": "searchable.eli@contoso.test",
+      "userPrincipalName": "searchable.eli@contoso.test"
+    },
+    "5ea2c4e1-0000-4000-8000-000000000013": {
+      "displayName": "Searchable Fay",
+      "accountEnabled": true,
+      "groups": [],
+      "mail": "searchable.fay@contoso.test",
+      "userPrincipalName": "searchable.fay@contoso.test"
+    },
+    "5ea2c4e1-0000-4000-8000-000000000014": {
+      "displayName": "Searchable Gus",
+      "accountEnabled": true,
+      "groups": [],
+      "mail": "searchable.gus@contoso.test",
+      "userPrincipalName": "searchable.gus@contoso.test"
+    },
+    "5ea2c4e1-0000-4000-8000-000000000015": {
+      "displayName": "Searchable Hana",
+      "accountEnabled": true,
+      "groups": [],
+      "mail": "searchable.hana@contoso.test",
+      "userPrincipalName": "searchable.hana@contoso.test"
+    },
+    "d0c1a000-0000-4000-8000-000000000031": {
+      "displayName": "Platform Pat",
+      "accountEnabled": true,
+      "groups": [
+        "9a0f0000-0000-4000-8000-0000000000a2"
+      ],
+      "mail": "pat@contoso.test",
+      "userPrincipalName": "pat@contoso.test"
+    },
+    "d0c1a000-0000-4000-8000-000000000032": {
+      "displayName": "Dormant Dee",
+      "accountEnabled": false,
+      "groups": [
+        "9a0f0000-0000-4000-8000-0000000000a1"
+      ],
+      "mail": "dee@contoso.test",
+      "userPrincipalName": "dee@contoso.test"
+    }
+  },
+  "servicePrincipals": {
+    "5e2b1ce0-0000-4000-8000-000000000004": {
+      "displayName": "Pipeline",
+      "accountEnabled": true,
+      "groups": [],
+      "appId": "a99b1ce0-0000-4000-8000-000000000041"
+    },
+    "de30b1ce-0000-4000-8000-000000000005": {
+      "displayName": "Demo pipeline",
+      "accountEnabled": true,
+      "groups": [],
+      "appId": "a99de30b-0000-4000-8000-000000000042"
+    },
+    "5ea2c4e3-0000-4000-8000-000000000021": {
+      "displayName": "Searchable ingest",
+      "accountEnabled": true,
+      "groups": [],
+      "appId": "a995ea2c-0000-4000-8000-000000000043"
+    },
+    "d0c1a000-0000-4000-8000-000000000033": {
+      "displayName": "Group ingest",
+      "accountEnabled": true,
+      "groups": [
+        "9a0f0000-0000-4000-8000-0000000000a1"
+      ],
+      "appId": "a99d0c1a-0000-4000-8000-000000000044"
+    }
+  },
+  "generated": {
+    "groups": {
+      "count": 60,
+      "oid_prefix": "ba5e0001",
+      "name_prefix": "Volume Entra group",
+      "mail_prefix": "volume-entra-group"
+    },
+    "users": {
+      "count": 60,
+      "oid_prefix": "ba5e0002",
+      "name_prefix": "Volume Entra user",
+      "mail_prefix": "volume-entra-user"
+    },
+    "servicePrincipals": {
+      "count": 40,
+      "oid_prefix": "ba5e0003",
+      "name_prefix": "Volume Entra service",
+      "app_id_prefix": "ba5e00a3"
+    }
+  }
+}

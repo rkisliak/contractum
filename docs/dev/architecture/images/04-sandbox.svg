@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">The rule sandbox</title>
+<desc id="d">Requests wait for a run slot. The validation web process, which never loads the rule engine, sends rules to worker subprocesses over JSON lines. A worker that exceeds its time is killed and a fresh worker takes the remaining rules. Results return as a report. If no slot frees up in time the answer is 503 validation-unavailable.</desc>
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/></marker></defs>
+<rect width="1200" height="700" fill="#FFFFFF"/>
+<text x="40" y="42" font-size="22" font-weight="700" fill="#0F172A">The rule sandbox: rules never run in the web process</text>
+<text x="40" y="66" font-size="14" fill="#475569">Bounded queue, worker subprocesses with memory and CPU limits, kill and respawn. A busy or broken sandbox is never a pass.</text>
+<rect x="40" y="130" width="200" height="50" rx="12" fill="#FFFFFF"/>
+<rect x="40" y="130" width="200" height="50" rx="12" fill="#2563EB" fill-opacity="0.08" stroke="#2563EB" stroke-width="2"/>
+<text x="56" y="160" font-size="14" fill="#0F172A" font-weight="600" text-anchor="start">contracts: publish run</text>
+<rect x="40" y="210" width="200" height="50" rx="12" fill="#FFFFFF"/>
+<rect x="40" y="210" width="200" height="50" rx="12" fill="#2563EB" fill-opacity="0.08" stroke="#2563EB" stroke-width="2"/>
+<text x="56" y="240" font-size="14" fill="#0F172A" font-weight="600" text-anchor="start">contracts: save run</text>
+<rect x="40" y="290" width="200" height="50" rx="12" fill="#FFFFFF"/>
+<rect x="40" y="290" width="200" height="50" rx="12" fill="#2563EB" fill-opacity="0.08" stroke="#2563EB" stroke-width="2"/>
+<text x="56" y="320" font-size="14" fill="#0F172A" font-weight="600" text-anchor="start">validate on demand</text>
+<rect x="40" y="370" width="200" height="50" rx="12" fill="#FFFFFF"/>
+<rect x="40" y="370" width="200" height="50" rx="12" fill="#2563EB" fill-opacity="0.08" stroke="#2563EB" stroke-width="2"/>
+<text x="56" y="400" font-size="14" fill="#0F172A" font-weight="600" text-anchor="start">rule-set check</text>
+<text x="40" y="120" font-size="14" fill="#0F172A" font-weight="700" text-anchor="start">Callers</text>
+<rect x="280" y="96" width="540" height="520" rx="12" fill="#FFFFFF"/>
+<rect x="280" y="96" width="540" height="520" rx="12" fill="#059669" fill-opacity="0.05" stroke="#059669" stroke-width="2"/>
+<text x="294" y="120" font-size="15" font-weight="700" fill="#0F172A">validation web process  (never imports the CEL engine)</text>
+<rect x="300" y="140" width="200" height="270" rx="12" fill="#FFFFFF"/>
+<rect x="300" y="140" width="200" height="270" rx="12" fill="#059669" fill-opacity="0.08" stroke="#059669" stroke-width="2"/>
+<text x="314" y="164" font-size="15" font-weight="700" fill="#0F172A">Run slots</text>
+<text x="314" y="186" font-size="13" fill="#475569" font-weight="400" text-anchor="start">max 4 runs at once</text>
+<rect x="320" y="196" width="160" height="34" rx="8" fill="#FFFFFF" stroke="#059669" stroke-width="1.5"/>
+<text x="336" y="218" font-size="13" fill="#0F172A" font-weight="400" text-anchor="start">slot 1</text>
+<rect x="320" y="242" width="160" height="34" rx="8" fill="#FFFFFF" stroke="#059669" stroke-width="1.5"/>
+<text x="336" y="264" font-size="13" fill="#0F172A" font-weight="400" text-anchor="start">slot 2</text>
+<rect x="320" y="288" width="160" height="34" rx="8" fill="#FFFFFF" stroke="#059669" stroke-width="1.5"/>
+<text x="336" y="310" font-size="13" fill="#0F172A" font-weight="400" text-anchor="start">slot 3</text>
+<rect x="320" y="334" width="160" height="34" rx="8" fill="#FFFFFF" stroke="#059669" stroke-width="1.5"/>
+<text x="336" y="356" font-size="13" fill="#0F172A" font-weight="400" text-anchor="start">slot 4</text>
+<circle cx="500" cy="140" r="13" fill="#0F172A"/>
+<circle cx="500" cy="140" r="18" fill="none" stroke="#059669" stroke-width="3" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.000;0.010;0.180;0.190;1"/></circle>
+<text x="500" y="145" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">1</text>
+<text x="300" y="432" font-size="13" fill="#475569" font-weight="400" text-anchor="start">Waits at most DC_QUEUE_WAIT_S (2 s)</text>
+<rect x="300" y="446" width="200" height="66" rx="12" fill="#FFFFFF"/>
+<rect x="300" y="446" width="200" height="66" rx="12" fill="#DC2626" fill-opacity="0.08" stroke="#DC2626" stroke-width="2"/>
+<text x="314" y="470" font-size="13" fill="#0F172A" font-weight="700" text-anchor="start">No slot in time:</text>
+<text x="314" y="490" font-size="13" fill="#DC2626" font-weight="700" text-anchor="start">503 validation-unavailable</text>
+<text x="314" y="506" font-size="13" fill="#475569" font-weight="400" text-anchor="start">Retry-After: 1</text>
+<rect x="530" y="140" width="270" height="150" rx="12" fill="#FFFFFF"/>
+<rect x="530" y="140" width="270" height="150" rx="12" fill="#059669" fill-opacity="0.08" stroke="#059669" stroke-width="2"/>
+<text x="544" y="164" font-size="15" font-weight="700" fill="#0F172A">Clock watcher</text>
+<text x="544" y="190" font-size="13" fill="#475569" font-weight="400" text-anchor="start">Per rule: DC_RULE_TIMEOUT_MS = 500</text>
+<text x="544" y="210" font-size="13" fill="#475569" font-weight="400" text-anchor="start">measured in worker CPU time (/proc)</text>
+<text x="544" y="230" font-size="13" fill="#475569" font-weight="400" text-anchor="start">Hard wall cap: 8 x the timeout</text>
+<text x="544" y="250" font-size="13" fill="#475569" font-weight="400" text-anchor="start">Per run: DC_RUN_BUDGET_S = 5</text>
+<text x="544" y="270" font-size="13" fill="#475569" font-weight="400" text-anchor="start">leftover rules: run_budget_exceeded</text>
+<circle cx="800" cy="140" r="13" fill="#0F172A"/>
+<circle cx="800" cy="140" r="18" fill="none" stroke="#059669" stroke-width="3" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.340;0.350;0.500;0.510;1"/></circle>
+<text x="800" y="145" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">3</text>
+<rect x="530" y="430" width="270" height="136" rx="12" fill="#FFFFFF"/>
+<rect x="530" y="430" width="270" height="136" rx="12" fill="#059669" fill-opacity="0.08" stroke="#059669" stroke-width="2"/>
+<text x="544" y="454" font-size="15" font-weight="700" fill="#0F172A">Report builder</text>
+<text x="544" y="478" font-size="13" fill="#475569" font-weight="400" text-anchor="start">pass / fail / error for every rule</text>
+<text x="544" y="498" font-size="13" fill="#475569" font-weight="400" text-anchor="start">fixed text per error code</text>
+<text x="544" y="518" font-size="13" fill="#475569" font-weight="400" text-anchor="start">no document values copied</text>
+<text x="544" y="538" font-size="13" fill="#475569" font-weight="400" text-anchor="start">nothing is ever skipped</text>
+<circle cx="800" cy="430" r="13" fill="#0F172A"/>
+<circle cx="800" cy="430" r="18" fill="none" stroke="#059669" stroke-width="3" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.800;0.810;0.980;0.990;1"/></circle>
+<text x="800" y="435" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">5</text>
+<text x="560" y="380" font-size="13" fill="#475569" font-weight="600" text-anchor="start">JSON lines over stdin / stdout</text>
+<rect x="900" y="130" width="260" height="140" rx="12" fill="#FFFFFF"/>
+<rect x="900" y="130" width="260" height="140" rx="12" fill="#059669" fill-opacity="0.08" stroke="#059669" stroke-width="2"/>
+<text x="914" y="154" font-size="15" font-weight="700" fill="#0F172A">Worker 1</text>
+<text x="914" y="180" font-size="13" fill="#475569" font-weight="400" text-anchor="start">python -m dc_rules.worker</text>
+<text x="914" y="198" font-size="13" fill="#475569" font-weight="400" text-anchor="start">CEL engine + JSONPath</text>
+<text x="914" y="218" font-size="13" fill="#475569" font-weight="400" text-anchor="start">RLIMIT_AS 1 GiB, RLIMIT_CPU</text>
+<text x="914" y="238" font-size="13" fill="#475569" font-weight="400" text-anchor="start">no network, no database</text>
+<text x="914" y="258" font-size="13" fill="#475569" font-weight="400" text-anchor="start">recycled after 200 jobs</text>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="#FFFFFF"/>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="#059669" fill-opacity="0.08" stroke="#059669" stroke-width="2"/>
+<text x="914" y="354" font-size="15" font-weight="700" fill="#0F172A">Worker 2</text>
+<text x="914" y="380" font-size="13" fill="#475569" font-weight="400" text-anchor="start">python -m dc_rules.worker</text>
+<text x="914" y="398" font-size="13" fill="#475569" font-weight="400" text-anchor="start">CEL engine + JSONPath</text>
+<text x="914" y="418" font-size="13" fill="#475569" font-weight="400" text-anchor="start">RLIMIT_AS 1 GiB, RLIMIT_CPU</text>
+<text x="914" y="438" font-size="13" fill="#475569" font-weight="400" text-anchor="start">no network, no database</text>
+<text x="914" y="458" font-size="13" fill="#475569" font-weight="400" text-anchor="start">recycled after 200 jobs</text>
+<circle cx="1160" cy="130" r="13" fill="#0F172A"/>
+<circle cx="1160" cy="130" r="18" fill="none" stroke="#059669" stroke-width="3" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.160;0.170;0.340;0.350;1"/></circle>
+<text x="1160" y="135" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">2</text>
+<g opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.44;0.45;0.58;0.59;1"/>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="#FFFFFF"/>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="#DC2626" fill-opacity="0.12" stroke="#DC2626" stroke-width="2.5"/>
+<path d="M1010,360 l40,40 M1050,360 l-40,40" stroke="#DC2626" stroke-width="6" stroke-linecap="round"/>
+<text x="1030" y="432" font-size="14" fill="#DC2626" font-weight="700" text-anchor="middle">Killed: rule used its CPU time</text>
+<text x="1030" y="452" font-size="13" fill="#0F172A" font-weight="400" text-anchor="middle">that rule becomes timeout</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.58;0.59;0.99;1"/>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="#FFFFFF"/>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="#059669" fill-opacity="0.14" stroke="#059669" stroke-width="2.5"/>
+<text x="914" y="354" font-size="15" fill="#0F172A" font-weight="700" text-anchor="start">Worker 2 (fresh, respawned)</text>
+<text x="914" y="378" font-size="13" fill="#475569" font-weight="400" text-anchor="start">takes the remaining rules</text>
+<text x="914" y="398" font-size="13" fill="#475569" font-weight="400" text-anchor="start">a worker that dies before its</text>
+<text x="914" y="418" font-size="13" fill="#475569" font-weight="400" text-anchor="start">first rule is retried once,</text>
+<text x="914" y="438" font-size="13" fill="#475569" font-weight="400" text-anchor="start">so rule 1 is not blamed</text>
+</g>
+<circle cx="1160" cy="330" r="13" fill="#0F172A"/>
+<circle cx="1160" cy="330" r="18" fill="none" stroke="#059669" stroke-width="3" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.440;0.450;0.720;0.730;1"/></circle>
+<text x="1160" y="335" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">4</text>
+<text x="900" y="500" font-size="13" fill="#475569" font-weight="400" text-anchor="start">Static view: Worker 2 is the one that gets killed</text>
+<text x="900" y="518" font-size="13" fill="#475569" font-weight="400" text-anchor="start">and replaced in the animation.</text>
+<path d="M240,155 C270,155 280,213 320,213" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+<path d="M240,235 C270,235 280,259 320,259" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+<path d="M240,395 C270,395 280,440 300,478" fill="none" stroke="#DC2626" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+<path d="M480,213 C512,213 520,222 520,240 L520,305 C520,315 528,320 545,320 L780,320 C850,320 840,200 900,200" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+<path d="M480,259 C504,259 510,266 510,280 L510,330 C510,340 518,345 535,345 L780,345 C850,345 840,400 900,400" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+<path d="M900,215 C870,215 870,480 800,480" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<path d="M900,415 C870,415 870,505 800,505" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<path d="M530,545 C450,600 300,600 140,600 L140,430" fill="none" stroke="#2563EB" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="40" y="630" font-size="13" fill="#2563EB" font-weight="600" text-anchor="start">Report back to the caller</text>
+<circle r="7" fill="#2563EB" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M240,155 C270,155 280,213 320,213" keyPoints="0;0;1;1" keyTimes="0;0.020;0.100;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.020;0.025;0.100;0.105;1"/></circle>
+<circle r="7" fill="#2563EB" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M240,235 C270,235 280,259 320,259" keyPoints="0;0;1;1" keyTimes="0;0.060;0.140;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.060;0.065;0.140;0.145;1"/></circle>
+<circle r="6" fill="#DC2626" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M240,395 C270,395 280,440 300,478" keyPoints="0;0;1;1" keyTimes="0;0.100;0.200;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.100;0.105;0.200;0.205;1"/></circle>
+<circle r="7" fill="#2563EB" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M480,213 C512,213 520,222 520,240 L520,305 C520,315 528,320 545,320 L780,320 C850,320 840,200 900,200" keyPoints="0;0;1;1" keyTimes="0;0.160;0.280;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.160;0.165;0.280;0.285;1"/></circle>
+<circle r="7" fill="#2563EB" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M480,259 C504,259 510,266 510,280 L510,330 C510,340 518,345 535,345 L780,345 C850,345 840,400 900,400" keyPoints="0;0;1;1" keyTimes="0;0.200;0.320;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.200;0.205;0.320;0.325;1"/></circle>
+<circle r="7" fill="#059669" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M900,215 C870,215 870,480 800,480" keyPoints="0;0;1;1" keyTimes="0;0.360;0.460;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.360;0.365;0.460;0.465;1"/></circle>
+<circle r="7" fill="#2563EB" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M480,259 C504,259 510,266 510,280 L510,330 C510,340 518,345 535,345 L780,345 C850,345 840,400 900,400" keyPoints="0;0;1;1" keyTimes="0;0.600;0.700;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.600;0.605;0.700;0.705;1"/></circle>
+<circle r="7" fill="#059669" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M900,415 C870,415 870,505 800,505" keyPoints="0;0;1;1" keyTimes="0;0.720;0.800;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.720;0.725;0.800;0.805;1"/></circle>
+<circle r="7" fill="#2563EB" opacity="0"><animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" path="M530,545 C450,600 300,600 140,600 L140,430" keyPoints="0;0;1;1" keyTimes="0;0.840;0.960;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.840;0.845;0.960;0.965;1"/></circle>
+<rect x="900" y="330" width="260" height="140" rx="12" fill="none" stroke="#D97706" stroke-width="3" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;0.3;1;0;0" keyTimes="0;0.32;0.35;0.39;0.43;0.44;1"/></rect>
+<text x="40" y="664" font-size="13" fill="#0F172A" font-weight="600" text-anchor="start">1 Queue for a slot</text>
+<text x="270" y="664" font-size="13" fill="#0F172A" font-weight="600" text-anchor="start">2 A worker evaluates</text>
+<text x="500" y="664" font-size="13" fill="#0F172A" font-weight="600" text-anchor="start">3 The parent watches the clock</text>
+<text x="730" y="664" font-size="13" fill="#0F172A" font-weight="600" text-anchor="start">4 Kill and respawn</text>
+<text x="960" y="664" font-size="13" fill="#0F172A" font-weight="600" text-anchor="start">5 Results return</text>
+</svg>

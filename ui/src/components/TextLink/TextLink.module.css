@@ -1,0 +1,38 @@
+/* Links (UI-SPEC 5.3, C-06). Tokens only. */
+.link {
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: var(--font-weight-normal);
+  overflow-wrap: anywhere;
+  transition: color var(--motion-hover) var(--motion-ease);
+}
+
+/* Inline: fg-brand, underlined at rest (1px); hover fg-brand-strong with a 2px underline. */
+.inline {
+  color: var(--color-fg-brand);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.inline:hover {
+  color: var(--color-fg-brand-strong);
+  text-decoration-thickness: 2px;
+}
+
+/* Nav, top bar and sidebar links: never underlined; the text lightens to body on hover. */
+.nav {
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.nav:hover {
+  color: var(--color-body);
+}
+
+.externalIcon {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-inline-start: var(--spacing-1);
+  vertical-align: -0.125em;
+}

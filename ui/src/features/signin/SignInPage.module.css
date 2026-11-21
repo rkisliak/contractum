@@ -1,0 +1,151 @@
+/* Sign-in page (UI-SPEC 7.1). Tokens only. */
+.page {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--color-surface-page);
+}
+
+/* Under 1024px the brand panel is a top band: mark plus one lead line. */
+.brand {
+  display: grid;
+  align-content: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-6);
+  background: var(--color-rail-bg);
+  color: var(--color-white);
+}
+
+/* The logo lockup: "Contractum" with the tagline set small directly beneath it, as one picture,
+ * centred above the hairline (no seal on the sign-in screens). */
+.lockup {
+  display: grid;
+  justify-items: center;
+  margin: 0;
+}
+
+.lockupText {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-1);
+}
+
+/* The wordmark is set large (40px, 1.25 x the 32px token) and the tagline at 16px with a light
+ * tracking measured so both lines are the same width (215px with the bundled Saira 700 and Inter):
+ * they start and end on the same vertical lines, as one picture. Re-measure if either size,
+ * weight or the wording changes. */
+.lockupWord {
+  color: var(--color-white);
+  font-size: calc(var(--font-size-2xl) * 1.25);
+  line-height: 1;
+}
+
+.lockupTagline {
+  color: var(--color-rail-fg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-heading);
+  letter-spacing: 0.047em;
+  white-space: nowrap;
+}
+
+/* The brand lead uses the wordmark's typeface (Saira, 500 here) at 15px (the 14px token plus 1px), under a faint
+ * hairline (the rail hover shade, barely lighter than the panel) that separates it from the logo
+ * lockup; on wide screens both are exactly as wide as the lockup. */
+.lead {
+  margin: 0;
+  /* Line to text equals logo to line (the .brand gap). */
+  padding-block-start: var(--spacing-4);
+  border-block-start: var(--border-width-hairline) solid var(--color-rail-hover);
+  /* The rail text colour at 75%: quieter than the tagline, still about 6:1 on the rail. */
+  color: color-mix(in srgb, var(--color-rail-fg) 75%, transparent);
+  font-family: "Saira", var(--font-family);
+  /* 15px: the 14px token plus 1px. */
+  font-size: calc(var(--font-size-sm) + 0.0625rem);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  text-align: center;
+  /* Centred lines of even length. */
+  text-wrap: balance;
+}
+
+.main {
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: var(--spacing-6);
+}
+
+.card {
+  width: 100%;
+  max-width: var(--size-auth-card);
+  min-width: 0;
+}
+
+.form {
+  display: grid;
+  gap: var(--spacing-6);
+}
+
+.fields {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+@media (min-width: 64rem) {
+  .page {
+    grid-template-columns: var(--size-hero-panel) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  /* One centred column, 308px wide (19.25rem: the width the seal lockup had), so the hairline and
+   * the two-line lead keep their size; the space left and right of it is equal. */
+  .brand {
+    grid-template-columns: min(100%, 19.25rem);
+    justify-content: center;
+    padding: var(--spacing-12);
+  }
+
+  .main {
+    align-items: center;
+  }
+}
+
+/* "or" divider and the Microsoft button (UI-SPEC 7.1). */
+.entra {
+  display: grid;
+  gap: var(--spacing-6);
+  margin-block-start: var(--spacing-6);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin: 0;
+  color: var(--color-body);
+  font-size: var(--font-size-sm);
+}
+
+.divider::before,
+.divider::after {
+  flex: 1;
+  border-block-start: var(--border-width-hairline) solid
+    var(--color-border-default);
+  content: "";
+}
+
+/* /auth/callback progress and failure (UI-SPEC 7.2). */
+.callbackStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.callbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}

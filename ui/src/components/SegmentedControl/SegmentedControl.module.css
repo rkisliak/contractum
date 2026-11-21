@@ -1,0 +1,36 @@
+/*
+ * Segmented control (enterprise button-group.md). Tokens only. The wrapper owns the shadow, the
+ * buttons inside have none; inner corners are square and each button after the first overlaps
+ * its neighbour's border by 1px. The pressed option and the focused one sit above the overlap.
+ */
+.group {
+  display: inline-flex;
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-xs);
+}
+
+.group > [data-button] {
+  position: relative;
+  border-radius: 0;
+  box-shadow: var(--shadow-none);
+}
+
+.group > [data-button]:first-child {
+  border-start-start-radius: var(--radius-control);
+  border-end-start-radius: var(--radius-control);
+}
+
+.group > [data-button]:last-child {
+  border-start-end-radius: var(--radius-control);
+  border-end-end-radius: var(--radius-control);
+}
+
+.group > [data-button]:not(:first-child) {
+  margin-inline-start: -1px;
+}
+
+.group > [data-button][aria-pressed="true"],
+.group > [data-button]:hover,
+.group > [data-button]:focus-visible {
+  z-index: 1;
+}

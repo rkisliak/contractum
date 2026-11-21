@@ -1,0 +1,14 @@
+# Trivy ignore file. It ships empty on purpose: prefer fixing a finding over ignoring it.
+#
+# Entry format: one ID per line (CVE-..., GHSA-..., a misconfig ID such as AVD-DS-0002, or a
+# secret rule ID), optionally followed by an expiry date, after which Trivy reports it again:
+#
+#   CVE-2026-12345 exp:2027-01-31
+#
+# Every entry must be preceded by a comment that gives:
+#   - the reason it is ignored,
+#   - the owner who reviews it,
+#   - a link to the advisory,
+#   - why it is not exploitable here.
+#
+# Entries are reviewed when they expire.

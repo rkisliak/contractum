@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" width="1200" height="860" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Mandatory rule sets apply down the folder tree</title>
+<desc id="d">Platform rule sets apply to every folder. A mandatory set at the Organization applies to both Projects and all Teams. A mandatory set at Project A applies only under Project A, with version 1 enforced and version 2 in warn. Team A2 adds an attached set. Each Team box lists the effective rule sets with enforce or warn mode.</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+<rect x="0" y="0" width="1200" height="860" fill="#FFFFFF"/>
+<text x="40" y="42" font-size="22" font-weight="700" fill="#0F172A">Mandatory inheritance: which rule sets apply where</text>
+<text x="40" y="66" font-size="14" fill="#475569">A mandatory set applies to its folder and everything below. Lower levels can only add. Mode is computed from enforce_at at each run.</text>
+<rect x="40" y="84" width="1120" height="74" rx="12" fill="#059669" fill-opacity="0.08" stroke="#059669" stroke-width="2"/>
+<text x="54" y="108" font-size="15" font-weight="700" fill="#0F172A">Platform scope (no folder, applies to every contract)</text>
+<rect x="60" y="120" width="220" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="60" y="120" width="220" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="72" y="137" font-size="13" fill="#0F172A">odcs-structural v1</text>
+<text x="268" y="137" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="294.4" y="120" width="205" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="294.4" y="120" width="205" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="306.4" y="137" font-size="13" fill="#0F172A">odcs-consistency v1</text>
+<text x="487" y="137" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="513.4" y="120" width="198" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="513.4" y="120" width="198" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="525.4" y="137" font-size="13" fill="#0F172A">odcs-references v1</text>
+<text x="699" y="137" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<circle cx="1140" cy="84" r="13" fill="#0F172A"/><text x="1140" y="89" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">1</text>
+<path d="M600,236 L600,276" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+<path d="M520,356 C520,380 330,372 330,404" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+<path d="M680,356 C680,380 890,372 890,404" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+<path d="M260,506 C260,530 190,524 190,552" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+<path d="M400,506 C400,530 480,524 480,552" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+<path d="M890,476 L890,552" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="450" y="180" width="300" height="56" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="464" y="204" font-size="15" font-weight="700" fill="#0F172A">ROOT</text>
+<text x="736" y="204" font-size="13" text-anchor="end" fill="#475569">no folder sets here</text>
+<rect x="380" y="276" width="440" height="80" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="394" y="300" font-size="15" font-weight="700" fill="#0F172A">Organization  ·  acme</text>
+<text x="806" y="300" font-size="13" text-anchor="end" fill="#475569">mandatory here</text>
+<rect x="398" y="316" width="183" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="398" y="316" width="183" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="410" y="333" font-size="13" fill="#0F172A">org-naming v3</text>
+<text x="569" y="333" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<circle cx="820" cy="276" r="13" fill="#0F172A"/><text x="820" y="281" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">2</text>
+<rect x="110" y="404" width="440" height="102" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="124" y="428" font-size="15" font-weight="700" fill="#0F172A">Project A  ·  payments</text>
+<text x="536" y="428" font-size="13" text-anchor="end" fill="#475569">mandatory here</text>
+<rect x="128" y="438" width="183" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="128" y="438" width="183" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="140" y="455" font-size="13" fill="#0F172A">pii-policy v1</text>
+<text x="299" y="455" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="128" y="470" width="338" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="128" y="470" width="338" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="140" y="487" font-size="13" fill="#0F172A">pii-policy v2  (enforce_at in 9 days)</text>
+<text x="454" y="487" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<circle cx="550" cy="404" r="13" fill="#0F172A"/><text x="550" y="409" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">3</text>
+<rect x="700" y="404" width="380" height="72" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="714" y="428" font-size="15" font-weight="700" fill="#0F172A">Project B  ·  marketing</text>
+<text x="1066" y="428" font-size="13" text-anchor="end" fill="#475569">no own sets</text>
+<text x="714" y="458" font-size="13" fill="#475569">Does not see pii-policy (a sibling branch)</text>
+<rect x="60" y="552" width="260" height="232" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="74" y="576" font-size="15" font-weight="700" fill="#0F172A">Team A1</text>
+<text x="306" y="576" font-size="13" text-anchor="end" fill="#475569">effective rules</text>
+<rect x="74" y="584" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="74" y="584" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="86" y="601" font-size="13" fill="#0F172A">odcs-structural v1</text>
+<text x="294" y="601" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="74" y="614" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="74" y="614" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="86" y="631" font-size="13" fill="#0F172A">odcs-consistency v1</text>
+<text x="294" y="631" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="74" y="644" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="74" y="644" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="86" y="661" font-size="13" fill="#0F172A">odcs-references v1</text>
+<text x="294" y="661" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="74" y="674" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="74" y="674" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="86" y="691" font-size="13" fill="#0F172A">org-naming v3</text>
+<text x="294" y="691" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="74" y="704" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="74" y="704" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="86" y="721" font-size="13" fill="#0F172A">pii-policy v1</text>
+<text x="294" y="721" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="74" y="734" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="74" y="734" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="86" y="751" font-size="13" fill="#0F172A">pii-policy v2</text>
+<text x="294" y="751" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="350" y="552" width="260" height="262" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="364" y="576" font-size="15" font-weight="700" fill="#0F172A">Team A2</text>
+<text x="596" y="576" font-size="13" text-anchor="end" fill="#475569">effective rules</text>
+<rect x="364" y="584" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="584" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="376" y="601" font-size="13" fill="#0F172A">odcs-structural v1</text>
+<text x="584" y="601" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="364" y="614" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="614" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="376" y="631" font-size="13" fill="#0F172A">odcs-consistency v1</text>
+<text x="584" y="631" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="364" y="644" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="644" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="376" y="661" font-size="13" fill="#0F172A">odcs-references v1</text>
+<text x="584" y="661" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="364" y="674" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="674" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="376" y="691" font-size="13" fill="#0F172A">org-naming v3</text>
+<text x="584" y="691" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="364" y="704" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="704" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="376" y="721" font-size="13" fill="#0F172A">pii-policy v1</text>
+<text x="584" y="721" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="364" y="734" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="734" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="376" y="751" font-size="13" fill="#0F172A">pii-policy v2</text>
+<text x="584" y="751" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="364" y="764" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="364" y="764" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="376" y="781" font-size="13" fill="#0F172A">team-extra v1</text>
+<text x="584" y="781" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ATTACHED</text>
+<rect x="770" y="552" width="260" height="172" rx="12" fill="#7C3AED" fill-opacity="0.08" stroke="#7C3AED" stroke-width="2"/>
+<text x="784" y="576" font-size="15" font-weight="700" fill="#0F172A">Team B1</text>
+<text x="1016" y="576" font-size="13" text-anchor="end" fill="#475569">effective rules</text>
+<rect x="784" y="584" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="784" y="584" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="796" y="601" font-size="13" fill="#0F172A">odcs-structural v1</text>
+<text x="1004" y="601" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<rect x="784" y="614" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="784" y="614" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="796" y="631" font-size="13" fill="#0F172A">odcs-consistency v1</text>
+<text x="1004" y="631" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="784" y="644" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="784" y="644" width="232" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="796" y="661" font-size="13" fill="#0F172A">odcs-references v1</text>
+<text x="1004" y="661" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<rect x="784" y="674" width="232" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="784" y="674" width="232" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="796" y="691" font-size="13" fill="#0F172A">org-naming v3</text>
+<text x="1004" y="691" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<circle cx="610" cy="552" r="13" fill="#0F172A"/><text x="610" y="557" font-size="14" font-weight="700" text-anchor="middle" fill="#FFFFFF">4</text>
+<text x="60" y="842" font-size="13" fill="#475569">Team A2 attaches team-extra to one contract: an attachment adds rules, it never removes a mandatory one.</text>
+<text x="800" y="176" font-size="14" font-weight="700" fill="#0F172A">Legend</text>
+<rect x="800" y="184" width="170" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="800" y="184" width="170" height="24" rx="12" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-width="1.5"/>
+<text x="812" y="201" font-size="13" fill="#0F172A">enforced</text>
+<text x="958" y="201" font-size="13" font-weight="700" text-anchor="end" fill="#059669">ENFORCE</text>
+<text x="984" y="201" font-size="13" fill="#475569">error findings block</text>
+<rect x="800" y="216" width="170" height="24" rx="12" fill="#FFFFFF"/>
+<rect x="800" y="216" width="170" height="24" rx="12" fill="#D97706" fill-opacity="0.12" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="812" y="233" font-size="13" fill="#0F172A">in grace</text>
+<text x="958" y="233" font-size="13" font-weight="700" text-anchor="end" fill="#D97706">WARN</text>
+<text x="984" y="233" font-size="13" fill="#475569">reported, never blocks</text>
+<circle r="5" fill="#059669" opacity="0"><animateMotion dur="6s" begin="0s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2;1" calcMode="linear" path="M600,236 L600,276"/><animate attributeName="opacity" dur="6s" begin="0s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.18;0.22;1"/></circle>
+<circle r="5" fill="#059669" opacity="0"><animateMotion dur="6s" begin="1.2s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2;1" calcMode="linear" path="M520,356 C520,380 330,372 330,404"/><animate attributeName="opacity" dur="6s" begin="1.2s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.18;0.22;1"/></circle>
+<circle r="5" fill="#059669" opacity="0"><animateMotion dur="6s" begin="1.2s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2;1" calcMode="linear" path="M680,356 C680,380 890,372 890,404"/><animate attributeName="opacity" dur="6s" begin="1.2s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.18;0.22;1"/></circle>
+<circle r="5" fill="#059669" opacity="0"><animateMotion dur="6s" begin="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2;1" calcMode="linear" path="M260,506 C260,530 190,524 190,552"/><animate attributeName="opacity" dur="6s" begin="2.4s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.18;0.22;1"/></circle>
+<circle r="5" fill="#059669" opacity="0"><animateMotion dur="6s" begin="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2;1" calcMode="linear" path="M400,506 C400,530 480,524 480,552"/><animate attributeName="opacity" dur="6s" begin="2.4s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.18;0.22;1"/></circle>
+<circle r="5" fill="#059669" opacity="0"><animateMotion dur="6s" begin="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2;1" calcMode="linear" path="M890,476 L890,552"/><animate attributeName="opacity" dur="6s" begin="2.4s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.18;0.22;1"/></circle>
+</svg>

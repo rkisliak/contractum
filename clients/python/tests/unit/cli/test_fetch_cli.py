@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import rich.console
 from support.auth import Outcome, run_main
 from support.fake_server import FakeContractum, FakeVersion
 
@@ -163,16 +164,27 @@ def test_list_in_an_unknown_folder_exits_2(
     assert "acme/none" in outcome.stderr
 
 
+@pytest.mark.parametrize(
+    ("legacy_console", "corner"),
+    [(False, "┏"), (True, "┌")],
+    ids=["modern-console", "legacy-windows-console"],
+)
 def test_list_on_a_terminal_renders_a_rich_table(
-    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    legacy_console: bool,
+    corner: str,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Rich swaps the heavy header box for a light one on a legacy Windows console, whose fonts
+    # lack the heavy glyphs. Pin the detection so both renderings are checked on every OS.
+    monkeypatch.setattr(rich.console, "detect_legacy_windows", lambda: legacy_console)
     monkeypatch.setattr(fetch, "_is_tty", lambda: True)
     with _orders():
         outcome = _run(["--no-color", "list"], capsys, monkeypatch)
     assert outcome.code == 0
     assert "Contracts" in outcome.stdout
     assert "payments" in outcome.stdout
-    assert "┏" in outcome.stdout
+    assert corner in outcome.stdout
 
 
 # --- versions -------------------------------------------------------------------------------

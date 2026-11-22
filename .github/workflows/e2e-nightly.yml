@@ -2,7 +2,7 @@
 # Nothing is pushed or published. It never prints `.dev` secrets: no step reads `.dev`, and the
 # failure artifact leaves it out. Runner differences are handled here, so scripts/ci.sh stays
 # unchanged.
-name: e2e-nightly
+name: E2E Nightly
 
 on:
   schedule:

@@ -8,13 +8,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/security.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/security.yml/badge.svg?branch=main" alt="security"></a>
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/sdk.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/sdk.yml/badge.svg?branch=main" alt="sdk"></a>
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/docs.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/docs.yml/badge.svg?branch=main" alt="docs"></a>
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml/badge.svg?branch=main" alt="e2e nightly"></a>
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml/badge.svg?branch=main" alt="DAST nightly"></a>
-  <a href="https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml/badge.svg?branch=main" alt="docs links weekly"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/ci.yml/badge.svg?branch=main" alt="Continuous Integration"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/security.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/security.yml/badge.svg?branch=main" alt="Security"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/sdk.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/sdk.yml/badge.svg?branch=main" alt="SDK"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/docs.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/docs.yml/badge.svg?branch=main" alt="Documentation"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml/badge.svg?branch=main" alt="E2E Nightly"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml/badge.svg?branch=main" alt="DAST Nightly"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml/badge.svg?branch=main" alt="Docs Links Weekly"></a>
 </p>
 
 Contractum is one central place where data-engineering teams write, version and publish

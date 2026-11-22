@@ -1,7 +1,7 @@
 # CI only: the job-level mirror of scripts/ci.sh steps 1-8 (lint, unit, integration, ui) plus an
 # image build check. Images are built but never pushed, and no registry login happens here.
 # The cold-start e2e (scripts/ci.sh step 9) lives in e2e-nightly.yml, scanning in security.yml.
-name: ci
+name: Continuous Integration
 
 on:
   pull_request:

@@ -8,7 +8,7 @@
 # This workflow publishes nothing unless the repository variable DOCS_PAGES_ENABLED is 'true':
 # only then does a push to main deploy the site to GitHub Pages, from the pages-deploy job, which
 # is the only job that holds `pages: write` and `id-token: write`.
-name: docs
+name: Documentation
 
 on:
   pull_request:
@@ -87,10 +87,11 @@ jobs:
         run: uv run --frozen --only-group docs zensical build --strict
 
   # Deploys the site to GitHub Pages. Inactive until the repository variable DOCS_PAGES_ENABLED
-  # is 'true' (Pages must be enabled for the repository first), and only ever on a push to main.
+  # is 'true' (Pages must be enabled for the repository first), and only ever from main: on a push,
+  # or when the workflow is started by hand on main (a docs-only commit can skip the other workflows).
   pages-deploy:
     name: pages-deploy
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOCS_PAGES_ENABLED == 'true'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.DOCS_PAGES_ENABLED == 'true'
     needs: [docs-lint, docs-build]
     runs-on: ubuntu-latest
     timeout-minutes: 15

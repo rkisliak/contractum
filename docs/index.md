@@ -32,4 +32,4 @@ How Contractum is protected and how every change is checked: [Security](security
 Every request goes through one gateway. It serves the web UI to browsers and sends API calls to
 the module that owns them.
 
-![Diagram: How you reach Contractum](images/diagrams/index-1.png)
+![Component integration map: clients reach the Traefik gateway, which serves the web UI and routes API calls to the identity, contracts, validation, audit and mail services, each with its own PostgreSQL database, with NATS carrying the audit events](dev/architecture/images/01-component-map.svg)

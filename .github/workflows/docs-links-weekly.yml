@@ -2,7 +2,7 @@
 # SHA-256 verified). It never runs on pull requests, so a remote site that is down never blocks a
 # merge. A failure here is a to-do list: fix or remove the dead links in a normal pull request.
 # Local links, images and heading anchors are checked offline on every pull request in docs.yml.
-name: docs-links-weekly
+name: Docs Links Weekly
 
 on:
   schedule:

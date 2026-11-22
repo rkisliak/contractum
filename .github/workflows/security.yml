@@ -6,7 +6,7 @@
 # vulnerable dependencies. The sonarqube job is prepared but inactive until the repository
 # variable SONAR_ENABLED is 'true'. The nightly DAST (Schemathesis and OWASP ZAP) lives in
 # dast-nightly.yml. Ignore lists and how to run each tool locally: docs/dev/ci-and-github.md.
-name: security
+name: Security
 
 on:
   pull_request:

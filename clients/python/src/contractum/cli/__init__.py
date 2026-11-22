@@ -90,12 +90,12 @@ def _server_version(ctx: click.Context) -> str | None:
         settings = settings_from_ctx(ctx)
     except ContractumError:
         return None  # no URL configured (or an unusable profile): nothing to ask
+    import httpx
+
+    from contractum import __version__
+    from contractum._transport import _verify, validate_base_url
+
     try:
-        import httpx
-
-        from contractum import __version__
-        from contractum._transport import _verify, validate_base_url
-
         base_url = validate_base_url(settings.url, settings.allow_insecure_http)
         with httpx.Client(
             base_url=base_url,
@@ -107,7 +107,9 @@ def _server_version(ctx: click.Context) -> str | None:
             response = http.get(SERVER_VERSION_PATH)
             response.raise_for_status()
             version = response.json()["version"]
-    except Exception:  # noqa: BLE001 - any failure is "unavailable", never an error exit
+    except (ContractumError, httpx.HTTPError, httpx.InvalidURL, ValueError, LookupError, TypeError):
+        # An unusable URL or CA bundle, no answer, an error status, a body that is not JSON (or not
+        # an object with "version"): "unavailable", never an error exit.
         return "unavailable"
     if not isinstance(version, str) or not version.isprintable() or not version:
         return "unavailable"

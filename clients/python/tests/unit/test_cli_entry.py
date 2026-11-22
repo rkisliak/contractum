@@ -226,8 +226,20 @@ def test_version_also_names_the_configured_server_version(
         Response(200, text="not json"),
         Response(200, json={"version": 7}),
         Response(200, json={"version": "1.4.0\x1b[31m"}),
+        Response(200, json={"service": "identity"}),
+        Response(200, json=["1.4.0"]),
+        Response(200, content=b"\xff\xfe"),
     ],
-    ids=["unreachable", "server-error", "not-json", "not-a-string", "control-characters"],
+    ids=[
+        "unreachable",
+        "server-error",
+        "not-json",
+        "not-a-string",
+        "control-characters",
+        "no-version",
+        "not-an-object",
+        "not-utf8",
+    ],
 )
 def test_a_server_version_failure_reads_unavailable_and_still_exits_0(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, answer: object
@@ -240,6 +252,32 @@ def test_a_server_version_failure_reads_unavailable_and_still_exits_0(
         else:
             route.mock(return_value=answer)
         assert _exit_code(["--version"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        f"contractum {CLIENT_VERSION}",
+        "server: unavailable",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ("CONTRACTUM_URL", "http://contractum.example"),
+        ("CONTRACTUM_CA_BUNDLE", "/nonexistent/ca.pem"),
+    ],
+    ids=["insecure-url", "unreadable-ca-bundle"],
+)
+def test_an_unusable_server_setting_reads_unavailable_without_a_request(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    variable: str,
+    value: str,
+) -> None:
+    monkeypatch.setenv("CONTRACTUM_URL", SERVER)
+    monkeypatch.setenv(variable, value)
+    with respx.mock(assert_all_called=False) as mock:
+        route = mock.get(f"{SERVER}/api/v1/identity/version")
+        assert _exit_code(["--version"]) == 0
+        assert not route.called
     assert capsys.readouterr().out.splitlines() == [
         f"contractum {CLIENT_VERSION}",
         "server: unavailable",

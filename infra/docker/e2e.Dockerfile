@@ -18,4 +18,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-workspace --only-group e2e
 COPY tests/e2e tests/e2e
 ENV PATH=/app/.venv/bin:$PATH
+# The runner is healthy while it can reach the gateway it tests (DC_E2E_GATEWAY_URL).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["python", "-c", "import os, socket, urllib.parse; u = urllib.parse.urlsplit(os.environ.get('DC_E2E_GATEWAY_URL', 'https://traefik')); socket.create_connection((u.hostname, u.port or 443), timeout=4).close()"]
 CMD ["pytest", "-m", "e2e", "-q", "-o", "asyncio_default_test_loop_scope=session", "tests/e2e"]

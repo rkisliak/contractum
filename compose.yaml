@@ -36,6 +36,9 @@ services:
     user: "0:0"
     command: ["python", "/opt/infra/dev-init/generate.py"]
     restart: "no"
+    # One-shot: the image's HTTP health check does not apply to a job that runs and exits.
+    healthcheck:
+      disable: true
     volumes:
       - type: volume
         source: dev-secrets
@@ -232,6 +235,9 @@ services:
     pull_policy: never
     command: ["python", "-m", "dc_identity.migrate", "upgrade", "head"]
     restart: "no"
+    # One-shot: the image's HTTP health check does not apply to a job that runs and exits.
+    healthcheck:
+      disable: true
     environment:
       DC_SERVICE: identity
       DC_DB_HOST: postgres
@@ -325,6 +331,9 @@ services:
     pull_policy: never
     command: ["python", "-m", "dc_contracts.migrate", "upgrade", "head"]
     restart: "no"
+    # One-shot: the image's HTTP health check does not apply to a job that runs and exits.
+    healthcheck:
+      disable: true
     environment:
       DC_SERVICE: contracts
       DC_DB_HOST: postgres
@@ -416,6 +425,9 @@ services:
     pull_policy: never
     command: ["python", "-m", "dc_validation.migrate", "upgrade", "head"]
     restart: "no"
+    # One-shot: the image's HTTP health check does not apply to a job that runs and exits.
+    healthcheck:
+      disable: true
     environment:
       DC_SERVICE: validation
       DC_DB_HOST: postgres
@@ -496,6 +508,9 @@ services:
     pull_policy: never
     command: ["python", "-m", "dc_audit.migrate", "upgrade", "head"]
     restart: "no"
+    # One-shot: the image's HTTP health check does not apply to a job that runs and exits.
+    healthcheck:
+      disable: true
     environment:
       DC_SERVICE: audit
       DC_DB_HOST: postgres

@@ -152,7 +152,7 @@ def test_an_unterminated_json_string_is_left_to_the_parser() -> None:
     "body",
     [
         "\\n" * (ONE_MIB // 4),  # many escapes before the closing quote
-        "\\\"" * (ONE_MIB // 4),  # many escaped quotes
+        '\\"' * (ONE_MIB // 4),  # many escaped quotes
         "!" * (ONE_MIB // 2),  # a long plain run
         "\\\\" * (ONE_MIB // 4),  # escaped backslashes only
     ],

@@ -1,6 +1,8 @@
-# Code owners for the documentation (GitHub requests a review from them on every pull request
-# that touches these paths). Later lines win over earlier ones.
+# Code owners. The maintainer owns the whole repository: GitHub requests their review on every
+# pull request. Later lines win over earlier ones, so the catch-all comes first and the docs lines
+# below are kept explicit.
 
+*                             @rkisliak
 *.md                          @rkisliak
 /docs/                        @rkisliak
 /mkdocs.yml                   @rkisliak

@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in Contractum does not work as documented.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. Do not report security vulnerabilities here: use a private
+        security advisory instead (see the links on the previous page). Never paste secrets,
+        tokens, passwords or personal data into this form.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where did the problem happen?
+      options:
+        - Web UI
+        - HTTP API
+        - Python SDK or CLI
+        - Rules and validation
+        - Sign-in and access (local or Entra ID)
+        - Audit
+        - Subscriptions, notices, webhooks or email
+        - Kubernetes deployment (Helm chart)
+        - Local stack (Docker Compose, run.sh)
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the problem. Include the full error message or problem slug if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as a user with the Team editor role
+        2. Open ...
+        3. Select ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The service versions from **Versions** in the account menu, the SDK or CLI version (`contractum --version`), or the commit you run.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: How you run Contractum (Helm on Kubernetes or the local Compose stack), the browser for UI problems, and the Python version and operating system for SDK or CLI problems.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log lines or the request id. Remove secrets and personal data first.
+      render: text

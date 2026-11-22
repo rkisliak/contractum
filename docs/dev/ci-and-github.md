@@ -117,8 +117,9 @@ Settings, Rules, Rulesets (or classic branch protection):
 ### Code owners and the pull request template
 
 - `.github/CODEOWNERS` makes the repository owner (see `.github/CODEOWNERS`) the owner of every
-  Markdown file, `docs/`, `mkdocs.yml`, the three docs lint configs and the docs workflows. With
-  "Require review from Code Owners" on, those changes need that review.
+  file, with explicit lines kept for every Markdown file, `docs/`, `mkdocs.yml`, the three docs
+  lint configs and the docs workflows. With "Require review from Code Owners" on, every change
+  needs that review.
 - `.github/pull_request_template.md` asks for a summary, whether the docs were updated (or why they
   are not needed), and which checks were run.
 

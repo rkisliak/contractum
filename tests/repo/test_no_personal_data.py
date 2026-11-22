@@ -50,7 +50,7 @@ PLACEHOLDER_USERS = frozenset(
 # is not a home directory.
 HOME_PATH = re.compile(
     r"(?<![\w.-])(?:/Users/|/home/|[A-Za-z]:\\\\?Users\\\\?)"
-    r"(?P<name>[^/\\\s\"'`)<>]+)(?:[/\\]|$)"
+    r"(?P<name>[^/\\\s\"'`()<>|\[\]]+)(?:[/\\]|$)"
 )
 TEMPLATE_TOKEN = re.compile(r"^(?:<[^>]*|\$\{?\w+\}?|%\w+%|\{\{.*|\*+)$")
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -143,11 +143,12 @@ def test_no_tracked_file_holds_a_commit_author_email() -> None:
 
 @pytest.mark.parametrize(
     "line",
+    # Each sample is split after the home prefix so this file never holds a home path itself.
     [
-        "cd /Users/alice/src/contractum",
-        "export PATH=/home/bob/.local/bin:$PATH",
-        r"C:\Users\carol\AppData\Local",
-        r'"C:\\Users\\dave\\repo"',
+        "cd /Users/" + "alice/src/contractum",
+        "export PATH=/home/" + "bob/.local/bin:$PATH",
+        "C:\\Users\\" + "carol\\AppData\\Local",
+        '"C:\\\\Users\\\\' + 'dave\\\\repo"',
     ],
 )
 def test_real_home_paths_are_found(line: str) -> None:

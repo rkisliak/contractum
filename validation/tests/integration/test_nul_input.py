@@ -78,6 +78,9 @@ async def test_nul_in_rule_set_input_is_a_422_and_nothing_is_stored(make_stack: 
 
 
 SURROGATE_DETAIL = "Lone UTF-16 surrogate characters (U+D800 to U+DFFF) are not allowed"
+# Submitted around the surrogate and searched for in the whole answer. x, q, h, o, p and r are not
+# hex digits, so the marker never turns up by chance in the random request id or a UUID.
+ECHO_MARKER = "xq-echo-probe"
 
 
 def _assert_surrogate_422(response: Any, slug: str, pointer: str) -> None:
@@ -86,7 +89,7 @@ def _assert_surrogate_422(response: Any, slug: str, pointer: str) -> None:
     body = response.json()
     assert body["type"] == f"urn:dc:problem:{slug}"
     assert body["errors"] == [{"pointer": pointer, "detail": SURROGATE_DETAIL}]
-    assert "bad" not in response.text  # the submitted value is never echoed
+    assert ECHO_MARKER not in response.text  # the submitted value is never echoed
 
 
 async def test_lone_surrogate_in_rule_set_input_is_a_422_and_nothing_is_stored(
@@ -100,11 +103,15 @@ async def test_lone_surrogate_in_rule_set_input_is_a_422_and_nothing_is_stored(
 
         # httpx cannot encode a lone surrogate itself, so the JSON escapes are sent as bytes.
         created = await stack.client.post(
-            url, content=b'{"name": "bad\\ud800name", "description": null}', headers=headers
+            url,
+            content=b'{"name": "xq-echo-probe\\ud800name", "description": null}',
+            headers=headers,
         )
         _assert_surrogate_422(created, "validation-error", "/body/name")
         described = await stack.client.post(
-            url, content=b'{"name": "Naming", "description": "bad\\uDFFF"}', headers=headers
+            url,
+            content=b'{"name": "Naming", "description": "xq-echo-probe\\uDFFF"}',
+            headers=headers,
         )
         _assert_surrogate_422(described, "validation-error", "/body/description")
         assert stack.validation_sql("SELECT count(*) AS n FROM rule_set")[0]["n"] == 0
@@ -115,7 +122,7 @@ async def test_lone_surrogate_in_rule_set_input_is_a_422_and_nothing_is_stored(
         as_json = await stack.put_draft(
             rule_set_id,
             b'{"rules": [{"key": "has-schema", "condition": "has(this.schema)",'
-            b' "severity": "error", "message": "bad\\ud800name"}]}',
+            b' "severity": "error", "message": "xq-echo-probe\\ud800name"}]}',
             '"r0"',
             content_type="application/json",
         )
@@ -123,13 +130,13 @@ async def test_lone_surrogate_in_rule_set_input_is_a_422_and_nothing_is_stored(
         as_yaml = await stack.put_draft(
             rule_set_id,
             'rules:\n  - key: has-schema\n    condition: "has(this.schema)"\n'
-            '    severity: error\n    message: "bad\\ud800name"\n',
+            '    severity: error\n    message: "xq-echo-probe\\ud800name"\n',
             '"r0"',
         )
         # libyaml (CSafeLoader) refuses the escape itself while scanning: still a 422.
         assert as_yaml.status_code == 422, as_yaml.text
         assert as_yaml.json()["type"] == "urn:dc:problem:malformed-document"
-        assert "bad" not in as_yaml.text
+        assert ECHO_MARKER not in as_yaml.text
         assert stack.validation_sql(
             "SELECT draft_revision AS r FROM rule_set WHERE id = %s", rule_set_id
         ) == [{"r": 0}]

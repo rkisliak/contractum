@@ -8,7 +8,6 @@ before and after; the current name again is a 200 no-op without an event; the ne
 
 from __future__ import annotations
 
-import json
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -184,7 +183,7 @@ async def test_an_entra_user_gets_409_and_nothing_is_written(
 @pytest.mark.parametrize(
     "payload",
     [
-        {"display_name": "bad\u202ename"},
+        {"display_name": "xq-echo-probe\u202ename"},
         {"display_name": "line\nbreak"},
         {"display_name": "   "},
         {"display_name": "x" * 201},
@@ -213,9 +212,10 @@ async def test_invalid_names_are_422_and_never_echoed(
     if "display_name" in payload:
         pointers = {error["pointer"] for error in resp.json()["errors"]}
         assert pointers & {"/body/display_name", "/body/username"}
-        # The random request id is hex and can contain "bad"; judge the problem without it.
-        echoed = json.dumps({k: v for k, v in resp.json().items() if k != "request_id"})
-        assert "bad" not in echoed and "line" not in echoed
+        # The whole answer is searched. x, q, h, o, p, r, l, i and n are not hex digits, so neither
+        # marker turns up by chance in the random request id.
+        echoed = resp.text
+        assert "xq-echo-probe" not in echoed and "line" not in echoed
         assert payload["display_name"].strip() == "" or payload["display_name"] not in echoed
     assert _events(sql, env) == []
 

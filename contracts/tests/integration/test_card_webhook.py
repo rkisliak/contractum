@@ -366,7 +366,8 @@ async def test_only_managers_see_the_full_url_everyone_else_sees_scheme_and_host
 ) -> None:
     async with make_stack(webhook_secret_key=KEY) as stack:
         chain, card, manager = await _manager_card(stack)
-        secret_url = "https://hooks.example.test/services/T000/B000/abc123?token=s3cret"
+        # x, q, h, o, p and r are not hex digits: the path marker never turns up by chance in an id.
+        secret_url = "https://hooks.example.test/services/T000/B000/xq-path-probe?token=s3cret"
         stored = await _patch(
             stack, card["id"], manager, webhook_url=secret_url, webhook_enabled=True
         )
@@ -381,7 +382,7 @@ async def test_only_managers_see_the_full_url_everyone_else_sees_scheme_and_host
         as_reader = await _get(stack, card["id"], reader)
         assert as_reader.status_code == 200, as_reader.text
         assert as_reader.json()["webhook_url"] == "https://hooks.example.test"
-        assert "abc123" not in as_reader.text
+        assert "xq-path-probe" not in as_reader.text
         assert "s3cret" not in as_reader.text
 
         group = await stack.local_group(stack.root_id, f"g-{uuid.uuid4().hex[:6]}")
@@ -391,7 +392,7 @@ async def test_only_managers_see_the_full_url_everyone_else_sees_scheme_and_host
         as_member = await _get(stack, card["id"], member)
         assert as_member.status_code == 200, as_member.text
         assert as_member.json()["webhook_url"] == "https://hooks.example.test"
-        assert "abc123" not in as_member.text
+        assert "xq-path-probe" not in as_member.text
 
 
 # --- rotation: an overlap window, managers signed in interactively only (D-98, D-79, D-85) -------

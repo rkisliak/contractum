@@ -229,14 +229,14 @@ def test_a_memory_error_becomes_memory_exceeded_and_the_next_unit_still_runs() -
 
 
 def test_any_other_exception_becomes_engine_error_without_its_text() -> None:
-    engine = CountingEngine(CelEngine(), boom=RuntimeError("leaks 4242 from the document"))
+    engine = CountingEngine(CelEngine(), boom=RuntimeError("leaks xq-leak-probe from the document"))
     messages = run_serve(
         [evaluate_line([EvalUnit(id=0, rule=make_rule("true"))], {})], engine, JsonPathTargeter()
     )
     result = messages[1]["result"]
     assert result["outcome"] == "error"
     assert result["error_code"] == "engine_error"
-    assert "4242" not in json.dumps(messages)
+    assert "xq-leak-probe" not in json.dumps(messages)
 
 
 def test_a_published_rule_that_no_longer_compiles_is_an_engine_error_not_an_author_error() -> None:
@@ -406,7 +406,7 @@ def test_a_job_whose_bindings_cannot_be_normalised_errors_every_unit_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def refuse(document: Any) -> Any:
-        raise TypeError("unexpected 4242 in the document")
+        raise TypeError("unexpected xq-leak-probe in the document")
 
     monkeypatch.setattr(worker_module, "normalize_document", refuse)
     engine = CountingEngine(CelEngine())
@@ -426,4 +426,4 @@ def test_a_job_whose_bindings_cannot_be_normalised_errors_every_unit_closed(
         (6, "error", "engine_error"),
     ]
     assert engine.compiles == 0  # no unit ran against an unnormalised document
-    assert "4242" not in json.dumps(messages)
+    assert "xq-leak-probe" not in json.dumps(messages)

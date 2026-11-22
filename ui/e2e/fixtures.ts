@@ -86,7 +86,9 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
     Promise.all(
       document
         .getAnimations()
-        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .filter(
+          (animation) => animation.effect?.getTiming().iterations !== Infinity,
+        )
         .map((animation) => animation.finished.catch(() => undefined)),
     ),
   );

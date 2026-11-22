@@ -14,7 +14,7 @@
 # provenance, actions/attest) pushed next to it. Verify one with
 #   gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum
 # The only token is the workflow's GITHUB_TOKEN; packages: write is granted to the image job only.
-name: release
+name: Release
 
 on:
   push:

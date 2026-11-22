@@ -18,7 +18,7 @@
 # The tag must equal the project version (`contractum-v0.1.0` for version 0.1.0): the run fails on a
 # mismatch, so a released artefact always carries the version that was tested (D-06). Only official
 # GitHub CLI calls (`gh release create`) create the release; no third-party release action is used.
-name: sdk-release
+name: SDK Release
 
 on:
   pull_request:

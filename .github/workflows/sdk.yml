@@ -3,7 +3,7 @@
 # the server workflow (ci.yml) never sees these files. One aggregate check, `sdk-ok`, is the thing
 # branch protection should require. `sdk-integration` runs the real-stack suite against the compose
 # test profile and holds the binding D-48 coverage floor (unit plus integration, combined).
-name: sdk
+name: SDK
 
 on:
   schedule:

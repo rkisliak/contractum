@@ -13,7 +13,7 @@
 # Ignore list for ZAP: .zap/rules.tsv, with a reason for every IGNORE. The job fails on any High
 # alert that is not ignored, and on a Schemathesis failure (ZAP still runs after one). To run it by
 # hand: docs/dev/ci-and-github.md.
-name: dast-nightly
+name: DAST Nightly
 
 on:
   schedule:

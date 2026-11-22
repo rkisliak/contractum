@@ -171,7 +171,9 @@ Use whenever you need the running platform (manual checks, e2e tests, demos).
    `bash scripts/e2e-ui.sh e2e/smoke.spec.ts` brings the stack up
    incrementally and runs Playwright in the pinned `ui-e2e` runner (image
    `mcr.microsoft.com/playwright:v<@playwright/test version>-noble`, edge network only) against
-   `https://localhost:8443`. Chromium maps that origin to `traefik:443`
+   `https://localhost:8443`. Both runners are non-root: always start them through
+   `scripts/e2e.sh`, `scripts/e2e-ui.sh` or `run.sh`, which source `scripts/e2e-runner-env.sh`
+   (your uid and gid, the e2e-secrets group 10001 and, for `e2e` only, the Docker socket's group). Chromium maps that origin to `traefik:443`
    (`--host-resolver-rules` in `ui/playwright.config.ts`), so the page origin is the production
    one; only browser traffic is mapped, so fetch from inside the page (`page.evaluate`), not with
    the Node-side `request` fixture. Pass any Playwright args after the spec, for example `-g axe`

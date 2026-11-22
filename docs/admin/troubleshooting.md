@@ -39,9 +39,12 @@ headers.
 
 **Fix:**
 
-- The name is `[global.imageRegistry/]contractum/<component>:<global.imageTag>`. Make sure every
-  image was pushed with that tag.
+- The name is `[global.imageRegistry/]contractum/<component>:<global.imageTag>`. The defaults
+  give `ghcr.io/rkisliak/contractum/<component>:<chart appVersion>`. With your own registry or
+  tag, make sure every image was pushed with that tag.
 - A private registry needs a pull Secret listed in `global.imagePullSecrets`.
+- Images you built and imported into a local cluster need `global.imageRegistry` set to `""` and
+  `global.imageTag` to their tag (for example `dev`).
 - On a local kind cluster, images you built with Docker are not in the cluster until you import
   them into every node. See
   [Try it on a local cluster (kind)](deploy-kubernetes.md#try-it-on-a-local-cluster-kind).

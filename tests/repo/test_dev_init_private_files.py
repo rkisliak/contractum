@@ -82,3 +82,52 @@ def test_a_failed_write_leaves_no_temporary_file(
     with pytest.raises(PermissionError):
         gen._write_private(tmp_path / "nats.conf", b"x", mode=0o400, **_owner())
     assert list(tmp_path.iterdir()) == []
+
+
+# --- consumer subpaths: owner-only, except the group-readable e2e subpath ---------------------
+# The test runners of compose.test.yaml run as the invoking host user with the group 10001, so the
+# e2e subpath alone is group-readable (0550 and 0440); every other consumer stays owner-only.
+
+
+@pytest.fixture
+def out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """OUT in tmp_path, owned by the test user. dev-init runs as root, which writes into its 0500
+    and 0550 directories; a non-root test keeps them writable and checks the modes separately."""
+    me = (os.getuid(), os.getgid())
+    monkeypatch.setattr(gen, "OUT", tmp_path)
+    monkeypatch.setattr(gen, "OWNERS", {"e2e": me, "identity": me})
+
+    def ensure_dir(consumer: str) -> Path:
+        path = tmp_path / consumer
+        path.mkdir(exist_ok=True)
+        return path
+
+    monkeypatch.setattr(gen, "_ensure_dir", ensure_dir)
+    return tmp_path
+
+
+def test_the_e2e_subpath_is_owned_by_10001_and_group_readable() -> None:
+    assert gen.OWNERS["e2e"] == (10001, 10001)
+    assert gen.GROUP_READABLE == {"e2e"}
+    assert gen._modes("e2e") == (0o550, 0o440)
+    for consumer in set(gen.OWNERS) - {"e2e"}:
+        assert gen._modes(consumer) == (0o500, 0o400), consumer
+
+
+@pytest.mark.parametrize(("consumer", "file_mode"), [("e2e", 0o440), ("identity", 0o400)])
+def test_a_consumer_file_gets_its_mode(out: Path, consumer: str, file_mode: int) -> None:
+    assert gen._write(consumer, "secret", b"value") is True
+    assert stat.S_IMODE((out / consumer / "secret").stat().st_mode) == file_mode
+    # A second run with the same bytes and permissions changes nothing.
+    assert gen._write(consumer, "secret", b"value") is False
+
+
+def test_a_warm_file_with_a_stale_mode_keeps_its_bytes_and_gets_the_new_mode(out: Path) -> None:
+    directory = out / "e2e"
+    directory.mkdir()
+    gen._write_private(directory / "ca.crt", b"warm", mode=0o400, **_owner())
+
+    assert gen._write("e2e", "ca.crt", b"would-be-new") is True
+
+    assert (directory / "ca.crt").read_bytes() == b"warm"
+    assert stat.S_IMODE((directory / "ca.crt").stat().st_mode) == 0o440

@@ -21,6 +21,10 @@ done
 # recreated on every run.
 export GIT_SHA="${GIT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo dev)}"
 
+# Created by the caller, so the binds belong to the user the runner runs as (not to root).
+mkdir -p .dev ui/test-results
 docker compose up -d --build --wait --wait-timeout "${E2E_WAIT_TIMEOUT:-300}"
+# The runner's non-root user and groups (the ./.dev and ui/test-results binds, the e2e secrets).
+source scripts/e2e-runner-env.sh
 exec docker compose -f compose.yaml -f compose.test.yaml --profile test \
   run --rm --build ui-e2e pnpm exec playwright test ${args[@]+"${args[@]}"}

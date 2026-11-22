@@ -1,0 +1,12 @@
+# Data for Trivy's Rego checks, loaded with `trivy ... --config-data infra/trivy` (see
+# .github/workflows/security.yml and docs/dev/ci-and-github.md).
+#
+# KSV-0125 (images from trusted registries only). The platform images are published to
+# ghcr.io/rkisliak/contractum/<component> (.github/workflows/release.yml) and the chart's default
+# global.imageRegistry is ghcr.io/rkisliak. The check compares the image's registry host (the
+# first path segment, by suffix), so the value is the host. This list replaces Trivy's default one
+# (the Azure, ECR and GCR hosts), which the chart does not use. Images without a registry host,
+# such as postgres:18, are not judged by this check.
+ksv0125:
+  trusted_registries:
+    - ghcr.io

@@ -165,6 +165,8 @@ After a backend change that alters the API, regenerate the OpenAPI snapshot firs
 | `E2E_WAIT_TIMEOUT` | `300` | The same for `scripts/e2e.sh` and `scripts/e2e-ui.sh` |
 | `COMPOSE_PROJECT_NAME` | `contractum` (set by `name:` in `compose.yaml`, so the checkout folder name does not matter) | Running a second copy side by side (change port 8443 in `compose.yaml` too). Set it as an environment variable or with `-p`. The e2e runner follows it through `DC_E2E_COMPOSE_PROJECT` |
 | `DC_E2E_DENIALS`, `DC_E2E_DENIAL_CONCURRENCY`, `DC_E2E_LOAD_*` | see `compose.test.yaml` | Sizes for the e2e load and denial tests |
+| `DC_E2E_UID`, `DC_E2E_GID` | your user and group (`id -u`, `id -g`); 10001 when you run as root | The non-root user the `e2e` and `ui-e2e` runners run as, so they can write `.dev` and `ui/test-results` on a Linux host. Set by `scripts/e2e-runner-env.sh` |
+| `DC_DOCKER_GID` | the group that owns the Docker socket inside a container | Added to the `e2e` runner only, for the tests that stop and start containers. Set by `scripts/e2e-runner-env.sh` |
 
 A stack started before the project name was pinned runs under a project name taken from the folder.
 The first `./run.sh` then starts a fresh stack (new volumes, secrets and admin password). Remove the

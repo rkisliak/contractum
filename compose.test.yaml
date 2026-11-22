@@ -2,6 +2,9 @@
 #   docker compose -f compose.yaml -f compose.test.yaml --profile test run --rm e2e pytest -m e2e
 # The Docker socket is mounted here only (never in compose.yaml): the outage tests stop and start
 # containers through it (T-01-32, accepted).
+# Both runners run non-root: as the invoking host user (DC_E2E_UID and DC_E2E_GID, so they can write
+# the ./.dev bind on a Linux host), else as their image's own user. The group 10001 lets them read
+# the e2e secrets (infra/dev-init/generate.py). scripts/e2e-runner-env.sh sets the variables.
 services:
   e2e:
     profiles: ["test"]
@@ -9,6 +12,9 @@ services:
       context: .
       dockerfile: infra/docker/e2e.Dockerfile
     image: contractum/e2e:dev
+    user: "${DC_E2E_UID:-10001}:${DC_E2E_GID:-10001}"
+    # 10001 reads the e2e secrets; DC_DOCKER_GID owns the Docker socket (unset: nogroup, 65534).
+    group_add: ["10001", "${DC_DOCKER_GID:-65534}"]
     environment:
       DC_E2E_GATEWAY_URL: https://traefik
       DC_E2E_CA_FILE: /run/secrets/ca.crt
@@ -68,8 +74,12 @@ services:
       context: ./ui
       dockerfile: ../infra/docker/playwright.Dockerfile
     image: contractum/ui-e2e:dev
+    # pwuser is the Playwright image's own user. HOME is writable for any user.
+    user: "${DC_E2E_UID:-pwuser}:${DC_E2E_GID:-pwuser}"
+    group_add: ["10001"]
     environment:
       DC_UI_E2E_BASE_URL: https://localhost:8443
+      HOME: /tmp
     volumes:
       - type: volume
         source: dev-secrets

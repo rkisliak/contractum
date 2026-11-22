@@ -6,9 +6,12 @@
 # secret manager); docs/admin/deploy-kubernetes.md lists every Secret and key.
 
 global:
-  # Registry and tag for the platform images (contractum/<component>:<tag>).
-  imageRegistry: ""            # e.g. myregistry.azurecr.io (empty: use the repository as is)
-  imageTag: "dev"              # set to your release tag, e.g. 1.0.0
+  # Registry and tag for the platform images (<imageRegistry>/contractum/<component>:<imageTag>).
+  # The release workflow publishes them to ghcr.io/rkisliak/contractum/<component>:<version>.
+  # Mirror them to your own registry (e.g. myregistry.azurecr.io) and set it here, or set "" to use
+  # local images named contractum/<component>:<tag> (a local cluster with imported images).
+  imageRegistry: "ghcr.io/rkisliak"
+  imageTag: ""                 # empty: the chart's appVersion (the matching release)
   imagePullPolicy: IfNotPresent
   imagePullSecrets: []         # e.g. [{name: regcred}]
   # The public URL users open (scheme://host[:port]). Used for the browser-visible Entra

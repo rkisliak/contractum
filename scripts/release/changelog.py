@@ -21,9 +21,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # next_version.py sits next to this file
-
-from next_version import Commit, git, is_dependency_update, read_commits  # noqa: E402
+# next_version.py sits next to this file: Python puts the script's directory first on sys.path.
+from next_version import Commit, git, is_dependency_update, read_commits
 
 GROUPS = ("Breaking changes", "Features", "Fixes", "Security", "Performance", "Other changes")
 OTHER_TYPES = frozenset({"refactor", "revert"})

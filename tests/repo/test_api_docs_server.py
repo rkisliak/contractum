@@ -6,10 +6,10 @@ loading it starts nothing (the server and the merge thread start only in ``main(
 
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import json
 import threading
-import urllib.request
 from pathlib import Path
 from types import ModuleType
 
@@ -68,10 +68,14 @@ def test_the_version_route_answers_the_build_like_the_services(
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     try:
-        url = f"http://127.0.0.1:{httpd.server_address[1]}/api/v1/docs/version"
-        with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310 - local test server
+        connection = http.client.HTTPConnection("127.0.0.1", httpd.server_address[1], timeout=5)
+        try:
+            connection.request("GET", "/api/v1/docs/version")
+            response = connection.getresponse()
             body = json.loads(response.read())
             headers = response.headers
+        finally:
+            connection.close()
     finally:
         httpd.shutdown()
         httpd.server_close()

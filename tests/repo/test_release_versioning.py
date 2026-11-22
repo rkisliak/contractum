@@ -21,8 +21,8 @@ SCRIPTS = Path(__file__).resolve().parents[2] / "scripts" / "release"
 REPO_URL = "https://github.com/acme/contractum"
 
 
-def _load(name: str) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(f"release_{name}", SCRIPTS / f"{name}.py")
+def _load(name: str, module_name: str) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(module_name, SCRIPTS / f"{name}.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module  # dataclasses resolve their module while the file runs
@@ -30,15 +30,16 @@ def _load(name: str) -> ModuleType:
     return module
 
 
-nv = _load("next_version")
-cl = _load("changelog")
+# Loaded under its own name first, so changelog.py's `from next_version import ...` reuses it.
+nv = _load("next_version", "next_version")
+cl = _load("changelog", "release_changelog")
 
 
 def commit(subject: str, body: str = "", sha: str = "a" * 40) -> object:
     return nv.parse_commit(sha, subject, body)
 
 
-def V(text: str) -> object:  # noqa: N802 - reads like a literal
+def ver(text: str) -> object:
     version = nv.parse_tag(f"v{text}")
     assert version is not None, text
     return version
@@ -129,7 +130,7 @@ def test_bump_rules(subject: str, bump: str) -> None:
 def test_next_release_takes_the_largest_bump(
     previous: str, subjects: list[str], expected: str | None
 ) -> None:
-    result = nv.next_release(V(previous), [commit(s) for s in subjects])
+    result = nv.next_release(ver(previous), [commit(s) for s in subjects])
     assert (result.text if result else None) == expected
 
 
@@ -149,21 +150,21 @@ def test_only_vX_Y_Z_and_its_release_candidates_are_release_tags(name: str) -> N
 
 def test_a_release_candidate_sorts_below_its_stable_version() -> None:
     ordered = sorted(
-        [V("1.2.0"), V("1.2.0-rc.10"), V("1.2.0-rc.2"), V("1.1.9")], key=lambda v: v.key
+        [ver("1.2.0"), ver("1.2.0-rc.10"), ver("1.2.0-rc.2"), ver("1.1.9")], key=lambda v: v.key
     )
     assert [v.text for v in ordered] == ["1.1.9", "1.2.0-rc.2", "1.2.0-rc.10", "1.2.0"]
-    assert nv.latest_stable(ordered) == V("1.2.0")
-    assert nv.latest_stable([V("1.0.0-rc.1")]) is None
+    assert nv.latest_stable(ordered) == ver("1.2.0")
+    assert nv.latest_stable([ver("1.0.0-rc.1")]) is None
 
 
 def test_the_candidate_number_is_one_above_the_highest_of_that_version() -> None:
-    tags = [V("1.3.0-rc.1"), V("1.3.0-rc.3"), V("1.4.0-rc.7"), V("1.2.0")]
-    assert nv.next_candidate(V("1.3.0"), tags).text == "1.3.0-rc.4"
-    assert nv.next_candidate(V("2.0.0"), tags).text == "2.0.0-rc.1"
+    tags = [ver("1.3.0-rc.1"), ver("1.3.0-rc.3"), ver("1.4.0-rc.7"), ver("1.2.0")]
+    assert nv.next_candidate(ver("1.3.0"), tags).text == "1.3.0-rc.4"
+    assert nv.next_candidate(ver("2.0.0"), tags).text == "2.0.0-rc.1"
 
 
 def test_pre_release_plans_the_next_candidate_of_the_head() -> None:
-    tags = {V("1.2.0"): "s" * 40, V("1.3.0-rc.1"): "r" * 40}
+    tags = {ver("1.2.0"): "s" * 40, ver("1.3.0-rc.1"): "r" * 40}
     plan = nv.plan_pre_release(tags, "h" * 40, [commit("feat: a")])
     assert plan.outputs() == {
         "version": "1.3.0-rc.2",
@@ -181,17 +182,17 @@ def test_pre_release_without_any_tag_is_the_first_candidate_of_1_0_0() -> None:
 
 def test_pre_release_stops_when_nothing_releasable_landed() -> None:
     with pytest.raises(nv.ReleaseStopError, match=r"nothing to release.*since v1\.2\.0"):
-        nv.plan_pre_release({V("1.2.0"): "s" * 40}, "h" * 40, [commit("docs: a")])
+        nv.plan_pre_release({ver("1.2.0"): "s" * 40}, "h" * 40, [commit("docs: a")])
 
 
 def test_pre_release_stops_when_the_head_already_is_that_candidate() -> None:
-    tags = {V("1.2.0"): "s" * 40, V("1.2.1-rc.1"): "h" * 40}
+    tags = {ver("1.2.0"): "s" * 40, ver("1.2.1-rc.1"): "h" * 40}
     with pytest.raises(nv.ReleaseStopError, match=r"already the release candidate v1\.2\.1-rc\.1"):
         nv.plan_pre_release(tags, "h" * 40, [commit("fix: a")])
 
 
 def test_promote_releases_the_commit_of_the_newest_candidate() -> None:
-    tags = {V("1.2.0"): "s" * 40, V("1.3.0-rc.1"): "1" * 40, V("1.3.0-rc.2"): "2" * 40}
+    tags = {ver("1.2.0"): "s" * 40, ver("1.3.0-rc.1"): "1" * 40, ver("1.3.0-rc.2"): "2" * 40}
     plan = nv.plan_promote(tags)
     assert plan.outputs() == {
         "version": "1.3.0",
@@ -204,11 +205,11 @@ def test_promote_releases_the_commit_of_the_newest_candidate() -> None:
 
 def test_promote_stops_without_a_candidate() -> None:
     with pytest.raises(nv.ReleaseStopError, match="no release candidate"):
-        nv.plan_promote({V("1.2.0"): "s" * 40})
+        nv.plan_promote({ver("1.2.0"): "s" * 40})
 
 
 def test_promote_stops_when_the_newest_candidate_was_already_promoted() -> None:
-    tags = {V("1.3.0-rc.2"): "2" * 40, V("1.3.0"): "2" * 40}
+    tags = {ver("1.3.0-rc.2"): "2" * 40, ver("1.3.0"): "2" * 40}
     with pytest.raises(nv.ReleaseStopError, match="already promoted"):
         nv.plan_promote(tags)
 

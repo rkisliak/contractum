@@ -58,14 +58,40 @@ document.head.append(noAnimation);
 // findBy*/waitFor is shorter than a cold render. A test file may still set its own value.
 configure({ asyncUtilTimeout: 15_000 });
 
+// msw's "error" strategy (msw 3 `onUnhandledFrame`, formerly `onUnhandledRequest`) only logs the
+// unmocked call and fails the request, and the screens absorb a failed request, so the test would
+// still pass. Every unmocked call is therefore also recorded and fails the running test in
+// afterEach: a test must mock every request its screen makes.
+const unhandledFrames: string[] = [];
+
+function describeFrame(frame: { protocol: string; data: unknown }): string {
+  const data = frame.data as { request?: unknown };
+  if (data.request instanceof Request) {
+    const url = new URL(data.request.url);
+    return `${data.request.method} ${url.pathname}${url.search}`;
+  }
+  return `${frame.protocol} frame`;
+}
+
 beforeAll(() => {
-  server.listen({ onUnhandledFrame: "error" });
+  server.listen({
+    onUnhandledFrame({ frame, defaults }) {
+      unhandledFrames.push(describeFrame(frame));
+      defaults.error();
+    },
+  });
 });
 
 // Vitest runs without globals, so Testing Library cannot register its own cleanup.
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  const unhandled = unhandledFrames.splice(0);
+  if (unhandled.length > 0) {
+    throw new Error(
+      `[MSW] unmocked request(s), add a handler:\n  ${unhandled.join("\n  ")}`,
+    );
+  }
 });
 
 afterAll(() => {

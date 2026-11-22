@@ -181,6 +181,31 @@ function saveResponse(revision: number, validation: unknown) {
   };
 }
 
+// The publish dialog's bump check (`GET /diff?from=latest&to=<draft>&limit=1`): no change.
+const noBumpDiff = {
+  from: {
+    kind: "version",
+    ref: "latest",
+    version_id: "v-1",
+    semver: "1.0.0",
+    content_sha256: "a".repeat(64),
+  },
+  to: {
+    kind: "draft",
+    ref: "d-1",
+    version_id: "d-1",
+    semver: "1.1.0",
+    content_sha256: "b".repeat(64),
+  },
+  required_bump: "none",
+  counts: { breaking: 0, warning: 0, info: 0 },
+  changes: [],
+  changes_total: 0,
+  truncated: false,
+  next_cursor: null,
+  classifier_version: "1",
+};
+
 function base(
   extra: RequestHandler[] = [],
   {
@@ -206,6 +231,7 @@ function base(
     ),
     http.get(`${API}/drafts`, () => HttpResponse.json({ items: [meta] })),
     http.get(`${API}/versions`, () => HttpResponse.json({ items: [] })),
+    http.get(`${API}/diff`, () => HttpResponse.json(noBumpDiff)),
   ];
 }
 

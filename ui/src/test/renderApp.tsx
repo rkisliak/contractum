@@ -174,39 +174,6 @@ export function renderApp(
         HttpResponse.json({ items: [], next_cursor: null }),
       ),
     ),
-    // The shell's announcement banner and the Register pre-fill read the public settings: none by
-    // default (a test that exercises them overrides this).
-    http.get("*/api/v1/identity/settings/public", () =>
-      HttpResponse.json({
-        banner: null,
-        entra_default_tenant_id: null,
-        entra_default_owner_folder_id: null,
-        default_odcs_api_version: "v3.2.0",
-        require_lifecycle_reason: false,
-        credential_max_ttl_days: 365,
-        password_rules: {
-          min_length: 12,
-          require_upper: false,
-          require_lower: false,
-          require_digit: false,
-          require_symbol: false,
-        },
-      }),
-    ),
-    // The sign-in, rotate and change-password screens read the public policy: both methods on and
-    // today's password rules by default.
-    http.get("*/api/v1/identity/auth/policy", () =>
-      HttpResponse.json({
-        methods: { local: true, microsoft: true },
-        password_rules: {
-          min_length: 12,
-          require_upper: false,
-          require_lower: false,
-          require_digit: false,
-          require_symbol: false,
-        },
-      }),
-    ),
     // The Groups list counts each local group's members; none by default (a group page's own
     // handler wins when a test lists members).
     http.get("*/api/v1/identity/groups/:id/members", () =>

@@ -1,0 +1,5 @@
+# Check text files out with LF on every OS. Contract documents, fixtures and lock files are
+# hashed byte for byte, so a CRLF checkout on Windows would change their digests.
+* text=auto eol=lf
+
+*.png binary

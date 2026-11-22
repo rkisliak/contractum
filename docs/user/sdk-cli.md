@@ -190,6 +190,13 @@ contractum pull --fail-on-deprecated --sunset-within 30 payments.orders
 - A deprecated version warns. `--fail-on-deprecated` and `--sunset-within DAYS` turn that into exit code 1, after the files and the lock were written.
 - `--json` prints a JSON summary.
 
+**Line endings (Windows).** The lock hashes the exact bytes of each pulled file. If Git rewrites line endings on checkout (`core.autocrlf=true`, the Git for Windows default), the files no longer match the lock and `--frozen` or `--offline` stops with `does not match the lock`. Tell Git to keep the bytes, in a `.gitattributes` file in your repository, and commit it with the contracts:
+
+```text
+contracts/** -text
+contractum.lock -text
+```
+
 **Cache.** Every fetched document is cached, so repeated runs and `--offline` runs need no network. The cache lives in the user cache directory (`contractum`), or in `CONTRACTUM_CACHE_DIR`. It is safe to delete.
 
 ## Test data
@@ -424,7 +431,7 @@ Reproducible CI: run `contractum pull payments.orders@1.4.0` once, commit `contr
 | exit 2, the stored credential `cannot be used` | It was written by an earlier pre-release; run `contractum logout`, then `contractum login --token -` |
 | exit 2, `principal-not-registered` | The Entra user or group is not registered in Contractum; ask an administrator (see the admission section of [Entra setup](../admin/entra-setup.md)) |
 | exit 2, ambiguous reference | Several contracts share the ODCS id; add the folder path: `acme/payments:payments.orders` |
-| exit 2, `does not match the lock (content hash differs)` | A pulled file or the cache differs from the lock; run `contractum pull` again and review the diff before committing |
+| exit 2, `does not match the lock (content hash differs)` | A pulled file or the cache differs from the lock; run `contractum pull` again and review the diff before committing. On Windows, check that Git does not rewrite the line endings of the pulled files (see "Line endings" under "Pull and lock") |
 | exit 2, reference missing from the lock | The reference was never pulled; run `contractum pull REF` and commit the lock |
 | exit 2, the server certificate could not be verified | Pass `--ca-bundle`, or set `CONTRACTUM_CA_BUNDLE`, to your CA file |
 | exit 2, a stored token belongs to another server | Run `contractum login --token -` for this URL |

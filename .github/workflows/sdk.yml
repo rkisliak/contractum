@@ -270,6 +270,10 @@ jobs:
     timeout-minutes: 5
     needs: [sdk-lint, sdk-unit, sdk-os, sdk-lowest, sdk-latest, sdk-unit-coverage, sdk-integration]
     if: always()
+    # No checkout here, so clients/python (the workflow default) does not exist.
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Summarise the results
         env:

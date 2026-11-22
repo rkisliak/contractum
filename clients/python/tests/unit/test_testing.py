@@ -155,7 +155,8 @@ def test_the_contract_can_be_a_mapping() -> None:
 @pytest.mark.parametrize("source", ["text", "bytes", "path", "path_str", "pathlike_json"])
 def test_the_contract_can_be_text_bytes_or_a_file(source: str, tmp_path: Path) -> None:
     path = tmp_path / "items.yaml"
-    path.write_text(_YAML, encoding="utf-8")
+    # Bytes, not text: write_text turns "\n" into "\r\n" on Windows and changes the hash.
+    path.write_bytes(_YAML.encode("utf-8"))
     contract: Any = {
         "text": _YAML,
         "bytes": _YAML.encode("utf-8"),
@@ -174,6 +175,20 @@ def test_the_contract_can_be_text_bytes_or_a_file(source: str, tmp_path: Path) -
     assert report.contract.content_sha256 is not None
     if source != "pathlike_json":
         assert report.contract.content_sha256 == hashlib.sha256(_YAML.encode()).hexdigest()
+
+
+def test_a_contract_file_is_hashed_byte_for_byte(tmp_path: Path) -> None:
+    # A CRLF file (a Windows checkout with core.autocrlf) is other bytes than the LF original;
+    # the digest covers the bytes on disk, exactly like the server's content hash.
+    raw = _YAML.replace("\n", "\r\n").encode("utf-8")
+    path = tmp_path / "items.yaml"
+    path.write_bytes(raw)
+
+    report = run_test(path, _items())
+
+    assert report.ok
+    assert report.contract.content_sha256 == hashlib.sha256(raw).hexdigest()
+    assert report.contract.content_sha256 != hashlib.sha256(_YAML.encode()).hexdigest()
 
 
 def _json_file(tmp_path: Path) -> Path:

@@ -9,7 +9,9 @@ from pathlib import Path
 
 import pytest
 from support.fake_server import FakeContractum, FakeVersion, sha256
+from support.locks import record_guards_during_writes
 
+from contractum import cache as cache_module
 from contractum.cache import Cache, cache_root, normalise_url, server_key
 from contractum.client import Client
 from contractum.contracts import ContractVersion
@@ -128,8 +130,11 @@ def test_a_version_without_ids_is_not_stored(tmp_path: Path) -> None:
     assert not any(tmp_path.rglob("document"))
 
 
-def test_concurrent_puts_of_one_entry_leave_one_valid_entry(tmp_path: Path) -> None:
+def test_concurrent_puts_of_one_entry_leave_one_valid_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     cache = Cache(tmp_path)
+    seen = record_guards_during_writes(monkeypatch, cache_module, lambda path: path.parent)
     errors: list[BaseException] = []
     contents: list[bytes | None] = []
 
@@ -150,7 +155,11 @@ def test_concurrent_puts_of_one_entry_leave_one_valid_entry(tmp_path: Path) -> N
     assert errors == []
     assert contents == [DOC] * 60
     directory = cache.entry_dir(BASE, CID, "1.4.0")
-    assert sorted(p.name for p in directory.iterdir()) == [".lock", "document", "meta.json"]
+    # Every write ran under the entry's own guard (two writes per put).
+    assert seen == [[".lock"]] * 120
+    # filelock keeps the guard after release on POSIX and deletes it on Windows.
+    names = {p.name for p in directory.iterdir()}
+    assert names - {".lock"} == {"document", "meta.json"}
 
 
 # --- revalidation through the client ----------------------------------------------------------

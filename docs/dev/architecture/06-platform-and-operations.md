@@ -188,7 +188,7 @@ Only Traefik publishes a host port: **`8443 → 443`**.
 |---|---|---|---|---|
 | `dev-init` | One-shot: generates secrets and certificates, then exits | backend | `dev-secrets` at `/out`; `./infra` read-only; `./.dev` at `/out-host` | disabled (must exit 0) |
 | `postgres` | Postgres 18; one database and one login role per service | backend | `pgdata`; `infra/postgres/init` (creates the roles, databases and the `ltree` extension); `dev-secrets/postgres` | `pg_isready` over TCP |
-| `nats` | NATS 2.15.2 with JetStream | backend | `natsdata` at `/data`; `dev-secrets/nats` (holds `nats.conf`) | `wget http://127.0.0.1:8222/healthz` |
+| `nats` | NATS 2.15.3 with JetStream | backend | `natsdata` at `/data`; `dev-secrets/nats` (holds `nats.conf`) | `wget http://127.0.0.1:8222/healthz` |
 | `mock-oidc` | **Dev only.** Mock OIDC server; plays a generic IdP and an Entra tenant. Traefik routes `/entra/` to it, so the browser can sign in with it | backend, edge | `infra/mock-oidc` config | none |
 | `fake-graph` | **Dev only.** Microsoft Graph stand-in that identity's real Graph client calls | backend | `infra/fake-graph`; `dev-secrets/fake-graph` | `GET /healthz` |
 | `mailpit` | **Dev only.** Catches the mail the mail service sends | backend | none | `mailpit readyz` |

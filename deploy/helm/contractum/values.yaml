@@ -66,7 +66,7 @@ postgres:
 nats:
   bundled: true
   url: nats://nats:4222           # external server URL when bundled is false
-  image: nats:2.15.2-alpine
+  image: nats:2.15.3-alpine
   storage: 5Gi
   storageClass: ""
   resources:
@@ -83,7 +83,7 @@ smtp:
 
 mailpit:
   enabled: false                  # evaluation only: catches mail, never delivers it
-  image: axllent/mailpit:v1.33.1
+  image: axllent/mailpit:v1.34.0
   resources:
     requests: {cpu: 10m, memory: 32Mi}
     limits: {cpu: 200m, memory: 128Mi}
@@ -149,7 +149,7 @@ ui:
 # Disable it to use your own ingress; docs/admin/deploy-kubernetes.md lists what it must keep.
 gateway:
   enabled: true
-  image: traefik:v3.7.17
+  image: traefik:v3.7.18
   replicas: 1
   service:
     type: LoadBalancer            # ClusterIP behind your own load balancer or ingress

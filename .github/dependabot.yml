@@ -46,6 +46,11 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 3
+    # The SDK supports and tests Python 3.11 to 3.14 only, so a new Python minor in the CLI image is
+    # untested: take it by hand together with the SDK test matrix. Patch updates still come.
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor"]
     open-pull-requests-limit: 10
     commit-message:
       prefix: "chore(deps)"
@@ -82,6 +87,12 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 3
+    # The server workspace declares requires-python ">=3.13,<3.15" and its native wheels follow it, so
+    # a new Python minor in the service images is a deliberate stack upgrade, not a weekly bump.
+    # Patch updates still come.
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor"]
     open-pull-requests-limit: 10
     commit-message:
       prefix: "chore(deps)"

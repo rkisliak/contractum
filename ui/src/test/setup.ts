@@ -45,6 +45,15 @@ if (!("ResizeObserver" in globalThis)) {
   };
 }
 
+// jsdom never runs CSS animations, so it never fires animationend. Since jsdom 31 it computes
+// animation-name from the CSS modules, and Radix Presence then keeps a closing dialog mounted
+// until an animationend that cannot come. The test DOM therefore takes the app's own
+// reduced-motion path (Dialog.module.css): no animation, so Radix unmounts at once.
+const noAnimation = document.createElement("style");
+noAnimation.textContent =
+  "*, *::before, *::after { animation: none !important; transition: none !important; }";
+document.head.append(noAnimation);
+
 // Screen tests render the whole shell; under coverage on a loaded machine the default 1 s wait for
 // findBy*/waitFor is shorter than a cold render. A test file may still set its own value.
 configure({ asyncUtilTimeout: 15_000 });

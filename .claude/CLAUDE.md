@@ -138,7 +138,7 @@ A central data-contract service for a large company with many data-engineering t
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
 | Transactional outbox (hand-written, `dc-core`) | - | Atomic "write + audit event" | Insert the domain row **and** the `outbox` row in the same transaction. A relay task does `SELECT ... FOR UPDATE SKIP LOCKED`, publishes, and marks rows sent. This is the only way to guarantee "every write recorded" without distributed transactions. About 100 lines. | HIGH |
-| NATS Server (JetStream) | **2.15.2** (`nats:2.15`, `-js`) | Event bus between services | A single small container, no stateful cluster needed. Durable pull consumers, per-message `Nats-Msg-Id` de-duplication on publish, replay, and subject-based routing (`audit.contracts.*`) leave room for notifications, webhooks and SIEM export later. Redis is **not otherwise needed** (authz cache is in-process, rate limiting is at the gateway), so choosing it just for streams adds a dependency. | MEDIUM |
+| NATS Server (JetStream) | **2.15.3** (`nats:2.15`, `-js`) | Event bus between services | A single small container, no stateful cluster needed. Durable pull consumers, per-message `Nats-Msg-Id` de-duplication on publish, replay, and subject-based routing (`audit.contracts.*`) leave room for notifications, webhooks and SIEM export later. Redis is **not otherwise needed** (authz cache is in-process, rate limiting is at the gateway), so choosing it just for streams adds a dependency. | MEDIUM |
 | nats-py | **2.16.0** | Async NATS client | Official asyncio client. Use it directly, without a framework layer. | MEDIUM-HIGH |
 | jsonpatch | **1.45** | RFC 6902 diff for audit | Store `before` and `after` snapshots (JSONB) **and** a `changes` RFC 6902 patch computed by `jsonpatch.make_patch`. It is a standard, language-neutral, replayable format that the future SDK and UI can consume. **Normalise first** (key `schema[]`/`properties[]` by `name`) so array reorders are not noise. | HIGH |
 | deepdiff | 9.1.0 | Optional human-readable/typed diff | Only where type-aware diffs are wanted. Not the primary storage format. | MEDIUM |
@@ -152,7 +152,7 @@ A central data-contract service for a large company with many data-engineering t
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| **Traefik** | **v3.7** (v3.7.17) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
+| **Traefik** | **v3.7** (v3.7.18) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
 - Option chosen (MEDIUM): a ~100-line Python script, run at image build or container start, fetches each service's `/openapi.json`, prefixes paths under `/api/v1/<module>`, merges `components` (fail loudly on schema-name collisions), and writes one `openapi.json`. A static-file container serves it with Swagger UI or Scalar at `/api/v1/docs`, routed by Traefik.
 - To avoid component-name collisions, give Pydantic models module-unique names (`IdentityUserOut`, `ContractVersionOut`) and keep `separate_input_output_schemas` consistent across services.
 - `root_path` as a `FastAPI()` argument is **deprecated** (0.146). Mount each service's routes under their real prefix (`/api/v1/<module>`) in the app, or use `fastapi run --root-path`. Do not depend on a stripPrefix plus `root_path` combination. Keep real routes prefixed so the services stay gateway-independent.
@@ -164,13 +164,13 @@ A central data-contract service for a large company with many data-engineering t
 | pytest | 9.2.0 | Test runner | | HIGH |
 | pytest-asyncio | 1.4.1.post1 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
 | testcontainers | 4.15.0 | Real Postgres 18, NATS, mock IdP in tests | Prefer **real Postgres** over SQLite (ltree, JSONB, `SKIP LOCKED` are Postgres-specific). Use one container per session and a template DB or transaction rollback per test. | HIGH |
-| **navikt/mock-oauth2-server** | **6.1.5** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
+| **navikt/mock-oauth2-server** | **7.0.1** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
 | In-process fake issuer | (own, about 60 lines) | Unit tests | Generate an RSA key, serve a JWKS through `respx`, mint tokens with PyJWT. Fast, no container, and covers expired, wrong-aud, wrong-iss and overage cases deterministically. | HIGH |
 | respx | 0.23.1 | httpx mocking | Graph and JWKS stubs. | HIGH |
 | Hypothesis | 6.170.15 | Property tests | RBAC inheritance equivalence, diff-classifier invariants, normalise/denormalise round-trips. | HIGH |
 | Schemathesis | 4.33.1 | OpenAPI-driven API fuzz and conformance | Directly supports "every endpoint documented in OpenAPI": it fails when responses diverge from the spec. Run against each service in CI. | HIGH |
 | polyfactory | 3.5.0 | Test data | Optional. | MEDIUM |
-| ruff | 0.17.4 | Lint + format | | HIGH |
+| ruff | 0.17.5 | Lint + format | | HIGH |
 | mypy | 2.4.1 | Type checking | Use `strict` with the Pydantic plugin. SQLAlchemy 2.1 row typing needs mypy >=1.7. `ty` 0.0.99 is still pre-1.0, so do not gate CI on it. | MEDIUM-HIGH |
 | Keycloak | 26.8.2 | *Optional* higher-fidelity IdP | Heavier (realm import, slow start). Use only if you need a realistic interactive login flow for the UI phase. | MEDIUM |
 
@@ -258,7 +258,7 @@ A central data-contract service for a large company with many data-engineering t
 
 #   gateway:    traefik:v3.7
 
-#   dev IdP:    ghcr.io/navikt/mock-oauth2-server:6.1.5
+#   dev IdP:    ghcr.io/navikt/mock-oauth2-server:7.0.1
 
 ## Stack Patterns by Variant
 

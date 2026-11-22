@@ -41,6 +41,19 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # To upgrade: `docker buildx imagetools inspect ghcr.io/zaproxy/zaproxy:stable`, copy the top-level
 # Digest, re-run this script locally and review the new alerts.
 ZAP_IMAGE="ghcr.io/zaproxy/zaproxy:stable@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af"
+# ZAP starts with -silent: no update check and no add-on download from GitHub at start (a start-up
+# download hung one run for the full 600 s connect wait), so every run uses exactly the add-ons
+# below. Without -silent the scan scripts update the image's add-ons and install the beta passive
+# rules at every start; these are the same releases that start-up installed in the last runs,
+# pinned by SHA-256, downloaded and verified once before any scan and copied into ZAP's home plugin
+# directory before ZAP starts (the same rule set as the start-up install, checked against the
+# pinned image). To upgrade: pick the release in
+# github.com/zaproxy/zap-extensions/releases, copy the .zap asset's digest, review the new alerts.
+ZAP_ADDONS=(
+  "pscanrules-v79/pscanrules-release-79.zap 824545a0c66bb0525f614153e6aee80ed10ae6a133d1624deddf85c219f6ba2d"
+  "pscanrulesBeta-v50/pscanrulesBeta-beta-50.zap a979f7cd5d8be10e0338b417e006ec1e2f6ec79101010d570ddb5199892e921b"
+  "retire-v0.69.0/retire-release-0.69.0.zap 11510b96a24fe2e18251c8166d26148c19c7853bf11353c684e02a996ca5129c"
+)
 NETWORK="${ZAP_NETWORK:-contractum_edge}"
 TARGET="https://traefik"
 LOGIN="https://localhost:8443/api/v1/identity/auth/login"
@@ -71,6 +84,26 @@ chmod 777 "$OUTDIR"
 cp .zap/rules.tsv "$OUTDIR/rules.tsv"
 chmod 644 "$OUTDIR/rules.tsv"
 OUTDIR_ABS=$(cd "$OUTDIR" && pwd)
+
+# Next to the reports, so the path is one Docker can mount on every host (Docker Desktop does not
+# share the system temp directory); removed again on exit, so the artifact never carries it.
+ADDONS_DIR="$OUTDIR_ABS/.zap-addons"
+rm -rf "$ADDONS_DIR"
+mkdir -p "$ADDONS_DIR"
+trap 'rm -rf "$ADDONS_DIR"' EXIT
+for addon in "${ZAP_ADDONS[@]}"; do
+  read -r release_path sha256 <<< "$addon"
+  file="${release_path##*/}"
+  curl -sS --fail --location -o "$ADDONS_DIR/$file" \
+    "https://github.com/zaproxy/zap-extensions/releases/download/$release_path"
+  python3 - "$ADDONS_DIR/$file" "$sha256" <<'PY'
+import hashlib, sys
+path, want = sys.argv[1:]
+got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+sys.exit(0 if got == want else f"{path}: sha256 {got}, expected {want}")
+PY
+  chmod 644 "$ADDONS_DIR/$file"
+done
 
 password=$(cat "$PW_FILE")
 if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
@@ -103,18 +136,23 @@ login_for_zap() {
   export ZAP_AUTH_HEADER_SITE="traefik"
 }
 
-# ZAP's network rate limit rule (network add-on) for the traefik host: rate_limit REQS_PER_SECOND.
+# ZAP's start options: -silent, and the network rate limit rule (network add-on) for the traefik
+# host: rate_limit REQS_PER_SECOND.
 rate_limit() {
   local rule="-config network.ratelimit.rules.rule(0)"
-  echo "$rule.description=gateway $rule.enabled=true $rule.matchStr=traefik" \
+  echo "-silent $rule.description=gateway $rule.enabled=true $rule.matchStr=traefik" \
     "$rule.regex=false $rule.reqsPerSec=$1"
 }
 
 run_zap() { # script args... ; returns 0 on a completed scan, 1 otherwise
   local rc=0
-  docker run --rm --network "$NETWORK" -v "$OUTDIR_ABS:/zap/wrk:rw" \
+  # The add-ons go where ZAP's own start-up install puts them (its home plugin directory), then
+  # the scan script runs with the arguments unchanged.
+  docker run --rm --network "$NETWORK" -v "$OUTDIR_ABS:/zap/wrk:rw" -v "$ADDONS_DIR:/addons:ro" \
     -e ZAP_AUTH_HEADER -e ZAP_AUTH_HEADER_VALUE -e ZAP_AUTH_HEADER_SITE \
-    "$ZAP_IMAGE" "$@" || rc=$?
+    --entrypoint sh "$ZAP_IMAGE" \
+    -c 'mkdir -p "$HOME/.ZAP/plugin" && cp /addons/*.zap "$HOME/.ZAP/plugin/" && exec "$@"' \
+    zap "$@" || rc=$?
   case "$rc" in
     0 | 2) return 0 ;;
     *) echo "ZAP ($1) failed with exit code $rc" >&2; return 1 ;;

@@ -1,6 +1,6 @@
 # In-network end-to-end test runner (build context = repo root). Runs on the compose networks via
 # compose.test.yaml (profile "test"); it carries only the `e2e` dependency group, no service code.
-FROM python:3.13-slim-trixie
+FROM python:3.15-slim-trixie
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0 PYTHONUNBUFFERED=1
 WORKDIR /app

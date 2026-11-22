@@ -8,7 +8,7 @@
 # 12.17.0 (= packageManager). The base image ships its own Node, which differs from the ui build's
 # 26.13.1: pnpm prints an engines warning for it, which is expected. The install runs under
 # ui/pnpm-workspace.yaml's supply-chain policy with a frozen lockfile.
-FROM mcr.microsoft.com/playwright:v1.64.1-noble
+FROM mcr.microsoft.com/playwright:v1.65.1-noble
 WORKDIR /app
 RUN npm install --global pnpm@12.17.0 \
  && test "$(pnpm --version)" = "12.17.0"

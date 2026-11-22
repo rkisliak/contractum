@@ -2,7 +2,7 @@
 
 Every ASVS 5.0.0 requirement of level 1 and level 2 (253 requirements, chapters V1 to V17), checked against the code.
 
-This is the living security standard for Contractum: it is updated when a control changes. The dated audit reports behind it are kept in the maintainers' private notes, not in this repository.
+This is the living security standard for Contractum: it is updated when a control changes.
 
 ## Summary
 
@@ -16,8 +16,8 @@ This is the living security standard for Contractum: it is updated when a contro
 
 - **Commit reviewed:** `a235e81` (the code at this commit includes the two fixes of this audit, the nosniff middleware and the image hardening). Rows changed by later follow-up fixes (7.1.2, 7.4.5, 7.5.2, 11.1.1, 11.2.3, 13.2.4, 14.2.2, 14.3.2) cite their commits and anchors resolved against the tree at `0389042`; every other row is as reviewed at `a235e81`.
 - **Source of requirements:** the official `OWASP_Application_Security_Verification_Standard_5.0.0_en.csv` of the OWASP/ASVS v5.0.0 release; rows with level 1 or 2. Level 3 is out of scope.
-- **Method:** manual reading of the code paths each requirement touches, plus the evidence of the automated tools of the same audit (Trivy, CodeQL, gitleaks, pip-audit, pnpm audit, Schemathesis, ZAP; see the dated audit report of 2026-11-20, kept in the maintainers' private notes). Evidence is `file:line` anchors resolved by a script against the tree at the commit above, so each points at the construct it names; a line can drift after later edits. `N/A` rows give the reason the requirement does not apply to this system.
-- **Reading the status:** `Met` means the control exists and is enforced in code or configuration. `Partial` means it exists with a stated gap. `Not met` means it is absent. Items that would change product behaviour are not changed here; they are listed under *Needs your decision* in the audit report.
+- **Method:** manual reading of the code paths each requirement touches, plus the evidence of the automated tools of the same audit (Trivy, CodeQL, gitleaks, pip-audit, pnpm audit, Schemathesis, ZAP). Evidence is `file:line` anchors resolved by a script against the tree at the commit above, so each points at the construct it names; a line can drift after later edits. `N/A` rows give the reason the requirement does not apply to this system.
+- **Reading the status:** `Met` means the control exists and is enforced in code or configuration. `Partial` means it exists with a stated gap. `Not met` means it is absent. Items that would change product behaviour are not changed here; they are listed under [Gaps that need a decision](#gaps-that-need-a-decision-partial-and-not-met-grouped).
 - **Scope note:** this is a backend API, its gateway and a React SPA. Organizations are folders inside one deployment, not tenants. The local IdP is a password login, not an OAuth authorization server.
 
 ### Gaps that need a decision (Partial and Not met, grouped)

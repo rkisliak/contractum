@@ -23,8 +23,8 @@
 #     positive here, never "fix later". scripts/zap_gate.py exits 2 on a row without one.
 #   - A whole-id IGNORE is for false positives that cannot be located; a located one is listed per
 #     URL and parameter, so a new instance anywhere else still fails the gate.
-#   - IGNORE and OUTOFSCOPE are for false positives only. A real finding is fixed, or listed as a
-#     decision in the dated audit report (private notes) and left visible (WARN is the default).
+#   - IGNORE and OUTOFSCOPE are for false positives only. A real finding is fixed, or the maintainer
+#     agrees on a decision for it and it is left visible (WARN is the default).
 #   - Plugin ids, not alert names, are matched.
 #
 

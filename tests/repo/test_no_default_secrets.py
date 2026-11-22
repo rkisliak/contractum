@@ -117,8 +117,8 @@ def test_no_tracked_file_contains_a_pem_private_key() -> None:
 def test_postgres_password_is_only_ever_passed_as_a_file() -> None:
     offenders = []
     for name in _tracked_files():
-        # Planning notes and tests talk about the variable; they never set it.
-        if name in SCAN_EXEMPT or name.startswith(".planning/") or "tests" in Path(name).parts:
+        # Tests talk about the variable; they never set it.
+        if name in SCAN_EXEMPT or "tests" in Path(name).parts:
             continue
         text = _read_text(name)
         if text is not None and _BARE_POSTGRES_PASSWORD.search(text):

@@ -64,7 +64,7 @@ jobs:
           "$RUNNER_TEMP/lychee-bin/lychee" --version
       # Local files, images and heading anchors only; no network request is made.
       - name: lychee (offline)
-        run: lychee --offline --config lychee.toml './**/*.md'
+        run: lychee --offline --config lychee.toml --extensions md .
 
   docs-build:
     name: docs-build

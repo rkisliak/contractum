@@ -74,8 +74,8 @@ For example: a CVE in a base image with no upstream fix yet, or a design gap tha
 decision.
 
 1. Tell the human: the finding, the real risk here, and the options.
-2. Record the agreed decision in the dated audit report in the private notes repository, and keep the
-   OWASP ASVS review (`docs/admin/security/asvs-l2.md`) honest (Met, Partial or Not met).
+2. Keep the OWASP ASVS review (`docs/admin/security/asvs-l2.md`) honest (Met, Partial or Not met)
+   for the agreed decision.
 3. Re-check on the next change: a fix may have appeared.
 
 ## 5. Reporting

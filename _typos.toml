@@ -3,13 +3,11 @@
 
 [files]
 # The default skips dot-directories; include .github/, .claude/ and .zap/ (the list below then
-# excludes .git/ and the planning and tool-state folders explicitly).
+# excludes .git/ and the local development secrets explicitly).
 ignore-hidden = false
 extend-exclude = [
   ".git/",
-  # Planning, tool state and local development secrets: not project text.
-  ".planning/",
-  ".gsd/",
+  # Local development secrets: not project text.
   ".dev/",
   # Lock files: package names and hashes.
   "*.lock",

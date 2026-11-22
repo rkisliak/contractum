@@ -5,7 +5,7 @@ not know the audience rules. These checks are small and fast so they run in the 
 
 - every ``docs/**/*.md`` page is in the mkdocs.yml nav and every nav entry exists;
 - user and admin pages (and the home page) carry no internal ids;
-- no docs page links into the planning folder, ``.claude/`` or a CLAUDE.md file;
+- no docs page links into ``.claude/`` or a CLAUDE.md file;
 - no relative ``.md`` link under docs/ leaves docs/;
 - README.md opens with the centred logo, has at most two badges and no GitHub repository URL.
 """
@@ -36,7 +36,7 @@ INTERNAL_ID = re.compile(
     r"\bD-(?:[A-Z]+-)*\d+\b"  # decision ids: D-12, D-UI-08-30
     r"|\bT-\d+(?:-[A-Z0-9]+)+\b"  # threat ids: T-15-24, T-8-SC
     r"|\b\d{6}-[a-z0-9]{3}\b"  # quick task ids: 261121-psn
-    r"|\bPhase \d+"  # planning phases
+    r"|\bPhase \d+"  # phase numbers
     rf"|\b(?:{'|'.join(REQUIREMENT_PREFIXES)})-\d+\b"  # requirement ids: VAL-03, SITE-01
 )
 # Inline links and images, and HTML href/src attributes.
@@ -155,13 +155,12 @@ def test_internal_id_pattern(text: str, flagged: bool) -> None:
     assert bool(INTERNAL_ID.search(text)) is flagged
 
 
-def test_no_docs_link_into_planning_agent_files_or_claude_md() -> None:
-    planning = "." + "planning"
+def test_no_docs_link_into_agent_files_or_claude_md() -> None:
     hits = [
         f"{page.relative_to(ROOT)}:{number}: {target}"
         for page in _pages(".")
         for number, target in _links(page)
-        if planning in target or ".claude/" in target or "CLAUDE.md" in target
+        if ".claude/" in target or "CLAUDE.md" in target
     ]
     assert hits == []
 

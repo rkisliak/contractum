@@ -23,9 +23,8 @@ The docs are split by reader. Pages must read correctly on GitHub and on the Zen
 | `docs/user/` | users, data engineers, Policy Managers | getting started, SDK and CLI, subscriptions, API guide, writing rules, UI guide |
 | `docs/user/reference/` | users | **generated**: `cli.md`, `sdk-api.md`, `http-api.md` (never edit by hand) |
 | `docs/admin/` | operators | Kubernetes deploy, first run and roles, Entra setup, settings, upgrade and backup, troubleshooting, security standard |
-| `docs/dev/` | contributors | local stack, CI and GitHub, architecture, API design decisions, publishing |
+| `docs/dev/` | contributors | local stack, CI and GitHub, architecture, API design decisions |
 | `mkdocs.yml` | site | navigation by audience: every new page needs a `nav:` entry |
-| private notes repository | maintainers | dated audit and SonarQube reports, never in this repository |
 | `<module>/CLAUDE.md`, `.claude/skills/` | agents | module notes and skills: update them when the behaviour they describe changes |
 
 ## 2. Change to page map
@@ -64,7 +63,7 @@ Each generator has a `--check` mode that CI runs; a stale page fails the build.
 
 - Write for the page's reader: short plain sentences, active voice, one idea per bullet.
 - Describe what the system does today. No history ("we used to"), no plans, no promises.
-- No decision ids (`D-12`, `VAL-08`), quick-task ids or planning-folder paths in reader docs.
+- No internal ids (decision, requirement or task ids such as `D-12` or `VAL-08`) in reader docs.
 - No internal file paths in user and admin docs, unless the reader must open that file.
 - No personal data: no names, email addresses, home paths, real tenant or client ids.
 - Product name: **Contractum**. Use the UI's exact labels in bold (**Subscriptions**, **Access**).
@@ -80,7 +79,7 @@ Run these from the repository root. They are the same checks as `.github/workflo
 ```bash
 docker run --rm -v "$PWD:/workdir:ro" davidanson/markdownlint-cli2:v0.24.2@sha256:c768e94d8bb161c449bde28f60656929ca1f02c3010a405f65c9cac71563a889
 uv run --group docs typos
-docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml './**/*.md'
+docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml --extensions md .
 uv run --group docs python scripts/gen_http_reference.py --check
 (cd clients/python && uv run python scripts/gen_reference.py --check)
 uv run --group docs zensical build --strict && rm -rf site
@@ -91,6 +90,5 @@ uv run pytest tests/repo -q
 
 ## 6. Bigger rewrites
 
-For a new page or a rewrite of a whole section, have a second pass check every factual claim
-against the code (the GSD `gsd-doc-verifier` agent, or `/gsd-docs-update`), and fix what it
-finds before committing.
+For a new page or a rewrite of a whole section, have a second, independent pass check every
+factual claim against the code, and fix what it finds before committing.

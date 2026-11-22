@@ -32,15 +32,7 @@ sha256sum -c SHA256SUMS --ignore-missing
 uv tool install ./contractum-0.1.0-py3-none-any.whl
 ```
 
-Where the repository publishes artifact attestations (public repositories, or private ones on GitHub Enterprise Cloud), `gh attestation verify contractum-0.1.0-py3-none-any.whl -R rkisliak/contractum` also proves the file was built by the repository's release workflow.
-
-**Private repository.** Release downloads of a private repository need authentication, so a plain URL install fails. Download with the GitHub CLI (signed in with `gh auth login`, or `GH_TOKEN` in CI), then install the local file:
-
-```bash
-gh release download contractum-v0.1.0 --pattern 'contractum-*.whl' --pattern SHA256SUMS --repo rkisliak/contractum
-sha256sum -c SHA256SUMS --ignore-missing
-uv tool install ./contractum-0.1.0-py3-none-any.whl
-```
+Every release also carries GitHub artifact attestations: `gh attestation verify contractum-0.1.0-py3-none-any.whl -R rkisliak/contractum` proves the file was built by the repository's release workflow.
 
 Features that need a third-party package are extras. A missing extra is a clear error that names the one to install.
 
@@ -56,7 +48,7 @@ Features that need a third-party package are extras. A missing extra is a clear 
 uv tool install "contractum[delta] @ $WHEEL"
 ```
 
-**Docker image.** Each release also pushes a hardened, non-root image of the CLI (`clients/python/Dockerfile`, entrypoint `contractum`, working directory `/work`) to `ghcr.io/rkisliak/contractum-cli`, tagged with the version and `latest`; pin the version. It carries the `delta` and `sql` extras, not pandas or polars, and no credential: pass `CONTRACTUM_URL` and `CONTRACTUM_TOKEN` at run time. For a private repository the package is private too: `docker login ghcr.io` first. Before the first release, build it yourself with `docker build -t contractum:test clients/python`.
+**Docker image.** Each release also pushes a hardened, non-root image of the CLI (`clients/python/Dockerfile`, entrypoint `contractum`, working directory `/work`) to `ghcr.io/rkisliak/contractum-cli`, tagged with the version and `latest`; pin the version. It carries the `delta` and `sql` extras, not pandas or polars, and no credential: pass `CONTRACTUM_URL` and `CONTRACTUM_TOKEN` at run time. If the package is not public, `docker login ghcr.io` first. Before the first release, build it yourself with `docker build -t contractum:test clients/python`.
 
 ```bash
 docker run --rm ghcr.io/rkisliak/contractum-cli:0.1.0 --version
@@ -289,7 +281,7 @@ contractum compare data/orders.parquet --contract payments.orders --json compare
 
 ## pytest plugin
 
-Installing the package registers a pytest plugin with no cost until you use it. Add the release wheel as a test dependency of the project, pinned by its URL (for a private repository, commit the downloaded wheel or install it in CI after `gh release download`, as in "Install"):
+Installing the package registers a pytest plugin with no cost until you use it. Add the release wheel as a test dependency of the project, pinned by its URL:
 
 ```bash
 uv add --dev "contractum @ https://github.com/rkisliak/contractum/releases/download/contractum-v0.1.0/contractum-0.1.0-py3-none-any.whl"
@@ -359,8 +351,6 @@ jobs:
         if: always()
         run: cat summary.md >> "$GITHUB_STEP_SUMMARY"
 ```
-
-If the Contractum repository is private, download the wheel first with `gh release download contractum-v0.1.0 --pattern 'contractum-*.whl' --repo rkisliak/contractum` (with `GH_TOKEN` set to a token that can read that repository; the workflow's own `GITHUB_TOKEN` reads only its own repository) and use `uvx --from ./contractum-0.1.0-py3-none-any.whl contractum ...`.
 
 **GitHub Actions, with the image** (reproducible and offline, from the committed lock):
 

@@ -5,8 +5,7 @@
 #   - The release `contractum-vX.Y.Z` carries the wheel, the sdist and SHA256SUMS. Users install the wheel
 #     straight from its release URL (uv tool install / pipx install), see docs/user/sdk-cli.md.
 #   - The files get GitHub artifact attestations (SLSA build provenance) through the official
-#     actions/attest. Attestations on a private repository need GitHub Enterprise Cloud, so on a
-#     private repository the step runs only when the repository variable SDK_ATTESTATIONS is "true".
+#     actions/attest, on every release.
 #   - The CLI image is pushed to ghcr.io/<owner>/contractum-cli, tagged with the version and
 #     `latest`, with the workflow's GITHUB_TOKEN.
 #
@@ -176,7 +175,6 @@ jobs:
         working-directory: dist
         run: sha256sum -c SHA256SUMS
       - name: Attest build provenance
-        if: ${{ !github.event.repository.private || vars.SDK_ATTESTATIONS == 'true' }}
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-checksums: dist/SHA256SUMS

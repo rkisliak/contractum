@@ -14,7 +14,7 @@ dependencies = [
   "uvicorn==0.54.0",
   "structlog==26.1.0",
   "asgi-correlation-id==5.0.1",
-  "nats-py==2.16.0",
+  "nats-py==2.17.0",
   "tenacity==9.2.1",
   "uuid-utils==1.2.0",
 ]

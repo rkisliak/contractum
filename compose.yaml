@@ -678,7 +678,7 @@ services:
     networks: [edge]
 
   traefik:
-    image: traefik:v3.7.18
+    image: traefik:v3.7.19
     restart: unless-stopped
     volumes:
       - type: bind

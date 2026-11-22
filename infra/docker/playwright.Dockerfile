@@ -18,3 +18,6 @@ COPY tsconfig.json playwright.config.ts ./
 COPY e2e ./e2e
 # The router's generated route tree: e2e/axe-routes.spec.ts derives the route list from it.
 COPY src/routeTree.gen.ts ./src/routeTree.gen.ts
+# The runner is healthy while it can reach the gateway it drives (DC_UI_E2E_SETUP_URL).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["node", "-e", "const u = new URL(process.env.DC_UI_E2E_SETUP_URL || 'https://traefik'); require('net').connect(Number(u.port) || 443, u.hostname).on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]

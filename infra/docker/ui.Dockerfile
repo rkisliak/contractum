@@ -53,5 +53,9 @@ COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=0755 nginx/40-ui-config.sh /docker-entrypoint.d/40-ui-config.sh
 LABEL org.opencontainers.image.title="contractum ui"
 EXPOSE 8080
+# The same check as compose's (busybox wget in the image), so a plain `docker run` reports health
+# too. Kubernetes ignores it and uses the chart's probes.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["wget", "-qO-", "http://127.0.0.1:8080/healthz.txt"]
 # The image's own user (uid 101) runs the entrypoint scripts and nginx.
 USER 101

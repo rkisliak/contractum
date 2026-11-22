@@ -88,18 +88,40 @@ def _ensure_dir(consumer: str) -> Path:
     return path
 
 
+def _write_private(target: Path, data: bytes, *, uid: int, gid: int, mode: int) -> None:
+    """Replace ``target`` atomically with ``data``, owned ``uid:gid`` with ``mode`` from the start.
+
+    The bytes go to a new sibling file created with ``O_EXCL | O_NOFOLLOW`` and mode 0600, so the
+    content is never readable by anyone else (not even for a moment under a loose umask) and a
+    planted symlink is never followed. Owner and final mode are set on the open descriptor, then
+    the file is renamed over ``target``.
+    """
+    temporary = target.with_name(f".{target.name}.{secrets.token_hex(8)}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(temporary, flags, 0o600)
+    try:
+        view = memoryview(data)
+        while view:
+            view = view[os.write(descriptor, view) :]
+        os.fsync(descriptor)
+        os.fchown(descriptor, uid, gid)
+        os.fchmod(descriptor, mode)
+    except BaseException:
+        os.close(descriptor)
+        temporary.unlink(missing_ok=True)
+        raise
+    os.close(descriptor)
+    os.replace(temporary, target)
+
+
 def _write(consumer: str, name: str, data: bytes, *, overwrite: bool = False) -> bool:
     """Write ``data`` to ``/out/<consumer>/<name>`` (0400) unless it already exists."""
     directory = _ensure_dir(consumer)
     target = directory / name
     if target.exists() and (not overwrite or target.read_bytes() == data):
         return False
-    if target.exists():
-        target.chmod(0o600)
-    target.write_bytes(data)
     uid, gid = OWNERS[consumer]
-    os.chown(target, uid, gid)
-    target.chmod(0o400)
+    _write_private(target, data, uid=uid, gid=gid, mode=0o400)
     _say(f"wrote {consumer}/{name}")
     return True
 
@@ -277,10 +299,8 @@ def _mirror_to_host(name: str, data: bytes) -> None:
     target = OUT_HOST / name
     if target.exists() and target.read_bytes() == data:
         return
-    target.write_bytes(data)
-    target.chmod(stat.S_IRUSR | stat.S_IWUSR)
     host = OUT_HOST.stat()
-    os.chown(target, host.st_uid, host.st_gid)
+    _write_private(target, data, uid=host.st_uid, gid=host.st_gid, mode=stat.S_IRUSR | stat.S_IWUSR)
     _say(f"refreshed host mirror {name}")
 
 

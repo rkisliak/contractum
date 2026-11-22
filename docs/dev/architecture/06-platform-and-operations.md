@@ -186,14 +186,14 @@ Only Traefik publishes a host port: **`8443 → 443`**.
 
 | Container | What it does | Network | Volumes and mounts | Health check |
 |---|---|---|---|---|
-| `dev-init` | One-shot: generates secrets and certificates, then exits | backend | `dev-secrets` at `/out`; `./infra` read-only; `./.dev` at `/out-host` | none (must exit 0) |
+| `dev-init` | One-shot: generates secrets and certificates, then exits | backend | `dev-secrets` at `/out`; `./infra` read-only; `./.dev` at `/out-host` | disabled (must exit 0) |
 | `postgres` | Postgres 18; one database and one login role per service | backend | `pgdata`; `infra/postgres/init` (creates the roles, databases and the `ltree` extension); `dev-secrets/postgres` | `pg_isready` over TCP |
 | `nats` | NATS 2.15.2 with JetStream | backend | `natsdata` at `/data`; `dev-secrets/nats` (holds `nats.conf`) | `wget http://127.0.0.1:8222/healthz` |
 | `mock-oidc` | **Dev only.** Mock OIDC server; plays a generic IdP and an Entra tenant. Traefik routes `/entra/` to it, so the browser can sign in with it | backend, edge | `infra/mock-oidc` config | none |
 | `fake-graph` | **Dev only.** Microsoft Graph stand-in that identity's real Graph client calls | backend | `infra/fake-graph`; `dev-secrets/fake-graph` | `GET /healthz` |
 | `mailpit` | **Dev only.** Catches the mail the mail service sends | backend | none | `mailpit readyz` |
 | `webhook-sink` | **Dev only.** Receives subscriber webhooks, can be told to fail | backend | `infra/webhook-sink` | `GET /healthz` |
-| `identity-migrate`, `contracts-migrate`, `validation-migrate`, `audit-migrate` | One-shot: `python -m dc_<svc>.migrate upgrade head` | backend | `dev-secrets/<svc>` | none (must exit 0) |
+| `identity-migrate`, `contracts-migrate`, `validation-migrate`, `audit-migrate` | One-shot: `python -m dc_<svc>.migrate upgrade head` | backend | `dev-secrets/<svc>` | disabled (must exit 0) |
 | `identity` | Users, tokens, groups, grants, the permission decision point | edge, backend | `dev-secrets/identity` | `GET /healthz` |
 | `contracts` | Contracts, versions, lifecycle, subscriber cards and notices | edge, backend | `dev-secrets/contracts` | `GET /healthz` |
 | `validation` | Rule sets and contract validation, with sandboxed rule workers | edge, backend | `dev-secrets/validation` | `GET /healthz` |
@@ -209,6 +209,12 @@ networks, and `ui-e2e` (the browser tests), on edge only; see "Testing" below.
 
 The `dev-init`, `fake-graph`, `webhook-sink` and `problem-responder` containers reuse the identity
 image, with their code bind-mounted read-only. Health checks run every 5 s, with up to 30 retries.
+
+Every image under `infra/docker` also declares its own `HEALTHCHECK`, so a plain `docker run`
+reports health. The service image probes `GET /healthz` on port 8000; a container that reuses it
+for another server overrides the check (or sets `DC_HEALTHCHECK_URL`), and the one-shot jobs above
+disable it. The test runners `e2e` and `ui-e2e` are healthy while they can reach the gateway.
+Kubernetes ignores image health checks and uses the chart's probes.
 
 ---
 

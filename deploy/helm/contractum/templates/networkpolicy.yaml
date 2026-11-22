@@ -8,6 +8,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: dc-default-deny-ingress
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "dc.labels" . | nindent 4 }}
 spec:
@@ -20,6 +21,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: dc-gateway-from-anywhere
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "dc.labels" . | nindent 4 }}
 spec:
@@ -28,13 +30,15 @@ spec:
       dc.role: gateway
   policyTypes: [Ingress]
   ingress:
+    # The pod port: the Service maps 443 to the gateway's unprivileged websecure port.
     - ports:
-        - {port: 443}
+        - {port: 8443}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: dc-edge-and-apps-from-gateway
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "dc.labels" . | nindent 4 }}
 spec:
@@ -51,6 +55,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: dc-apps-from-apps-and-docs
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "dc.labels" . | nindent 4 }}
 spec:
@@ -67,6 +72,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: dc-backing-from-apps
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "dc.labels" . | nindent 4 }}
 spec:

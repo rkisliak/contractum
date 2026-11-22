@@ -23,7 +23,7 @@ async function check([name, version]) {
     failures.push(`${name}@${version}: not an exact version`);
     return;
   }
-  const url = `https://registry.npmjs.org/${name.replace("/", "%2F")}`;
+  const url = `https://registry.npmjs.org/${name.replaceAll("/", "%2F")}`;
   const res = await fetch(url);
   if (!res.ok) {
     failures.push(`${name}: registry answered ${String(res.status)}`);

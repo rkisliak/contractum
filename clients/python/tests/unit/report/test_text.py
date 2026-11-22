@@ -47,3 +47,19 @@ def test_detail_lines_of_a_bare_check_are_empty() -> None:
 
 def test_strip_xml_invalid_keeps_tabs_newlines_and_text() -> None:
     assert strip_xml_invalid("a\tb\nc\r\x00\x08￾\ud800d") == "a\tb\nc\rd"
+
+
+def _xml_char(code: int) -> bool:
+    """XML 1.0 Char production, restricted to the code points a UTF-8 str can carry."""
+    return (
+        code in (0x9, 0xA, 0xD)
+        or 0x20 <= code <= 0xD7FF
+        or 0xE000 <= code <= 0xFFFD
+        or 0x10000 <= code <= 0x10FFFF
+    )
+
+
+def test_strip_xml_invalid_removes_exactly_the_code_points_xml_forbids() -> None:
+    every = "".join(chr(code) for code in range(0x11000))
+    expected = "".join(ch for ch in every if _xml_char(ord(ch)))
+    assert strip_xml_invalid(every) == expected

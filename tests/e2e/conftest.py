@@ -193,9 +193,26 @@ async def admin_password(gateway: httpx.AsyncClient) -> str:
         headers={"Authorization": f"Bearer {restricted.json()['access_token']}"},
     )
     rotated.raise_for_status()
-    stored.write_text(new_password, encoding="utf-8")
-    stored.chmod(0o600)
+    _store_private(stored, new_password)
     return new_password
+
+
+def _store_private(path: Path, text: str) -> None:
+    """Replace ``path`` with ``text`` through a sibling that is 0600 from its creation.
+
+    The bytes are never readable by others, a planted symlink is never followed, and the file is
+    renamed into place only once it is complete.
+    """
+    temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(temporary, flags, 0o600)
+    try:
+        view = memoryview(text.encode("utf-8"))
+        while view:
+            view = view[os.write(descriptor, view) :]
+    finally:
+        os.close(descriptor)
+    os.replace(temporary, path)
 
 
 class _AdminTokens:

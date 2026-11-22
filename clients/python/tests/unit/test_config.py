@@ -507,6 +507,20 @@ def test_write_atomic_falls_back_to_chmod_without_fchmod(
         assert stat.S_IMODE(target.stat().st_mode) == 0o600
 
 
+@pytest.mark.parametrize(("mode", "writable"), [(0o644, True), (0o600, True), (0o400, False)])
+def test_without_fchmod_only_the_owner_bits_are_applied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: int, writable: bool
+) -> None:
+    monkeypatch.delattr(_atomic.os, "fchmod", raising=False)
+    target = tmp_path / "file.bin"
+    write_atomic(target, b"x", mode=mode)
+    assert target.read_bytes() == b"x"
+    assert os.access(target, os.W_OK) is writable
+    if not ON_WINDOWS:
+        assert stat.S_IMODE(target.stat().st_mode) == (0o600 if writable else 0o400)
+    target.chmod(stat.S_IREAD | stat.S_IWRITE)
+
+
 # --- the CLI client factory -----------------------------------------------------------------
 
 

@@ -8,8 +8,6 @@ Error bodies never echo a submitted password.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import uuid
 from typing import Annotated, Literal
 
@@ -186,10 +184,6 @@ def _passwords(request: Request) -> PasswordService:
 
 def invalid_credentials() -> ProblemError:
     return ProblemError(401, "invalid-credentials", "Unauthorized", "Invalid username or password.")
-
-
-def _digest(value: str) -> bytes:
-    return hashlib.sha256(value.encode("utf-8")).digest()
 
 
 def _out(issued: IssuedToken, refresh_token: str | None = None) -> IdentityTokenOut:
@@ -429,8 +423,7 @@ async def login(
                 "Service Unavailable",
                 "Bootstrap login is unavailable: the bootstrap secret has not been provisioned.",
             )
-        if not hmac.compare_digest(_digest(password), _digest(secret)):
-            await passwords.dummy_verify()
+        if not await passwords.matches_secret(secret, password):
             raise await rejected()
         await throttler.reset(throttle[0])
         return _out(

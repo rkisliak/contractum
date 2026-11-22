@@ -27,4 +27,8 @@ LABEL org.opencontainers.image.title="contractum api-docs" \
 COPY gateway/api-docs/ /opt/api-docs/
 USER 65534:65534
 EXPOSE 8080
+# The same check as compose's, so a plain `docker run` reports health too. Kubernetes ignores it
+# and uses the chart's probes.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
 CMD ["python", "/opt/api-docs/server.py"]

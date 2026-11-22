@@ -146,3 +146,35 @@ def test_the_loaders_raise_a_value_error_subclass_directly() -> None:
 def test_an_unterminated_json_string_is_left_to_the_parser() -> None:
     with pytest.raises(ValueError, match="Unterminated string"):
         load_json('{"a": "' + "\\" * 5000)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "\\n" * (ONE_MIB // 4),  # many escapes before the closing quote
+        '\\"' * (ONE_MIB // 4),  # many escaped quotes
+        "!" * (ONE_MIB // 2),  # a long plain run
+        "\\\\" * (ONE_MIB // 4),  # escaped backslashes only
+    ],
+)
+def test_the_string_scan_is_linear_on_hostile_string_bodies(body: str) -> None:
+    started = time.perf_counter()
+    terminated = load_json('["' + body + '"]')
+    unterminated_started = time.perf_counter()
+    with pytest.raises(ValueError):
+        load_json('["' + body)
+    finished = time.perf_counter()
+
+    assert isinstance(terminated, list)
+    assert len(terminated) == 1
+    assert unterminated_started - started < 1.0
+    assert finished - unterminated_started < 1.0
+
+
+def test_escapes_inside_json_strings_keep_the_depth_count_exact() -> None:
+    # An escaped quote does not end the string, an escaped backslash does not escape the quote.
+    hidden = '"\\"' + "[" * (MAX_NESTING_DEPTH + 5) + '"'
+    assert load_json("[" + hidden + "]") == ['"' + "[" * (MAX_NESTING_DEPTH + 5)]
+    closed = '"\\\\"' + "[" * (MAX_NESTING_DEPTH + 1) + "]" * (MAX_NESTING_DEPTH + 1)
+    with pytest.raises(NestingTooDeepError):
+        load_json("[" + closed + "]")

@@ -53,3 +53,8 @@ ARG GIT_SHA=dev
 ARG BUILD_TIME=dev
 ENV DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
 USER app
+# The services answer GET /healthz on port 8000. Compose and the chart's probes set their own
+# checks; this one makes a plain `docker run` report health too. A container that reuses the image
+# for another server points DC_HEALTHCHECK_URL at it; one-shot jobs disable the check.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen(os.environ.get('DC_HEALTHCHECK_URL', 'http://127.0.0.1:8000/healthz'), timeout=4)"]

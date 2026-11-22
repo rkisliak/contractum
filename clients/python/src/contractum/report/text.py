@@ -6,12 +6,22 @@ read from the dataset again.
 
 from __future__ import annotations
 
-import re
-
 from contractum.report.model import CheckResult
 
-# XML 1.0 forbids these code points, and a lone surrogate cannot be encoded as UTF-8.
-_XML_INVALID = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff￾￿]")
+# XML 1.0 forbids these code points (C0 controls other than tab, newline and carriage return,
+# U+FFFE and U+FFFF), and a lone surrogate cannot be encoded as UTF-8. A translate table deletes
+# them in one linear pass, with no regular expression.
+_XML_INVALID: dict[int, None] = dict.fromkeys(
+    [
+        *range(0x00, 0x09),
+        0x0B,
+        0x0C,
+        *range(0x0E, 0x20),
+        *range(0xD800, 0xE000),
+        0xFFFE,
+        0xFFFF,
+    ]
+)
 
 STATUS_WORDS = {
     "passed": "PASS",
@@ -24,7 +34,7 @@ STATUS_WORDS = {
 
 def strip_xml_invalid(text: str) -> str:
     """Remove the characters XML 1.0 cannot carry."""
-    return _XML_INVALID.sub("", text)
+    return text.translate(_XML_INVALID)
 
 
 def failing_text(check: CheckResult) -> str:

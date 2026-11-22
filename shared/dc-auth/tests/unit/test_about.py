@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import gc
+import weakref
 from typing import Any, cast
 
 import pytest
@@ -10,6 +12,7 @@ from dc_auth.about import about_router, read_migration_head
 from dc_auth.authorizer import Outcome
 from dc_auth.testing import FakeIssuer
 from dc_core.app import BUILD_COMMIT_ENV, BUILD_TIME_ENV
+from fastapi import FastAPI
 
 pytestmark = pytest.mark.unit
 
@@ -84,3 +87,19 @@ class _HangingSession:
 async def test_a_database_that_does_not_answer_in_time_is_unavailable() -> None:
     state = await read_migration_head(cast(Any, _HangingSession), "probe_version", timeout_s=0.01)
     assert state == ("unavailable", None)
+
+
+class _Factory:
+    """Stands in for a session factory: only its lifetime matters here."""
+
+
+def test_a_discarded_app_does_not_keep_the_session_factory_alive() -> None:
+    # FastAPI caches endpoint callables at module level; the route must not close over the
+    # factory, or every app built in a process would keep its engine alive.
+    factory = _Factory()
+    alive = weakref.ref(factory)
+    app = FastAPI()
+    app.include_router(about_router("probe", session_factory=cast(Any, factory)))
+    del app, factory
+    gc.collect()
+    assert alive() is None

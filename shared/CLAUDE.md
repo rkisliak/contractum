@@ -157,6 +157,10 @@ only these libraries.
 - Integration (needs Docker): `uv run pytest -m integration shared`
 - `shared/dc-core/tests/unit/test_route_policies.py` proves the walker fails on an undeclared
   route (a deliberately unguarded fixture app).
+- The shared pytest plugin `dc_core.testing` also holds `release_library_caches()`: the root
+  `conftest.py` runs it after every test, so FastAPI's and SQLAlchemy's process-wide caches let go
+  of the test's apps, engines and dialects and the session's heap stays flat.
+  `contracts/tests/integration/test_session_heap.py` fails when a closed stack leaves one alive.
 - Whole repo gate: `bash scripts/ci.sh`.
 
 ## Platform rules that apply here

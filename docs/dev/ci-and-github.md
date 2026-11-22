@@ -334,11 +334,17 @@ first. None of them is committed.
 
   This is the release coverage. The unit run alone leaves routes, units of work and repositories
   (exercised by the integration tests) uncovered. `timing` tests assert CPU or wall-clock budgets
-  and run untraced, as in the full gate. Each one also starts with the session's leftover heap
-  collected and frozen out of the garbage collector (`_timing_test_gc_isolation` in the root
-  `conftest.py`): late in a full run the pytest process holds millions of objects that earlier
-  tests left behind, and a full collection of them inside a measured window took 3.2 s on a
-  GitHub runner. `[tool.coverage.run]` in `pyproject.toml` names the packages and sets
+  and run untraced, as in the full gate. Two autouse fixtures in the root `conftest.py` keep the
+  pytest process's heap out of the measurements. After every test, `_release_library_caches`
+  empties the FastAPI and SQLAlchemy caches that would otherwise keep that test's apps, engines
+  and compiled statements alive: about 14,000 objects for each test that starts the services. The
+  process then held 3.7 million objects halfway through the integration run, and a full garbage
+  collection of them took up to 3.7 s on a GitHub runner, longer than contracts' 3 s deadline for
+  a call to validation.
+  Before every `timing` test, `_timing_test_gc_isolation` collects the earlier tests' garbage and
+  freezes the survivors out of the garbage collector. The integration test
+  `contracts/tests/integration/test_session_heap.py` fails when a closed stack still leaves an
+  engine or a dialect alive. `[tool.coverage.run]` in `pyproject.toml` names the packages and sets
   `relative_files = true`, so the XML holds paths such as `identity/src/dc_identity/app.py` that
   resolve from the scanner's base directory.
 - **SDK (Python):** with the compose test stack up and smoke-tested,

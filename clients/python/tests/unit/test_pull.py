@@ -14,7 +14,9 @@ from hypothesis import given
 from hypothesis import strategies as st
 from support.auth import Outcome, run_main
 from support.fake_server import FakeContractum, FakeVersion, sha256
+from support.locks import record_guards_during_writes
 
+from contractum import lock as lock_module
 from contractum.client import Client
 from contractum.contracts import ContractDeprecationWarning
 from contractum.errors import FrozenLockError, OfflineError, ServerError, UsageError
@@ -113,15 +115,20 @@ def test_a_second_identical_pull_leaves_the_lock_byte_equal(
     assert lock_path.read_bytes() == first
 
 
-def test_the_lock_artefact_stays_out_of_the_repository(tmp_path: Path, canary_token: str) -> None:
+def test_the_lock_artefact_stays_out_of_the_repository(
+    tmp_path: Path, canary_token: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
+    locks = tmp_path / "cache" / "locks"
+    seen = record_guards_during_writes(monkeypatch, lock_module, lambda _: locks)
     with _server(), _client(canary_token) as client:
         client.pull(["payments.orders"], directory=repo / "c", lock_path=repo / "contractum.lock")
     assert sorted(path.name for path in repo.iterdir()) == ["c", "contractum.lock"]
-    guards = list((tmp_path / "cache" / "locks").iterdir())
-    assert len(guards) == 1
-    assert guards[0].suffix == ".lock"
+    assert len(seen) == 1
+    assert len(seen[0]) == 1
+    # filelock keeps the guard after release on POSIX and deletes it on Windows.
+    assert {p.name for p in locks.iterdir()} <= set(seen[0])
 
 
 def test_pull_merges_into_an_existing_lock_and_replaces_the_same_request(
@@ -780,10 +787,15 @@ def test_read_locked_without_a_server_skips_the_cache(tmp_path: Path, canary_tok
     assert contract.source == "lock"
 
 
-def test_pull_uses_an_explicit_cache_root(tmp_path: Path, canary_token: str) -> None:
+def test_pull_uses_an_explicit_cache_root(
+    tmp_path: Path, canary_token: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from contractum.cache import Cache
 
     explicit = Cache(tmp_path / "own-cache")
+    seen = record_guards_during_writes(
+        monkeypatch, lock_module, lambda _: tmp_path / "own-cache" / "locks"
+    )
     with _server(), _client(canary_token) as client:
         pull(
             client,
@@ -792,4 +804,5 @@ def test_pull_uses_an_explicit_cache_root(tmp_path: Path, canary_token: str) -> 
             lock_path=tmp_path / "contractum.lock",
             cache=explicit,
         )
-    assert list((tmp_path / "own-cache" / "locks").glob("*.lock"))
+    assert len(seen) == 1
+    assert len(seen[0]) == 1

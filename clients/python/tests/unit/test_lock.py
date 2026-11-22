@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
 from typing import Any
 
 import pytest
+from support.locks import record_guards_during_writes
 
+from contractum import lock as lock_module
 from contractum.errors import FrozenLockError, UsageError
 from contractum.lock import LockEntry, LockFile, load_lock, render_lock, save_lock
 
@@ -168,7 +171,15 @@ def test_a_failing_write_leaves_the_previous_lock_byte_equal(
     assert sorted(p.name for p in tmp_path.iterdir() if p.name != "cache") == ["contractum.lock"]
 
 
-def test_the_lock_guard_lives_in_the_given_cache_directory(tmp_path: Path) -> None:
+def test_the_lock_guard_lives_in_the_given_cache_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     cache = tmp_path / "somewhere"
-    save_lock(tmp_path / "contractum.lock", _lock(_entry()), cache_dir=cache)
-    assert len(list((cache / "locks").glob("*.lock"))) == 1
+    target = tmp_path / "contractum.lock"
+    seen = record_guards_during_writes(monkeypatch, lock_module, lambda _: cache / "locks")
+    save_lock(target, _lock(_entry()), cache_dir=cache)
+    guard = hashlib.sha256(str(target.absolute()).encode("utf-8")).hexdigest() + ".lock"
+    assert seen == [[guard]]
+    # filelock keeps the guard after release on POSIX and deletes it on Windows.
+    assert {p.name for p in (cache / "locks").iterdir()} <= {guard}
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["contractum.lock", "somewhere"]

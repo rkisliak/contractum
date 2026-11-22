@@ -237,8 +237,11 @@ detail route is rendered as "Not found", never as forbidden (D-UI-08-25).
   returns per-field messages plus the unmapped rest for the alert list. `ProblemAlert` is danger, or warning for 503, 429
   and network; `context`, `onRetry` ("Retry loading") and `fieldLabels` are optional. Tests: `problem.test.ts`,
   `ProblemAlert.test.tsx`.
-- `src/test/msw.ts` (`server`, `http`, `HttpResponse`) is started by `src/test/setup.ts` with `onUnhandledFrame: "error"`
-  (msw 3 name; an unmocked call fails the test) and reset after each test; add handlers with `server.use(...)`. `setup.ts`
+- `src/test/msw.ts` (`server`, `http`, `HttpResponse`) is started by `src/test/setup.ts` with the "error" strategy for
+  unhandled requests (msw 3 `onUnhandledFrame`); `setup.ts` also records every unmocked call and fails the running test in
+  `afterEach`, because the screens absorb a failed request. Its base handlers answer the public `GET /auth/policy` and
+  `GET /settings/public` (`defaultAuthPolicy`, `defaultPublicSettings`); it is reset after each test; add handlers with
+  `server.use(...)`. `setup.ts`
   also resolves same-origin paths against the jsdom origin for `Request` and `fetch`, as a browser does (Node throws on a
   relative URL). It also turns off CSS animations and transitions in the test DOM: jsdom (31 and later) computes
   `animation-name` but never fires `animationend`, so a closing Radix dialog would otherwise stay mounted.

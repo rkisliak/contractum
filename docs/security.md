@@ -15,9 +15,10 @@ The linked pages have the details.
   JSONPath targets, with limits on size and evaluation cost. A mandatory rule that cannot be
   evaluated blocks publishing, so it fails closed.
 - **Everything is audited:** every change, read and refusal, with who did it and when.
-- **Hardened deployment:** the Helm chart runs containers as non-root with a read-only root file
-  system and no privilege escalation. It also ships network policies and serves HTTPS at the
-  gateway.
+- **Hardened deployment:** the Helm chart runs every container with a read-only root file system
+  and no privilege escalation, and the application containers as non-root (the exceptions are in
+  [Deploy on Kubernetes](admin/deploy-kubernetes.md#security-notes)). It also ships network
+  policies and serves HTTPS at the gateway.
 
 ## Checked on every change
 

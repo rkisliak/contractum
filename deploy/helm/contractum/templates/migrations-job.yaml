@@ -10,6 +10,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: migrate-r{{ .Release.Revision }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "dc.labels" . | nindent 4 }}
     app.kubernetes.io/name: migrate

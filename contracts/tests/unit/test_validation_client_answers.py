@@ -12,7 +12,7 @@ import json
 import uuid
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -21,6 +21,7 @@ from dc_contracts.settings import ContractsSettings
 from dc_contracts.validation_client import (
     GateContext,
     ValidationClient,
+    _path_id,
     _problem_type,
     _save_mode_run,
 )
@@ -347,3 +348,23 @@ async def test_save_mode_run_without_folder_facts_or_client_is_unavailable(
         await _save_mode_run(request, CONTRACT_ID, DRAFT_ID, b"doc", "application/yaml")
     assert_unavailable(exc)
     assert exc.value.detail == "Contract validation is not configured."
+
+
+def test_a_path_id_is_the_canonical_text_of_a_uuid() -> None:
+    assert _path_id(FOLDER_ID) == "0b9f3d8e-6c1a-4f61-9a55-1f1d7f2a0c01"
+    assert _path_id(uuid.UUID("0B9F3D8E6C1A4F619A551F1D7F2A0C01")) == str(FOLDER_ID)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "../../internal/v1/audit",
+        "0b9f3d8e-6c1a-4f61-9a55-1f1d7f2a0c01/../x",
+        "0b9f3d8e-6c1a-4f61-9a55-1f1d7f2a0c01?x=1",
+        "0B9F3D8E-6C1A-4F61-9A55-1F1D7F2A0C01",
+        "",
+    ],
+)
+def test_anything_but_a_canonical_uuid_never_reaches_a_validation_path(value: str) -> None:
+    with pytest.raises(ValueError, match="canonical UUID"):
+        _path_id(cast(uuid.UUID, value))

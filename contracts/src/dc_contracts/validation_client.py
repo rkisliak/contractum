@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
@@ -53,6 +54,23 @@ AVAILABLE_RULE_SET_PATH = "/api/v1/validation/folders/{folder_id}/available-rule
 RULE_SET_PATH = "/api/v1/validation/rule-sets/{rule_set_id}"
 DRY_RUN_PATH = "/internal/v1/validation/rule-sets/{rule_set_id}/dry-run"
 DRIFT_PATH = "/internal/v1/validation/folders/{folder_id}/drift"
+
+# The only text an id may put into a validation URL path: the canonical lowercase form of a UUID.
+_PATH_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def _path_id(value: uuid.UUID) -> str:
+    """``value`` as a URL path segment, refused unless it is a canonical UUID.
+
+    Every id that reaches a validation path is a ``uuid.UUID`` already; this check makes that a
+    property of the URL builder itself, so no caller can ever put ``/``, ``?``, ``..`` or any other
+    path text into the request target.
+    """
+    text = str(value)
+    if not _PATH_ID.fullmatch(text):
+        raise ValueError("a validation path id must be a canonical UUID")
+    return text
+
 
 # Keys of a validation pin that become part of the published version (D-132). The wire pin also
 # carries a ``deprecated_version`` hint, which is not part of what a version was validated against.
@@ -189,7 +207,7 @@ class ValidationClient:
             # bounds the call itself, so a validation service that answers slowly is a refusal.
             async with asyncio.timeout(timeout):
                 response = await self._http.post(
-                    RUNS_PATH.format(folder_id=ctx.facts.id),
+                    RUNS_PATH.format(folder_id=_path_id(ctx.facts.id)),
                     content=json.dumps(payload),
                     headers={
                         "Authorization": f"Bearer {ctx.bearer}",
@@ -215,7 +233,9 @@ class ValidationClient:
         try:
             async with asyncio.timeout(timeout):
                 response = await self._http.get(
-                    AVAILABLE_RULE_SET_PATH.format(folder_id=folder_id, rule_set_id=rule_set_id),
+                    AVAILABLE_RULE_SET_PATH.format(
+                        folder_id=_path_id(folder_id), rule_set_id=_path_id(rule_set_id)
+                    ),
                     headers={"Authorization": f"Bearer {bearer}"},
                     timeout=timeout,
                 )
@@ -251,7 +271,7 @@ class ValidationClient:
         try:
             async with asyncio.timeout(timeout):
                 response = await self._http.get(
-                    RUN_READ_PATH.format(run_id=run_id),
+                    RUN_READ_PATH.format(run_id=_path_id(run_id)),
                     params={"contract_id": str(contract_id)},
                     headers={"Authorization": f"Bearer {bearer}"},
                     timeout=timeout,
@@ -289,7 +309,7 @@ class ValidationClient:
         try:
             async with asyncio.timeout(timeout):
                 response = await self._http.get(
-                    RULE_SET_PATH.format(rule_set_id=rule_set_id),
+                    RULE_SET_PATH.format(rule_set_id=_path_id(rule_set_id)),
                     headers={"Authorization": f"Bearer {bearer}"},
                     timeout=timeout,
                 )
@@ -330,13 +350,17 @@ class ValidationClient:
     ) -> dict[str, Any]:
         """One dry-run page (``ValidationDryRunOut``) for documents contracts selected (D-158)."""
         payload = {"version": version, "scope_folder_id": str(scope_folder_id), "items": items}
-        return await self._batch(DRY_RUN_PATH.format(rule_set_id=rule_set_id), payload, bearer)
+        return await self._batch(
+            DRY_RUN_PATH.format(rule_set_id=_path_id(rule_set_id)), payload, bearer
+        )
 
     async def drift(
         self, folder_id: uuid.UUID, items: list[dict[str, Any]], bearer: str
     ) -> dict[str, Any]:
         """One compliance-drift page (``ValidationDriftOut``) at ``folder_id`` (D-160)."""
-        return await self._batch(DRIFT_PATH.format(folder_id=folder_id), {"items": items}, bearer)
+        return await self._batch(
+            DRIFT_PATH.format(folder_id=_path_id(folder_id)), {"items": items}, bearer
+        )
 
     async def _batch(self, path: str, payload: dict[str, Any], bearer: str) -> dict[str, Any]:
         """POST a batch page with the caller's bearer; a clean 200 body or a ``ProblemError``.

@@ -34,6 +34,20 @@ class PasswordService:
         except (VerificationError, InvalidHashError):
             return False
 
+    async def matches_secret(self, secret: str, candidate: str) -> bool:
+        """Whether ``candidate`` equals the plaintext ``secret`` (the one-time bootstrap secret).
+
+        The secret is hashed with Argon2id under a fresh salt and the candidate verified against
+        that hash, so the comparison takes the same time whatever the candidate's content or
+        length, and no fast digest of either value is ever computed. Nothing is normalised: the
+        secret is machine-generated and must match exactly. Nothing is stored.
+        """
+        secret_hash = await asyncio.to_thread(self._hasher.hash, secret)
+        try:
+            return await asyncio.to_thread(self._hasher.verify, secret_hash, candidate)
+        except (VerificationError, InvalidHashError):
+            return False
+
     def needs_rehash(self, password_hash: str) -> bool:
         return self._hasher.check_needs_rehash(password_hash)
 

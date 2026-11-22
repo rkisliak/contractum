@@ -2,7 +2,7 @@
 // /contracts, a contract and its versions, the rule set editor and the audit log, written to test-results/design/<page>-<project>.png in both the
 // light (chromium) and dark (chromium-dark) projects for a visual review. Read-only. A second test
 // shoots contract authoring (the New contract form in YAML and JSON, the draft editor).
-import { expect, test } from "./fixtures";
+import { expect, pasteIntoEditor, test } from "./fixtures";
 import { adminApi, signIn } from "./journey-helpers";
 
 type Page_<T> = { items: T[] };
@@ -124,10 +124,7 @@ const SAMPLE_JSON = {
   ],
 };
 
-test("design screenshots of contract authoring", async ({
-  page,
-  context,
-}, info) => {
+test("design screenshots of contract authoring", async ({ page }, info) => {
   test.setTimeout(180_000);
   const api = await adminApi();
   let ledger: Folder | undefined;
@@ -156,7 +153,6 @@ test("design screenshots of contract authoring", async ({
     "demo folder acme/payments/ledger is missing",
   );
 
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.setViewportSize({ width: 1440, height: 960 });
   await signIn(page);
   const shot = (name: string) =>
@@ -172,27 +168,16 @@ test("design screenshots of contract authoring", async ({
   await page.getByLabel("Blank document").check();
   const editor = page.locator(".monaco-editor").first();
   await expect(editor).toBeVisible({ timeout: 15_000 });
-  await page.evaluate(
-    (text) => navigator.clipboard.writeText(text),
-    SAMPLE_YAML,
-  );
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.press("ControlOrMeta+V");
+  await pasteIntoEditor(page, SAMPLE_YAML);
   await page.keyboard.press("ControlOrMeta+Home");
-  await expect(editor).toContainText("apiVersion");
+  // Text only the pasted sample has: the blank template also contains "apiVersion".
+  await expect(editor).toContainText("urn:acme:payments:ledger:settlements");
   await page.mouse.click(5, 5);
   await shot("new-contract-yaml");
 
   await page.getByLabel("Format").selectOption("json");
   await expect(editor).toContainText('"apiVersion"');
-  await page.evaluate(
-    (text) => navigator.clipboard.writeText(text),
-    `${JSON.stringify(SAMPLE_JSON, null, 2)}\n`,
-  );
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.press("ControlOrMeta+V");
+  await pasteIntoEditor(page, `${JSON.stringify(SAMPLE_JSON, null, 2)}\n`);
   await page.keyboard.press("ControlOrMeta+Home");
   await expect(editor).toContainText("Settlements");
   await page.mouse.click(5, 5);

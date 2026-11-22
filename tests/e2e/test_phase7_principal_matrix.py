@@ -725,7 +725,8 @@ def test_every_api04_area_has_a_runner_and_the_golden_interactive_set() -> None:
     assert set(RUNNERS) == set(AREAS)
     assert len(AREAS) == 12
     assert all(AREAS.values())
-    assert "service-account:manage-keys" in INTERACTIVE_ONLY and len(INTERACTIVE_ONLY) == 14
+    assert {"service-account:manage-keys", "card:manage-secret"} <= INTERACTIVE_ONLY
+    assert len(INTERACTIVE_ONLY) == 15
 
 
 async def test_tracer_every_principal_type_reads_the_audit_trail_of_its_organization(

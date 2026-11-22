@@ -8,7 +8,7 @@ import {
   type Response,
 } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { expect } from "./fixtures";
+import { expect, finishFiniteAnimations } from "./fixtures";
 
 // Playwright's Node-side client ignores Chromium's host mapping, so it reaches the gateway by its
 // compose name (see global-setup.ts).
@@ -304,6 +304,7 @@ const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 /** The fixtures' axe gate as a soft assertion, so one journey reports every page at once. */
 export async function softAxe(page: Page, label: string): Promise<void> {
+  await finishFiniteAnimations(page);
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const report = results.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")

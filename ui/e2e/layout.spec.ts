@@ -186,6 +186,9 @@ async function explicitStates(page: Page, width: Width): Promise<void> {
   await page.getByRole("menuitem", { name: "Versions" }).click();
   const versions = page.getByRole("dialog", { name: "Versions" });
   await expect(versions).toBeVisible();
+  await expect(
+    versions.getByRole("rowheader", { name: "API docs" }),
+  ).toBeVisible();
   await expect(versions.getByText("Loading…")).toHaveCount(0);
   opened.add("Versions");
   await audit(page, width, "versions dialog", false);

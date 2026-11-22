@@ -159,9 +159,12 @@ If a mistaken change leaves nobody able to sign in:
 | Announcement banner | none | Text 1 to 500 characters, severity `info` or `warning`, optional start and end time. |
 | Audit retention (days) | audit `DC_RETENTION_DAYS` (unset: keep every event) | `0` keeps every event, otherwise 90 to 36500. |
 
-The **About** tab is view only. It shows each service's version, commit, build time, database
-state and migration head. Identity reads it from the other services, which the default
-NetworkPolicies already allow.
+The **About** tab is view only. It starts with the platform version of the web app
+("Contractum 1.4.0"), then shows each service's version, commit, build time, database state and
+migration head. One release gives every component the same version (`dev` for a local build); a
+service on another version is marked "Different version" (see
+[Troubleshooting](troubleshooting.md#a-component-shows-different-version)). Identity reads it from
+the other services, which the default NetworkPolicies already allow.
 
 ### Audit retention
 

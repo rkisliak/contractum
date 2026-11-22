@@ -1,71 +1,143 @@
-# Release path of the server: builds the 7 platform images and publishes them to GitHub Container
-# Registry, where the Helm chart pulls them from by default (global.imageRegistry ghcr.io/rkisliak).
+# Release of the server platform: one version for all 7 images and the Helm chart.
 #
-#   ghcr.io/<owner>/contractum/<component>:<version>
-#   (identity, contracts, validation, audit, mail, api-docs, ui)
+#   Actions › Release › Run workflow (on main), mode:
+#     pre-release  release candidate vX.Y.Z-rc.N of the current main HEAD
+#     promote      the newest release candidate, released again as vX.Y.Z from the same commit
 #
-# It runs only on a server release tag `vX.Y.Z` (or by hand on such a tag, to publish it again). The
-# tag must equal `appVersion` in deploy/helm/contractum/Chart.yaml, so the chart's default image tag
-# (its appVersion) always names images that exist. Pull requests and pushes to main never publish:
-# ci.yml builds every image and security.yml scans them.
+# Nobody types a version and no commit bumps one: scripts/release/next_version.py derives it from
+# the Conventional Commits since the last stable tag vX.Y.Z (breaking = major, feat = minor, fix,
+# perf, security, refactor, revert and dependency updates = patch; 1.0.0 first) and the build
+# injects it (build argument VERSION, `helm package --version/--app-version`).
+#
+# Gate: the released commit must have a successful run of ci.yml, e2e-nightly.yml and
+# dast-nightly.yml for that exact SHA, or the run stops and names what is missing.
+#
+# Outputs, all with the same version:
+#   ghcr.io/<owner>/contractum/<component>:<version>   (identity, contracts, validation, audit,
+#                                                       mail, api-docs, ui)
+#   oci://ghcr.io/<owner>/charts/contractum --version <version>
+#   the git tag v<version> and its GitHub Release (a pre-release for -rc.N, Latest for stable),
+#   with notes from scripts/release/changelog.py and the chart archive attached.
 #
 # Each image is built from scratch (no build cache) with BuildKit SBOM and SLSA provenance
 # (mode=max) attestations attached in the registry, and gets a GitHub artifact attestation (build
-# provenance, actions/attest) pushed next to it. Verify one with
+# provenance, actions/attest) pushed next to it; the chart archive is attested too. Verify with
 #   gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum
-# The only token is the workflow's GITHUB_TOKEN; packages: write is granted to the image job only.
+#   gh attestation verify contractum-<version>.tgz --repo <owner>/contractum
+# The only token is the workflow's GITHUB_TOKEN. packages: write is granted only to the jobs that
+# push, id-token/attestations only to the jobs that attest, contents: write only to the release
+# job. Tags it creates trigger nothing (GITHUB_TOKEN events start no workflow), so nothing builds
+# twice. Pull requests and pushes to main never publish: ci.yml builds every image and
+# security.yml scans them.
 name: Release
 
 on:
-  push:
-    tags:
-      - "v[0-9]*"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "pre-release: a release candidate of main HEAD; promote: the newest candidate as stable"
+        type: choice
+        required: true
+        default: pre-release
+        options:
+          - pre-release
+          - promote
 
 permissions:
   contents: read
 
-# A release is never cancelled half way; a second run of the same tag waits.
+# One release at a time, never cancelled half way: a second run waits.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
-  version:
-    name: version
+  plan:
+    name: plan
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
+      actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      git-sha: ${{ steps.build.outputs.git-sha }}
+      build-time: ${{ steps.build.outputs.build-time }}
     steps:
+      - name: Runs on main only
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::run the release on main, not ${REF}" >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: The tag equals the chart appVersion
+      - name: Next version
         id: version
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
-          case "$GITHUB_REF" in
-            refs/tags/v[0-9]*) ;;
-            *) echo "::error::release runs only on a vX.Y.Z tag, not ${GITHUB_REF}" >&2; exit 1 ;;
-          esac
-          version="${GITHUB_REF_NAME#v}"
-          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
-            echo "::error::tag ${GITHUB_REF_NAME} is not vX.Y.Z" >&2
+          python3 scripts/release/next_version.py --mode "$MODE" --head "$GITHUB_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Build identity of the released commit
+        id: build
+        env:
+          SHA: ${{ steps.version.outputs.sha }}
+        run: |
+          set -euo pipefail
+          echo "git-sha=$(git rev-parse --short=12 "$SHA")" >> "$GITHUB_OUTPUT"
+          echo "build-time=$(git log -1 --format=%cI "$SHA")" >> "$GITHUB_OUTPUT"
+      - name: The commit passed CI, E2E Nightly and DAST Nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.version.outputs.sha }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for entry in "ci.yml:Continuous Integration" "e2e-nightly.yml:E2E Nightly" "dast-nightly.yml:DAST Nightly"; do
+            file="${entry%%:*}"
+            title="${entry#*:}"
+            count=$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/workflows/${file}/runs" \
+              -f head_sha="$SHA" -f status=success -f per_page=1 --jq '.total_count')
+            if [ "$count" = "0" ]; then
+              missing="${missing}${missing:+, }${title} (${file})"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::${TAG}: commit ${SHA} has no successful run of: ${missing}. Run each one on that commit (Actions › <workflow> › Run workflow on main) and start the release again." >&2
             exit 1
           fi
-          app_version=$(sed -n 's/^appVersion: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' deploy/helm/contractum/Chart.yaml)
-          if [ "$version" != "$app_version" ]; then
-            echo "::error::tag ${GITHUB_REF_NAME} does not match the chart appVersion ${app_version}" >&2
-            exit 1
-          fi
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "${TAG} (${SHA}): CI, E2E Nightly and DAST Nightly passed." >> "$GITHUB_STEP_SUMMARY"
+      - name: Release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA: ${{ steps.version.outputs.sha }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/changelog.py --version "$VERSION" --to "$SHA" \
+            --since "$PREVIOUS" --repo "$GITHUB_REPOSITORY" --server-url "$GITHUB_SERVER_URL" \
+            --output release-notes.md
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 7
 
   image:
     name: image (${{ matrix.name }})
-    needs: version
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -115,17 +187,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.plan.outputs.sha }}
           persist-credentials: false
-      - name: Image name and build metadata
+      - name: Image name
         id: meta
         env:
           OWNER: ${{ github.repository_owner }}
           NAME: ${{ matrix.name }}
-        run: |
-          set -euo pipefail
-          echo "image=ghcr.io/${OWNER,,}/contractum/${NAME}" >> "$GITHUB_OUTPUT"
-          echo "git-sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
-          echo "build-time=$(git log -1 --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "image=ghcr.io/${OWNER,,}/contractum/${NAME}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to ghcr.io
         env:
@@ -138,15 +207,14 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           target: ${{ matrix.target }}
+          # The Dockerfiles turn these into the runtime version (DC_VERSION, the UI build) and the
+          # OCI labels org.opencontainers.image.{version,revision,created}.
           build-args: |
             ${{ matrix.package && format('PACKAGE={0}', matrix.package) || '' }}
-            GIT_SHA=${{ steps.meta.outputs.git-sha }}
-            BUILD_TIME=${{ steps.meta.outputs.build-time }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ needs.version.outputs.version }}
-          tags: ${{ steps.meta.outputs.image }}:${{ needs.version.outputs.version }}
+            VERSION=${{ needs.plan.outputs.version }}
+            GIT_SHA=${{ needs.plan.outputs.git-sha }}
+            BUILD_TIME=${{ needs.plan.outputs.build-time }}
+          tags: ${{ steps.meta.outputs.image }}:${{ needs.plan.outputs.version }}
           no-cache: true
           pull: true
           push: true
@@ -163,3 +231,108 @@ jobs:
       - name: Log out of ghcr.io
         if: always()
         run: docker logout ghcr.io
+
+  # After every image exists, so the chart never names an image that is missing.
+  chart:
+    name: chart
+    needs: [plan, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      # The official Helm release binary, pinned and checked against its published sha256.
+      - name: Install Helm
+        env:
+          HELM_VERSION: v4.3.2
+          HELM_SHA256: d1c0278d46beab79582d7e50f5b3dc206944ba8e577cde618513fd07daa53983
+        run: |
+          set -euo pipefail
+          curl -fsSLo "$RUNNER_TEMP/helm.tgz" "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          echo "${HELM_SHA256}  ${RUNNER_TEMP}/helm.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/helm-bin"
+          tar -xzf "$RUNNER_TEMP/helm.tgz" -C "$RUNNER_TEMP" linux-amd64/helm
+          install -m 0755 "$RUNNER_TEMP/linux-amd64/helm" "$RUNNER_TEMP/helm-bin/helm"
+          echo "$RUNNER_TEMP/helm-bin" >> "$GITHUB_PATH"
+      - name: Package the chart
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          helm version
+          helm lint deploy/helm/contractum
+          helm package deploy/helm/contractum --version "$VERSION" --app-version "$VERSION" \
+            --destination dist
+          test -f "dist/contractum-${VERSION}.tgz"
+      - name: Push the chart to ghcr.io
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          OWNER: ${{ github.repository_owner }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "$REGISTRY_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          helm push "dist/contractum-${VERSION}.tgz" "oci://ghcr.io/${OWNER,,}/charts"
+      - name: Log out of ghcr.io
+        if: always()
+        run: helm registry logout ghcr.io || true
+      - name: Attest the chart archive
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/contractum-${{ needs.plan.outputs.version }}.tgz
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: chart
+          path: dist/contractum-${{ needs.plan.outputs.version }}.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  # Last: the tag and the GitHub Release appear only when every image and the chart are published.
+  release:
+    name: release
+    needs: [plan, image, chart]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: notes
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: chart
+          path: chart
+      - name: Create the tag and the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" > /dev/null 2>&1; then
+            echo "::error::the tag ${TAG} already exists" >&2
+            exit 1
+          fi
+          if [ "$PRERELEASE" = "true" ]; then
+            flags=(--prerelease --latest=false)
+          else
+            flags=(--latest)
+          fi
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
+            --title "Contractum ${VERSION}" \
+            --notes-file notes/release-notes.md \
+            "${flags[@]}" \
+            "chart/contractum-${VERSION}.tgz"

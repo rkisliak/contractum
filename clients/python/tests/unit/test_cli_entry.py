@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.machinery
+import importlib.metadata
 import io
 import os
 import subprocess
@@ -15,7 +16,9 @@ from typing import Any
 
 import click
 import pytest
+import respx
 from click.testing import CliRunner
+from httpx import ConnectError, Response
 
 from contractum import cli as cli_module
 from contractum.cli import COMMANDS, LazyGroup, cli, main
@@ -188,9 +191,66 @@ def test_command_returning_none_exits_0(plant: Callable[..., None]) -> None:
     assert _exit_code(["planted"]) == 0
 
 
+CLIENT_VERSION = importlib.metadata.version("contractum")
+SERVER = "https://contractum.example.test"
+
+
 def test_version_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
+    # No server configured (isolated environment): only the client line.
     assert _exit_code(["--version"]) == 0
-    assert capsys.readouterr().out.strip() == "contractum 0.1.0"
+    assert capsys.readouterr().out.strip() == f"contractum {CLIENT_VERSION}"
+
+
+@respx.mock(assert_all_called=True)
+def test_version_also_names_the_configured_server_version(
+    capsys: pytest.CaptureFixture[str], respx_mock: respx.MockRouter
+) -> None:
+    route = respx_mock.get(f"{SERVER}/api/v1/identity/version").mock(
+        return_value=Response(
+            200,
+            json={"service": "identity", "version": "1.4.0", "commit": "c", "built_at": "t"},
+        )
+    )
+    assert _exit_code(["--url", SERVER, "--version"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == [f"contractum {CLIENT_VERSION}", "server: 1.4.0"]
+    request = route.calls.last.request
+    assert "authorization" not in request.headers  # public route: no token is sent
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        ConnectError("refused"),
+        Response(503, json={}),
+        Response(200, text="not json"),
+        Response(200, json={"version": 7}),
+        Response(200, json={"version": "1.4.0\x1b[31m"}),
+    ],
+    ids=["unreachable", "server-error", "not-json", "not-a-string", "control-characters"],
+)
+def test_a_server_version_failure_reads_unavailable_and_still_exits_0(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, answer: object
+) -> None:
+    monkeypatch.setenv("CONTRACTUM_URL", SERVER)
+    with respx.mock() as mock:
+        route = mock.get(f"{SERVER}/api/v1/identity/version")
+        if isinstance(answer, Exception):
+            route.mock(side_effect=answer)
+        else:
+            route.mock(return_value=answer)
+        assert _exit_code(["--version"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        f"contractum {CLIENT_VERSION}",
+        "server: unavailable",
+    ]
+
+
+def test_without_a_command_or_version_the_cli_asks_for_a_command(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert _exit_code(["--quiet"]) == 2
+    assert "Missing command." in capsys.readouterr().err
 
 
 def test_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
@@ -437,4 +497,4 @@ def test_python_dash_m_runs_the_cli() -> None:
         check=False,
     )
     assert done.returncode == 0
-    assert done.stdout.strip() == "contractum 0.1.0"
+    assert done.stdout.strip() == f"contractum {CLIENT_VERSION}"

@@ -6,8 +6,9 @@ happened.
 
 What the workflows publish:
 
-- `release.yml` publishes the seven server images to GitHub Container Registry, but only on a
-  `vX.Y.Z` tag (see [The server release](#the-server-release)).
+- `release.yml` publishes the seven server images and the Helm chart to GitHub Container
+  Registry and creates the platform's tag and GitHub Release, but only when run by hand on `main`
+  (see [Releasing](#releasing)).
 - `sdk-release.yml` publishes the SDK and CLI, but only on an `contractum-v*` tag (see
   [The SDK release](#the-sdk-release)).
 - `docs.yml` deploys the docs site to GitHub Pages, but only on a push to `main` when the
@@ -16,8 +17,9 @@ What the workflows publish:
   server images but never push them, and nothing is deployed.
 
 The only repository secret any workflow reads is `SONAR_TOKEN`, in the inactive `sonarqube` job.
-A few jobs use the automatic `GITHUB_TOKEN`: the server release (to push the images and their
-attestations), the SDK release (to create the release and push the CLI image), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
+A few jobs use the automatic `GITHUB_TOKEN`: the server release (to read the gate's workflow
+runs, push the images, the chart and their attestations, and create the tag and release), the SDK
+release (to create the release and push the CLI image), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
 `e2e-nightly` and `dast-nightly` (to find the last green run and skip a nightly run when nothing
 changed).
 
@@ -25,13 +27,13 @@ changed).
 
 | Workflow | Trigger | Jobs | What it checks or publishes |
 |----------|---------|------|-----------------------------|
-| Continuous Integration (`ci.yml`) | pull request, push to `main` | `python-lint`, `python-unit`, `python-integration`, `ui`, `docker-build (<image>)`, `ci-ok` | The job-level mirror of `scripts/ci.sh` without the end-to-end step: lock check, ruff, mypy and import rules; unit tests; integration tests against the runner's Docker; the UI static checks (`pnpm ci:static`); every image builds (identity, contracts, validation, audit, mail, api-docs, ui), never pushed. `ci-ok` is one aggregate result |
+| Continuous Integration (`ci.yml`) | pull request, push to `main`, manual | `python-lint`, `python-unit`, `python-integration`, `ui`, `docker-build (<image>)`, `ci-ok` | The job-level mirror of `scripts/ci.sh` without the end-to-end step: lock check, ruff, mypy and import rules; unit tests; integration tests against the runner's Docker; the UI static checks (`pnpm ci:static`); every image builds (identity, contracts, validation, audit, mail, api-docs, ui), never pushed. `ci-ok` is one aggregate result |
 | Security (`security.yml`) | pull request, push to `main`, daily 04:23 UTC, manual | `trivy-fs-report`, `trivy-fs-gate`, `trivy-image (<image>)`, `dependency-review`, `codeql (<language>)`, `gitleaks`, `pip-audit`, `pnpm-audit`, `sonarqube` | The scanners in [Security scanners](#security-scanners). `dependency-review` runs on pull requests only. `sonarqube` is inactive until `SONAR_ENABLED` is `true` |
 | E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`) | `gate`, `checks`, `ui-static`, `ui-e2e (<part>)`, `py-e2e`, `operation-coverage` | `CI_E2E=1 bash scripts/ci.sh`, or the full gate when `full` is ticked, as parallel jobs, one per part of the script (`CI_PART`): the checks, the UI static checks, the Playwright UI tests on one cold stack per shard or volume project, and the Python end-to-end tests on their own cold stack. `operation-coverage` runs under the full gate only |
 | DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
 | SDK (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor. `sdk-ok` is one aggregate result |
 | SDK Release (`sdk-release.yml`) | pull request that touches `clients/python/**` or the workflow; push of an `contractum-v*` tag; manual | `build-and-smoke`, `github-release`, `image` | Every run builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files, writes `SHA256SUMS`, builds the CLI image and runs an offline smoke on it. Only an `contractum-v*` tag runs `github-release` and `image`, which publish |
-| Release (`release.yml`) | push of a `v*` tag; manual on such a tag | `version`, `image (<image>)` | Checks that the tag equals `appVersion` in `deploy/helm/contractum/Chart.yaml`, then builds the seven server images without cache and pushes them to `ghcr.io/<owner>/contractum/<image>:<version>` with SBOM and provenance attestations |
+| Release (`release.yml`) | manual on `main` only (input `mode`: `pre-release` or `promote`) | `plan`, `image (<image>)`, `chart`, `release` | Computes the next platform version from the commits, checks that the commit passed CI, E2E Nightly and DAST Nightly, builds the seven server images without cache, packages the Helm chart, pushes both to `ghcr.io/<owner>` with attestations, then creates the tag and the GitHub Release. See [Releasing](#releasing) |
 | Documentation (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only from `main` (a push, or a manual run on `main`) with `DOCS_PAGES_ENABLED` set to `true` |
 | Docs Links Weekly (`docs-links-weekly.yml`) | Mondays 05:17 UTC, manual | `external-links` | lychee over the external links of every Markdown file. It never runs on pull requests, so a remote site that is down never blocks a merge |
 
@@ -47,33 +49,84 @@ example `contractum-v0.1.0` for version 0.1.0). The run fails on a mismatch. On 
 2. `github-release` creates the GitHub Release of the tag with the GitHub CLI. It carries the
    wheel, the sdist and `SHA256SUMS`, checked against the files `build-and-smoke` tested. It adds
    GitHub artifact attestations (build provenance) to every release. A version with `a`, `b`,
-   `rc` or `dev` in it is marked as a pre-release.
+   `rc` or `dev` in it is marked as a pre-release. An SDK release is never marked Latest: that
+   marker belongs to the server platform release.
 3. `image` builds the CLI image and pushes it to `ghcr.io/<owner>/contractum-cli`, tagged with the
    version and `latest`. This job is the only one that holds `packages: write`.
 
 Nothing goes to a package index. Users install the wheel from its release URL; see the
 [SDK and CLI guide](../user/sdk-cli.md).
 
-### The server release
+### Releasing
 
-Push a tag `vX.Y.Z` that equals `appVersion` in `deploy/helm/contractum/Chart.yaml` (for example
-`v1.0.0` for `appVersion: "1.0.0"`). The run fails on a mismatch, so the chart's default image tag
-(its `appVersion`) always names published images. On the tag:
+The server platform has one version for all seven images (identity, contracts, validation, audit,
+mail, api-docs, ui) and the Helm chart. The SDK and CLI keep their own `contractum-vX.Y.Z`
+releases (see [The SDK release](#the-sdk-release)). Nobody types a version and no commit bumps
+one: the Release workflow computes it and injects it at build and package time.
 
-1. `version` checks the tag.
-2. `image (<image>)` builds each of identity, contracts, validation, audit, mail, api-docs and ui
-   from scratch (no build cache) and pushes it to `ghcr.io/<owner>/contractum/<image>:<version>`.
-   BuildKit attaches an SBOM and SLSA provenance (`mode=max`) to the image, and `actions/attest`
-   pushes a GitHub build provenance attestation next to it. Only this job holds `packages: write`,
-   `id-token: write` and `attestations: write`.
+**Run a release.** Open Actions, **Release**, **Run workflow**, keep the branch `main` and pick a
+mode:
 
-To publish a tag again, run the workflow by hand on that tag. On any other ref it fails at
-`version`. Check a published image with
-`gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum`.
+- `pre-release` releases the current head of `main` as a release candidate `vX.Y.Z-rc.N`.
+- `promote` takes the newest release candidate and releases the same commit as `vX.Y.Z`. The
+  images are built again from that commit, so they report the final version.
+
+**Version rules.** `scripts/release/next_version.py` reads the commit subjects since the last
+stable tag `vX.Y.Z` as [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Commits since the last stable tag | Next version |
+|-----------------------------------|--------------|
+| a breaking change: `!` after the type or scope (`feat(api)!: ...`), or a `BREAKING CHANGE:` footer | major |
+| `feat` | minor |
+| `fix`, `perf`, `security`, `refactor`, `revert`, or a dependency update (`build(deps)`, `chore(deps)`) | patch |
+| only `docs`, `test`, `ci`, `chore`, `style`, `build`, or subjects that are not Conventional Commits | nothing to release: the run stops |
+
+The largest bump wins. Without any stable tag, the first release is `1.0.0`. A release candidate
+number is one above the highest existing candidate of that version (`v1.3.0-rc.1`, then
+`v1.3.0-rc.2`). A pre-release stops when the head is already the candidate of that version. A
+promote stops when there is no release candidate, or when the newest one is not newer than the
+last stable release (it was already promoted).
+
+**Gate.** The released commit must have a successful run of Continuous Integration (`ci.yml`),
+E2E Nightly (`e2e-nightly.yml`) and DAST Nightly (`dast-nightly.yml`) for that exact commit, or
+the run stops and names the missing ones. Run a missing one by hand on `main` (Actions, the
+workflow, **Run workflow**) and start the release again. A commit pushed with `[skip ci]` gets its
+CI run this way.
+
+**What a release publishes.** The jobs run in this order, so nothing is tagged until everything
+is published:
+
+1. `plan` computes the version, checks the gate and writes the release notes with
+   `scripts/release/changelog.py`: every commit since the previous stable tag, grouped as
+   Breaking changes, Features, Fixes, Security, Performance and Other changes, sorted by scope,
+   each line linking its pull request.
+2. `image (<image>)` builds each image from scratch (no build cache) with the build arguments
+   `VERSION`, `GIT_SHA` (12 characters) and `BUILD_TIME` (the commit time), and pushes
+   `ghcr.io/<owner>/contractum/<image>:<version>`. BuildKit attaches an SBOM and SLSA provenance
+   (`mode=max`), and `actions/attest` pushes a GitHub build provenance attestation next to it.
+   The images carry the OCI labels `org.opencontainers.image.{title,version,revision,created,source}`.
+3. `chart` installs a pinned Helm release (checked against its sha256), runs
+   `helm package --version <version> --app-version <version>` and pushes the chart to
+   `oci://ghcr.io/<owner>/charts/contractum`. The chart archive gets an attestation too.
+4. `release` creates the tag `v<version>` on the released commit and its GitHub Release with
+   the GitHub CLI: the notes, the chart archive, marked as a pre-release for `-rc.N` and as
+   Latest for a stable version.
+
+Permissions are per job: `plan` reads the repository and the workflow runs, `image` and `chart`
+hold `packages: write`, `id-token: write` and `attestations: write`, and only `release` holds
+`contents: write`. The tag the workflow creates triggers no other workflow.
+
+**Verify a release.**
+
+```bash
+gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum
+gh release download v<version> --repo <owner>/contractum --pattern 'contractum-*.tgz'
+gh attestation verify contractum-<version>.tgz --repo <owner>/contractum
+```
 
 A container package that GitHub creates on the first push is private. Make each
-`contractum/<image>` package public (or give the cluster a pull Secret) under the package's
-settings, and check that it is linked to this repository.
+`contractum/<image>` package and the `charts/contractum` package public (or give the cluster a
+pull Secret) under the package's settings, and check that it is linked to this repository.
 
 ### The nightly end-to-end run
 

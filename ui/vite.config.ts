@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -34,18 +33,13 @@ function devRuntimeConfig(): Plugin {
   };
 }
 
-// The UI's build identity for the "Versions" dialog (src/buildInfo.ts): the package version and
-// the GIT_SHA / BUILD_TIME build arguments of infra/docker/ui.Dockerfile ("dev" locally).
-const packageVersion = (
-  JSON.parse(
-    readFileSync(resolve(import.meta.dirname, "package.json"), "utf-8"),
-  ) as { version: string }
-).version;
-
+// The UI's build identity for the "Versions" dialog (src/buildInfo.ts): the platform version and
+// the VERSION / GIT_SHA / BUILD_TIME build arguments of infra/docker/ui.Dockerfile ("dev" locally).
+// Never package.json: the Release workflow injects the version at build time.
 export default defineConfig({
   define: {
     __DC_BUILD__: JSON.stringify({
-      version: packageVersion,
+      version: process.env.VERSION || "dev",
       commit: process.env.GIT_SHA || "dev",
       builtAt: process.env.BUILD_TIME || "dev",
     }),

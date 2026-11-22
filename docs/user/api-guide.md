@@ -23,8 +23,17 @@ Two more public paths sit outside a module:
   token, then **Try it out** sends real requests.
 - `/api/v1/openapi.json` is the merged OpenAPI 3.1 document of every module.
 
-Each module also answers `GET /api/v1/<module>/version` without a token, with its version, git
-commit and build time.
+Each module also answers `GET /api/v1/<module>/version` without a token, and the API docs answer
+`GET /api/v1/docs/version`, all with the same shape:
+
+```json
+{"service": "identity", "version": "1.4.0", "commit": "0123456789ab", "built_at": "2026-11-21T07:00:00+00:00"}
+```
+
+`version` is the platform version: one release gives every component the same version, and a
+release candidate reads `1.4.0-rc.1`. A local build reads `dev`. `commit` is the 12-character git
+commit and `built_at` the commit time. The answer may be cached for 60 seconds. `contractum
+--version` prints the server's version under the CLI's own.
 
 The [HTTP API reference](reference/http-api.md) lists every route with the permission it checks
 and whether it needs a token.

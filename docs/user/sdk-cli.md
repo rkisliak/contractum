@@ -23,6 +23,13 @@ uv add "contractum @ $WHEEL"              # as a library in a project
 contractum --version
 ```
 
+`contractum --version` prints the client version on its first line (`contractum 0.1.0`). When a
+server is configured (a profile, `--url` or `CONTRACTUM_URL`), a second line names the server's
+platform version (`server: 1.4.0`), read from the public `GET /api/v1/identity/version` with a
+3-second timeout. A server that does not answer reads `server: unavailable`; the command still
+exits 0. The SDK and CLI have their own version and releases (`contractum-vX.Y.Z`); the server
+platform has its own (`vX.Y.Z`).
+
 **Check the download.** To verify the files before installing, download the wheel and `SHA256SUMS` from the same release and compare (on macOS use `shasum -a 256 -c`):
 
 ```bash

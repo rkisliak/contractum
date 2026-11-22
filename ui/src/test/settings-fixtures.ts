@@ -90,8 +90,8 @@ export const aboutBody = {
     {
       service: "identity",
       status: "ok",
-      version: "0.1.0",
-      commit: "abc1234",
+      version: "dev",
+      commit: "abc1234def56",
       built_at: "dev",
       migration_head: "0011_platform_settings",
       database: "ok",
@@ -100,8 +100,8 @@ export const aboutBody = {
     {
       service: "contracts",
       status: "ok",
-      version: "0.1.0",
-      commit: "abc1234",
+      version: "dev",
+      commit: "abc1234def56",
       built_at: "dev",
       migration_head: "0009",
       database: "ok",
@@ -110,8 +110,8 @@ export const aboutBody = {
     {
       service: "validation",
       status: "ok",
-      version: "0.1.0",
-      commit: "abc1234",
+      version: "dev",
+      commit: "abc1234def56",
       built_at: "dev",
       migration_head: "0004",
       database: "ok",
@@ -120,8 +120,8 @@ export const aboutBody = {
     {
       service: "audit",
       status: "ok",
-      version: "0.1.0",
-      commit: "abc1234",
+      version: "dev",
+      commit: "abc1234def56",
       built_at: "dev",
       migration_head: "0002",
       database: "ok",

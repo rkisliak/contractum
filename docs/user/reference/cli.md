@@ -16,7 +16,7 @@ contractum [OPTIONS] COMMAND [ARGS]...
 
 | Option | Takes | Default | Description |
 | --- | --- | --- | --- |
-| `--version` | flag |  | Show the version and exit. |
+| `--version` | flag |  | Show the client version, and the server version when one is configured, and exit. |
 | `--profile` | NAME |  | Connection profile to use. |
 | `--url` | URL |  | Contractum API base URL. |
 | `--ca-bundle` | FILE |  | PEM file with the CA certificates to trust. |

@@ -198,6 +198,7 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-mail
+        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/mail:dev
@@ -263,6 +264,7 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-identity
+        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/identity:dev
@@ -359,6 +361,7 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-contracts
+        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/contracts:dev
@@ -453,6 +456,7 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-validation
+        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/validation:dev
@@ -536,6 +540,7 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-audit
+        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/audit:dev
@@ -620,6 +625,10 @@ services:
     build:
       context: .
       dockerfile: infra/docker/api-docs.Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/api-docs:dev
     restart: unless-stopped
     environment:
@@ -653,6 +662,7 @@ services:
       dockerfile: ../infra/docker/ui.Dockerfile
       target: runtime
       args:
+        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/ui:dev

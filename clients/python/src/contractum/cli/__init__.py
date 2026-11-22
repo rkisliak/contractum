@@ -73,8 +73,72 @@ class LazyGroup(click.Group):
             raise _PipeClosedError from exc
 
 
-@click.group(cls=LazyGroup)
-@click.version_option(package_name="contractum", message="contractum %(version)s")
+SERVER_VERSION_PATH = "/api/v1/identity/version"
+SERVER_VERSION_TIMEOUT = 3.0
+_SERVER_VERSION_MAX = 64
+
+
+def _server_version(ctx: click.Context) -> str | None:
+    """The platform version of the configured server, ``unavailable``, or None without a server.
+
+    One short, unauthenticated ``GET /api/v1/identity/version`` with the profile's TLS settings, no
+    retries and no redirects. It never raises: ``--version`` must work offline.
+    """
+    from contractum.cli.context import settings_from_ctx
+
+    try:
+        settings = settings_from_ctx(ctx)
+    except ContractumError:
+        return None  # no URL configured (or an unusable profile): nothing to ask
+    try:
+        import httpx
+
+        from contractum import __version__
+        from contractum._transport import _verify, validate_base_url
+
+        base_url = validate_base_url(settings.url, settings.allow_insecure_http)
+        with httpx.Client(
+            base_url=base_url,
+            verify=_verify(settings.ca_bundle),
+            timeout=SERVER_VERSION_TIMEOUT,
+            follow_redirects=False,
+            headers={"User-Agent": f"contractum/{__version__}"},
+        ) as http:
+            response = http.get(SERVER_VERSION_PATH)
+            response.raise_for_status()
+            version = response.json()["version"]
+    except Exception:  # noqa: BLE001 - any failure is "unavailable", never an error exit
+        return "unavailable"
+    if not isinstance(version, str) or not version.isprintable() or not version:
+        return "unavailable"
+    return version[:_SERVER_VERSION_MAX]
+
+
+def _print_version(ctx: click.Context) -> None:
+    """``contractum X`` (this client), then ``server: Y`` when a server is configured."""
+    from contractum import __version__
+
+    click.echo(f"contractum {__version__}")
+    server = _server_version(ctx)
+    if server is not None:
+        click.echo(f"server: {server}")
+
+
+# `invoke_without_command` lets `--version` run after the connection flags are parsed, so it can
+# ask the server named by --url / --profile; without --version a command is still required.
+@click.group(
+    cls=LazyGroup,
+    invoke_without_command=True,
+    no_args_is_help=True,
+    subcommand_metavar="COMMAND [ARGS]...",
+)
+@click.option(
+    "--version",
+    "show_version",
+    is_flag=True,
+    default=False,
+    help="Show the client version, and the server version when one is configured, and exit.",
+)
 @click.option("--profile", metavar="NAME", default=None, help="Connection profile to use.")
 @click.option("--url", metavar="URL", default=None, help="Contractum API base URL.")
 @click.option(
@@ -94,6 +158,7 @@ class LazyGroup(click.Group):
 @click.pass_context
 def cli(
     ctx: click.Context,
+    show_version: bool,
     profile: str | None,
     url: str | None,
     ca_bundle: Path | None,
@@ -110,6 +175,11 @@ def cli(
         color=not no_color,
         quiet=quiet,
     )
+    if show_version:
+        _print_version(ctx)
+        ctx.exit(0)
+    if ctx.invoked_subcommand is None:
+        ctx.fail("Missing command.")
 
 
 def _silence_stdout() -> None:

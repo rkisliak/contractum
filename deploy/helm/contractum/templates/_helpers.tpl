@@ -15,6 +15,7 @@ defaults to the chart's appVersion, the release that published them. */}}
 app.kubernetes.io/part-of: contractum
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 {{- end -}}
 

@@ -684,6 +684,27 @@ describe("About", () => {
     expect(within(mail).getAllByText("—").length).toBeGreaterThan(0);
   });
 
+  it("leads with the platform version and names a service on another version", async () => {
+    show("/admin/settings?tab=platform", [
+      http.get(`${SETTINGS}/about`, () =>
+        HttpResponse.json({
+          services: [
+            aboutBody.services[0],
+            { ...aboutBody.services[1], version: "1.4.0" },
+            aboutBody.services[4],
+          ],
+        }),
+      ),
+    ]);
+    const table = await screen.findByRole("table", { name: "Services" }, LOAD);
+    // The UI build of a test reads "dev".
+    expect(screen.getByText("Contractum dev")).toBeVisible();
+    const contracts = within(table).getByRole("row", { name: /contracts/ });
+    expect(within(contracts).getByText("1.4.0")).toBeVisible();
+    expect(within(contracts).getByText("Different version")).toBeVisible();
+    expect(within(table).getAllByText("Different version")).toHaveLength(1);
+  });
+
   it("shows a failed About with Retry loading", async () => {
     let fail = true;
     const { actor } = show("/admin/settings?tab=platform", [

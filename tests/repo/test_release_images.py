@@ -36,32 +36,74 @@ def _workflow() -> dict[str, Any]:
 # --- release workflow ---------------------------------------------------------------------------
 
 
-def test_release_runs_only_on_a_version_tag_or_by_hand() -> None:
-    # PyYAML reads the `on` key as True.
+def _steps(job: str) -> dict[str, dict[str, Any]]:
+    steps: list[dict[str, Any]] = _workflow()["jobs"][job]["steps"]
+    return {step.get("name", step.get("uses", "")): step for step in steps}
+
+
+def test_release_runs_only_by_hand_with_a_mode() -> None:
+    # PyYAML reads the `on` key as True. No tag push trigger: the workflow creates the tag itself.
     triggers = _workflow()[True]
-    assert set(triggers) == {"push", "workflow_dispatch"}
-    assert triggers["push"] == {"tags": ["v[0-9]*"]}
+    assert set(triggers) == {"workflow_dispatch"}
+    mode = triggers["workflow_dispatch"]["inputs"]["mode"]
+    assert mode["type"] == "choice"
+    assert mode["options"] == ["pre-release", "promote"]
     assert _workflow()["permissions"] == {"contents": "read"}
+    assert _workflow()["concurrency"]["cancel-in-progress"] is False
 
 
-def test_the_version_job_checks_the_tag_against_the_chart_app_version() -> None:
-    job = _workflow()["jobs"]["version"]
-    assert job["permissions"] == {"contents": "read"}
-    script = "\n".join(step.get("run", "") for step in job["steps"])
-    assert "refs/tags/v[0-9]*" in script
-    assert "deploy/helm/contractum/Chart.yaml" in script
-    assert "appVersion" in script
-
-
-def test_the_image_job_publishes_every_platform_image_to_ghcr_with_attestations() -> None:
-    job = _workflow()["jobs"]["image"]
-    assert job["needs"] == "version"
-    assert job["permissions"] == {
+def test_least_privilege_per_job() -> None:
+    jobs = _workflow()["jobs"]
+    assert jobs["plan"]["permissions"] == {"contents": "read", "actions": "read"}
+    publish = {
         "contents": "read",
         "packages": "write",
         "id-token": "write",
         "attestations": "write",
     }
+    assert jobs["image"]["permissions"] == publish
+    assert jobs["chart"]["permissions"] == publish
+    assert jobs["release"]["permissions"] == {"contents": "write"}
+    assert jobs["image"]["needs"] == "plan"
+    assert jobs["chart"]["needs"] == ["plan", "image"]
+    assert jobs["release"]["needs"] == ["plan", "image", "chart"]
+
+
+def test_no_expression_is_expanded_inside_a_shell_script() -> None:
+    # Inputs and step outputs reach `run:` through env variables only (no script injection).
+    for name, job in _workflow()["jobs"].items():
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", ""), (name, step.get("name"))
+
+
+def test_the_plan_computes_the_version_gates_on_the_three_workflows_and_writes_notes() -> None:
+    steps = _steps("plan")
+    assert "refs/heads/main" in steps["Runs on main only"]["run"]
+    checkout = steps["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"]["with"]
+    assert checkout["fetch-depth"] == 0  # every tag and commit since the last stable release
+    version = steps["Next version"]
+    assert version["env"] == {"MODE": "${{ inputs.mode }}"}
+    assert 'scripts/release/next_version.py --mode "$MODE"' in version["run"]
+    build = steps["Build identity of the released commit"]["run"]
+    assert "git rev-parse --short=12" in build
+    assert "git log -1 --format=%cI" in build
+    gate = steps["The commit passed CI, E2E Nightly and DAST Nightly"]["run"]
+    for workflow in ("ci.yml", "e2e-nightly.yml", "dast-nightly.yml"):
+        assert workflow in gate
+        assert (ROOT / ".github" / "workflows" / workflow).is_file()
+    assert 'head_sha="$SHA"' in gate
+    assert "status=success" in gate
+    assert "scripts/release/changelog.py" in steps["Release notes"]["run"]
+
+
+def test_ci_can_be_run_by_hand_so_a_skip_ci_head_can_pass_the_gate() -> None:
+    assert "workflow_dispatch" in _yaml(ROOT / ".github" / "workflows" / "ci.yml")[True]
+    for nightly in ("e2e-nightly.yml", "dast-nightly.yml"):
+        assert "workflow_dispatch" in _yaml(ROOT / ".github" / "workflows" / nightly)[True]
+
+
+def test_the_image_job_publishes_every_platform_image_to_ghcr_with_attestations() -> None:
+    job = _workflow()["jobs"]["image"]
     matrix = {entry["name"]: entry for entry in job["strategy"]["matrix"]["include"]}
     assert set(matrix) == PLATFORM_IMAGES
     # The same build inputs as ci.yml's docker-build matrix, which proves them on every PR.
@@ -73,24 +115,71 @@ def test_the_image_job_publishes_every_platform_image_to_ghcr_with_attestations(
             entry["file"],
             entry["target"],
         ), entry["name"]
-    steps = {step.get("name", step.get("uses", "")): step for step in job["steps"]}
-    meta = steps["Image name and build metadata"]["run"]
-    assert "image=ghcr.io/${OWNER,,}/contractum/${NAME}" in meta
+    steps = _steps("image")
+    checkout = steps["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"]["with"]
+    assert checkout["ref"] == "${{ needs.plan.outputs.sha }}"
+    assert "image=ghcr.io/${OWNER,,}/contractum/${NAME}" in steps["Image name"]["run"]
     build = steps["Build and push the image"]["with"]
+    for arg in ("VERSION=", "GIT_SHA=", "BUILD_TIME="):
+        assert arg in build["build-args"]
+    assert build["tags"].endswith(":${{ needs.plan.outputs.version }}")
     assert build["push"] is True
     assert build["sbom"] is True
     assert build["provenance"] == "mode=max"
     assert build["no-cache"] is True
-    assert "org.opencontainers.image.source=" in build["labels"]
     attest = steps["Attest build provenance"]
     assert attest["uses"].startswith("actions/attest@")
     assert attest["with"]["push-to-registry"] is True
+
+
+def test_the_chart_job_packages_the_version_with_a_checked_helm_and_attests_it() -> None:
+    steps = _steps("chart")
+    helm = steps["Install Helm"]
+    assert re.fullmatch(r"v\d+\.\d+\.\d+", helm["env"]["HELM_VERSION"])
+    assert re.fullmatch(r"[0-9a-f]{64}", helm["env"]["HELM_SHA256"])
+    assert "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" in helm["run"]
+    assert "sha256sum -c -" in helm["run"]
+    package = steps["Package the chart"]["run"]
+    assert '--version "$VERSION" --app-version "$VERSION"' in package
+    push = steps["Push the chart to ghcr.io"]["run"]
+    assert "oci://ghcr.io/${OWNER,,}/charts" in push
+    assert "--password-stdin" in push
+    attest = steps["Attest the chart archive"]
+    assert attest["uses"].startswith("actions/attest@")
+    assert attest["with"]["subject-path"].startswith("dist/contractum-")
+
+
+def test_the_release_job_creates_the_tag_and_marks_candidates_as_pre_releases() -> None:
+    script = _steps("release")["Create the tag and the GitHub Release"]["run"]
+    assert 'gh release create "$TAG"' in script
+    assert '--target "$SHA"' in script
+    assert "--prerelease --latest=false" in script
+    assert "flags=(--latest)" in script
+    assert "notes/release-notes.md" in script
+
+
+@pytest.mark.parametrize(
+    "dockerfile",
+    [
+        "infra/docker/service.Dockerfile",
+        "infra/docker/ui.Dockerfile",
+        "infra/docker/api-docs.Dockerfile",
+    ],
+)
+def test_every_platform_dockerfile_takes_the_version_and_labels_the_image(dockerfile: str) -> None:
+    text = (ROOT / dockerfile).read_text(encoding="utf-8")
+    for arg in ("VERSION", "GIT_SHA", "BUILD_TIME"):
+        assert re.search(rf"(?m)^ARG {arg}=dev$", text), (dockerfile, arg)
+    for label in ("title", "version", "revision", "created", "source"):
+        assert f"org.opencontainers.image.{label}=" in text, (dockerfile, label)
+    assert 'org.opencontainers.image.source="https://github.com/rkisliak/contractum"' in text
 
 
 def test_every_action_in_the_release_workflow_is_pinned_by_sha() -> None:
     uses = re.findall(r"uses:\s*(\S+)", RELEASE.read_text(encoding="utf-8"))
     assert uses
     allowed = ("actions/", "docker/setup-buildx-action@", "docker/build-push-action@")
+    assert "azure/setup-helm" not in RELEASE.read_text(encoding="utf-8")
     for ref in uses:
         assert ref.startswith(allowed), ref
         assert re.fullmatch(r"[\w./-]+@[0-9a-f]{40}", ref), ref
@@ -99,7 +188,7 @@ def test_every_action_in_the_release_workflow_is_pinned_by_sha() -> None:
 def test_the_chart_default_registry_is_where_the_release_publishes() -> None:
     values = _yaml(CHART / "values.yaml")["global"]
     assert values["imageRegistry"] == "ghcr.io/rkisliak"
-    # Empty: the chart's appVersion, the tag the release workflow checks and publishes.
+    # Empty: the chart's appVersion, which the release workflow sets to the released version.
     assert values["imageTag"] == ""
 
 

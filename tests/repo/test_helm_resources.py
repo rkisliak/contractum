@@ -279,3 +279,20 @@ def test_a_mirror_registry_and_tag_reach_every_platform_image() -> None:
     assert {image for image in images if _platform(image)} == {
         f"myregistry.azurecr.io/contractum/{name}:1.2.3" for name in PLATFORM_IMAGES
     }
+
+
+def test_every_platform_resource_carries_the_app_version_label() -> None:
+    # Chart.yaml holds placeholders; the Release workflow packages the chart with the released
+    # version as version and appVersion, so the label names the platform version of an install.
+    chart = yaml.safe_load((CHART / "Chart.yaml").read_text(encoding="utf-8"))
+    assert (chart["version"], chart["appVersion"]) == ("0.0.0", "dev")
+    labelled = [
+        doc
+        for doc in _render(namespace=NAMESPACE)
+        if doc.get("metadata", {}).get("labels", {}).get("app.kubernetes.io/part-of")
+        == "contractum"
+    ]
+    assert labelled
+    for doc in labelled:
+        labels = doc["metadata"]["labels"]
+        assert labels["app.kubernetes.io/version"] == _app_version(), doc["metadata"]["name"]

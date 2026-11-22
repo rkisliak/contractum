@@ -1,11 +1,17 @@
 // "Versions" (the rail's info button and the account menu): which build of each component is
-// running, so a bug report can name it. The UI's own build comes from vite.config.ts; each routed
-// service answers its public `GET /api/v1/<module>/version`. A service that does not answer reads
-// "Unavailable" (muted), never an error alert. Mail and the gateway are not reachable from the
-// browser, so they are not listed.
+// running, so a bug report can name it. The dialog leads with the platform version of the UI build
+// ("Contractum 1.4.0"); one release gives every component the same version. The UI's own build
+// comes from vite.config.ts; each routed service answers its public `GET /api/v1/<module>/version`
+// and the API docs container `GET /api/v1/docs/version`. A component whose version differs from
+// the UI's carries a "Different version" badge (text, not colour alone). A component that does not
+// answer reads "Unavailable" (muted), never an error alert. Mail and the gateway are not reachable
+// from the browser, so they are not listed.
 import { useQueries } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
+import type { Client } from "openapi-fetch";
+import type { paths } from "@/api/schema.gen";
 import type { ServiceVersion } from "@/api/types";
+import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Dialog } from "@/components/Dialog";
@@ -18,6 +24,7 @@ export const VERSIONED_SERVICES = [
   "contracts",
   "validation",
   "audit",
+  "docs",
 ] as const;
 type Service = (typeof VERSIONED_SERVICES)[number];
 
@@ -27,6 +34,16 @@ const LABELS: Record<Service | "ui", string> = {
   contracts: "Contracts",
   validation: "Validation",
   audit: "Audit",
+  docs: "API docs",
+};
+
+// The API docs container serves the merged OpenAPI document and is not part of it, so its
+// `/version` (the same answer shape as the services') is typed here and still goes through the
+// one API client.
+type DocsVersionPaths = {
+  "/api/v1/docs/version": {
+    get: paths["/api/v1/identity/version"]["get"];
+  };
 };
 
 type Row = {
@@ -64,7 +81,12 @@ export function VersionsDialog({
       staleTime: 60_000,
       retry: false,
       queryFn: async (): Promise<ServiceVersion> => {
-        const { data } = await api.GET(`/api/v1/${service}/version`);
+        const { data } =
+          service === "docs"
+            ? await (api as unknown as Client<DocsVersionPaths>).GET(
+                "/api/v1/docs/version",
+              )
+            : await api.GET(`/api/v1/${service}/version`);
         if (data === undefined) throw new Error("no version body");
         return data;
       },
@@ -109,7 +131,14 @@ export function VersionsDialog({
       header: "Version",
       cell: (r) =>
         r.state === "ok" ? (
-          r.version
+          r.version !== uiBuild.version ? (
+            <span className={styles.skew}>
+              {r.version}
+              <Badge intent="warning">Different version</Badge>
+            </span>
+          ) : (
+            r.version
+          )
         ) : (
           <span className={styles.muted}>
             {r.state === "loading" ? "Loading…" : "Unavailable"}
@@ -147,6 +176,7 @@ export function VersionsDialog({
         </Button>
       }
     >
+      <p className={styles.platform}>Contractum {uiBuild.version}</p>
       <DataTable
         caption="Component versions"
         captionHidden

@@ -11,7 +11,7 @@ import pytest
 from dc_auth.about import about_router, read_migration_head
 from dc_auth.authorizer import Outcome
 from dc_auth.testing import FakeIssuer
-from dc_core.app import BUILD_COMMIT_ENV, BUILD_TIME_ENV
+from dc_core.app import BUILD_COMMIT_ENV, BUILD_TIME_ENV, BUILD_VERSION_ENV
 from fastapi import FastAPI
 
 pytestmark = pytest.mark.unit
@@ -40,7 +40,8 @@ async def test_the_route_answers_build_info_and_defaults_for_an_allowed_caller(
     probe_app: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv(BUILD_COMMIT_ENV, "abc1234")
+    monkeypatch.setenv(BUILD_VERSION_ENV, "1.4.0")
+    monkeypatch.setenv(BUILD_COMMIT_ENV, "abc1234def56")
     monkeypatch.delenv(BUILD_TIME_ENV, raising=False)
     router = about_router("probe", setting_defaults={"banner": {"enabled": False}})
     headers = {"Authorization": f"Bearer {fake_issuer.mint('admin')}"}
@@ -50,8 +51,8 @@ async def test_the_route_answers_build_info_and_defaults_for_an_allowed_caller(
     assert response.status_code == 200
     assert response.json() == {
         "service": "probe",
-        "version": "dev",  # no installed dc-probe package
-        "commit": "abc1234",
+        "version": "1.4.0",  # the platform version of the image (DC_VERSION)
+        "commit": "abc1234def56",
         "built_at": "dev",
         "database": "none",
         "migration_head": None,

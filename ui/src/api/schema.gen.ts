@@ -53,7 +53,7 @@ export interface paths {
         };
         /**
          * Service build version
-         * @description The running build of this service: package version, git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
+         * @description The running build of this service: the platform version (the same for every component of a release), git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
          */
         get: operations["get_service_version_api_v1_audit_version_get"];
         put?: never;
@@ -1153,7 +1153,7 @@ export interface paths {
         };
         /**
          * Service build version
-         * @description The running build of this service: package version, git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
+         * @description The running build of this service: the platform version (the same for every component of a release), git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
          */
         get: operations["get_service_version_api_v1_contracts_version_get"];
         put?: never;
@@ -2348,7 +2348,7 @@ export interface paths {
         };
         /**
          * Service build version
-         * @description The running build of this service: package version, git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
+         * @description The running build of this service: the platform version (the same for every component of a release), git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
          */
         get: operations["get_service_version_api_v1_identity_version_get"];
         put?: never;
@@ -2787,7 +2787,7 @@ export interface paths {
         };
         /**
          * Service build version
-         * @description The running build of this service: package version, git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
+         * @description The running build of this service: the platform version (the same for every component of a release), git commit and build time ("dev" for a local build). Public, no token; cacheable for 60 seconds.
          */
         get: operations["get_service_version_api_v1_validation_version_get"];
         put?: never;
@@ -5729,7 +5729,7 @@ export interface components {
         };
         /**
          * ServiceVersionOut
-         * @description What build of a service is running: its package version, git commit and build time.
+         * @description What build of a service is running: the platform version, git commit and build time.
          */
         ServiceVersionOut: {
             /** Built At */

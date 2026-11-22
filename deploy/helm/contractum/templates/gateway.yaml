@@ -13,8 +13,16 @@ metadata:
   labels:
     {{- include "dc.labels" . | nindent 4 }}
 data:
+  {{- /*
+  The one difference from compose: Traefik runs as a non-root user here, so the websecure
+  entry point listens on 8443 and the Service maps port 443 to it.
+  */}}
+  {{- $static := .Files.Get "files/gateway/traefik.yml" | replace "address: \":443\"" "address: \":8443\"" }}
+  {{- if not (contains "address: \":8443\"" $static) }}
+  {{- fail "files/gateway/traefik.yml: the websecure entry point is no longer :443, update gateway.yaml" }}
+  {{- end }}
   traefik.yml: |-
-{{ .Files.Get "files/gateway/traefik.yml" | indent 4 }}
+{{ $static | indent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -53,14 +61,20 @@ spec:
     spec:
       # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
       automountServiceAccountToken: false
+      # Non-root on unprivileged ports (websecure 8443, ping 8080); fsGroup lets the user read the
+      # group-readable TLS Secret.
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: traefik
           image: {{ .Values.gateway.image }}
           args: ["--configFile=/etc/traefik/traefik.yml"]
           ports:
-            - {name: websecure, containerPort: 443}
+            - {name: websecure, containerPort: 8443}
             - {name: ping, containerPort: 8080}
           readinessProbe:
             httpGet: {path: /ping, port: ping}
@@ -81,7 +95,7 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            capabilities: {drop: [ALL], add: [NET_BIND_SERVICE]}
+            capabilities: {drop: [ALL]}
       volumes:
         - name: static
           configMap: {name: gateway-static}

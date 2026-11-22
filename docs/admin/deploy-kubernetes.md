@@ -392,12 +392,12 @@ set `auth.graph.clientId` and the `ui.entra` values, add the key `graph_client_s
   trust. It drives identity's per-IP login backoff. `*` is safe only while the NetworkPolicies
   keep every path to the services through the gateway. Otherwise set your ingress address range.
 - Every container runs on a read-only root file system with no privilege escalation, all
-  capabilities dropped (Traefik keeps `NET_BIND_SERVICE`) and no Kubernetes API token. Every
-  resource names the release namespace, so install into a dedicated namespace, not `default`.
-- Every pod runs as a non-root user (the services, the UI and the API docs above uid 10000; the
-  bundled Postgres as the image's own `postgres` user, 999, which owns its data directory), with
-  two exceptions: Traefik starts as root to bind port 443, and the bundled NATS runs as the image's
-  root user.
+  capabilities dropped and no Kubernetes API token. Every resource names the release namespace,
+  so install into a dedicated namespace, not `default`.
+- Every pod runs as a non-root user: the services, the UI, the API docs and Traefik above uid
+  10000 (Traefik listens on 8443 and the `gateway` Service maps port 443 to it), the bundled
+  Postgres as the image's own `postgres` user, 999, which owns its data directory. The one
+  exception is the bundled NATS, which runs as the image's root user.
 - The bootstrap admin secret works once. It is used up when the admin sets a new password. Keep
   the `dc-identity` Secret restricted anyway: it also holds the signing key.
 - The security standard the platform follows is in [ASVS Level 2](security/asvs-l2.md).

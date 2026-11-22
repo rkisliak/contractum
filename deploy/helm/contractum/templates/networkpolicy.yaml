@@ -30,8 +30,9 @@ spec:
       dc.role: gateway
   policyTypes: [Ingress]
   ingress:
+    # The pod port: the Service maps 443 to the gateway's unprivileged websecure port.
     - ports:
-        - {port: 443}
+        - {port: 8443}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

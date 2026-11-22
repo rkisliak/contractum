@@ -2,9 +2,9 @@
 
 Every resource names its release namespace, every container runs on a read-only root filesystem
 without privilege escalation and with all capabilities dropped, and every pod runs as a non-root
-user, except the two whose change needs an operator decision (the gateway binds port 443, and the
-bundled NATS data volume of an existing release is owned by root). The exceptions are listed here
-exactly, so a new one fails the test.
+user, except the bundled NATS, whose data volume in an existing release is owned by root. The
+exception is listed here exactly, so a new one fails the test. The gateway runs non-root on the
+unprivileged port 8443 behind the Service's port 443.
 """
 
 from __future__ import annotations
@@ -25,8 +25,8 @@ pytestmark = [
 CHART = Path(__file__).resolve().parents[2] / "deploy" / "helm" / "contractum"
 WORKLOADS = {"Deployment", "StatefulSet", "Job"}
 NAMESPACE = "contractum"
-# Pods that still start as root: the open gateway and NATS decisions of the security audit.
-ROOT_PODS = {"gateway", "nats"}
+# Pods that still start as root: the bundled NATS (its data volume is owned by root).
+ROOT_PODS = {"nats"}
 # Pods on the image's own fixed uid at or below 10000: postgres (999) owns its data directory.
 LOW_UID_PODS = {"postgres"}
 
@@ -96,3 +96,20 @@ def test_postgres_keeps_its_data_owner_and_writable_scratch_directories() -> Non
     assert {"data", "run", "tmp"} <= mounts
     scratch = {v["name"] for v in _pod(postgres)["volumes"] if "emptyDir" in v}
     assert {"run", "tmp"} <= scratch
+
+
+def test_the_gateway_listens_unprivileged_behind_service_port_443() -> None:
+    docs = _render("--namespace", NAMESPACE)
+    by_kind = {(doc["kind"], doc["metadata"]["name"]): doc for doc in docs}
+    static = by_kind[("ConfigMap", "gateway-static")]["data"]["traefik.yml"]
+    assert 'address: ":8443"' in static
+    assert 'address: ":443"' not in static
+    gateway = by_kind[("Deployment", "gateway")]
+    (traefik,) = _pod(gateway)["containers"]
+    ports = {p["name"]: p["containerPort"] for p in traefik["ports"]}
+    assert ports == {"websecure": 8443, "ping": 8080}
+    assert "add" not in traefik["securityContext"]["capabilities"]
+    service = by_kind[("Service", "gateway")]
+    assert service["spec"]["ports"] == [{"name": "https", "port": 443, "targetPort": "websecure"}]
+    policy = by_kind[("NetworkPolicy", "dc-gateway-from-anywhere")]
+    assert policy["spec"]["ingress"] == [{"ports": [{"port": 8443}]}]

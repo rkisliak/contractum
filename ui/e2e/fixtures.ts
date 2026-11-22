@@ -106,6 +106,18 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
   expect(report, "serious or critical axe violations").toEqual([]);
 }
 
+/**
+ * Replaces the whole content of the first Monaco editor on the page with `text`: select all, then
+ * insert the text in one input event, as a paste does (no per-key auto-indent or auto-closing). It
+ * does not go through the browser-wide system clipboard, which headless Chromium shares between
+ * tests and which stopped delivering pastes after earlier specs ran.
+ */
+export async function pasteIntoEditor(page: Page, text: string): Promise<void> {
+  await page.locator(".monaco-editor").first().click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.insertText(text);
+}
+
 /** Fails when the page scrolls horizontally at the page's current viewport width. */
 export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({

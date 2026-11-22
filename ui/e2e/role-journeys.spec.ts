@@ -18,7 +18,7 @@
 // for every match.) Its mandatory flag is cleared, the journey contract soft-deleted and the
 // grant revoked afterwards (also when an earlier run left them behind).
 import { request, type APIRequestContext, type Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, pasteIntoEditor, test } from "./fixtures";
 import {
   adminPassword,
   escapeRegExp,
@@ -52,7 +52,6 @@ const GRANTEE = "acme-pipeline"; // the demo service account the Org admin grant
 test.use({
   actionTimeout: 15_000,
   navigationTimeout: 30_000,
-  permissions: ["clipboard-read", "clipboard-write"],
 });
 
 // ---------- admin API (setup and cleanup only) ----------
@@ -479,13 +478,7 @@ test.describe.serial("role journeys", () => {
     const json = (await editor.locator(".view-lines").innerText())
       .trimStart()
       .startsWith("{");
-    await page.evaluate(
-      (text) => navigator.clipboard.writeText(text),
-      fixedDocument(semver, json),
-    );
-    await editor.click();
-    await page.keyboard.press("ControlOrMeta+A");
-    await page.keyboard.press("ControlOrMeta+V");
+    await pasteIntoEditor(page, fixedDocument(semver, json));
     await expect(editor).toContainText("One row per ledger entry");
     await expect(page.getByText("Unsaved changes")).toBeVisible();
     await page.getByRole("button", { name: "Save draft" }).click();

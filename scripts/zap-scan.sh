@@ -17,8 +17,15 @@
 # the token reaches ZAP through the environment (`-e NAME`, value not on the docker argv), and
 # ZAP_AUTH_HEADER_SITE keeps the header off every host except the gateway. In GitHub Actions both
 # values are masked in the log. The access token lives 900 s, so the active scan is capped below
-# that. The gateway rate limiter answers 429 to part of an active scan: that is expected noise,
-# not a finding.
+# that.
+#
+# Both scans are paced below the gateway's API rate limit (rl-default in
+# gateway/dynamic/middlewares.yml: 50 requests per second per client, burst 100) with ZAP's own
+# rate limit rule for the `traefik` host. An unpaced active scan gets 429 for a large part of its
+# probes: those never reach a service, so the scan does not test them, and the boolean-based SQL
+# injection rule (40018) reports a finding whenever one probe of a pair gets the constant 429
+# problem and the other one reaches the service. Keep ZAP_REQUESTS_PER_SECOND below the gateway's
+# average.
 #
 # Reports (HTML for people, JSON for scripts/zap_gate.py) land in OUTDIR. ZAP exits 0 (clean) or 2
 # (warnings, because of -I) when it completed; anything else is a failure of the scan itself. The
@@ -38,6 +45,8 @@ CA=".dev/ca.crt"
 PW_FILE=".dev/admin_password"
 # The active scan stops after this many minutes, inside the 15 minute (900 s) access token.
 ACTIVE_SCAN_MINUTES="${ZAP_ACTIVE_SCAN_MINUTES:-12}"
+# Requests per second ZAP sends to the gateway, below rl-default's average of 50 (see the header).
+REQUESTS_PER_SECOND="${ZAP_REQUESTS_PER_SECOND:-40}"
 
 OUTDIR="${1:?usage: scripts/zap-scan.sh OUTDIR}"
 
@@ -80,6 +89,13 @@ export ZAP_AUTH_HEADER_VALUE="Bearer $token"
 export ZAP_AUTH_HEADER_SITE="traefik"
 unset token
 
+# ZAP's network rate limit rule (network add-on), passed to both scans with -z.
+RATE_LIMIT="-config network.ratelimit.rules.rule(0).description=gateway"
+RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).enabled=true"
+RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).matchStr=traefik"
+RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).regex=false"
+RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).reqsPerSec=${REQUESTS_PER_SECOND}"
+
 run_zap() { # script args... ; returns 0 on a completed scan, 1 otherwise
   local rc=0
   docker run --rm --network "$NETWORK" -v "$OUTDIR_ABS:/zap/wrk:rw" \
@@ -93,12 +109,13 @@ run_zap() { # script args... ; returns 0 on a completed scan, 1 otherwise
 
 echo "== ZAP baseline (passive) of the UI =="
 run_zap zap-baseline.py -t "$TARGET/" -j -c rules.tsv \
-  -J zap-baseline.json -r zap-baseline.html -I
+  -J zap-baseline.json -r zap-baseline.html -I \
+  -z "$RATE_LIMIT"
 
 echo "== ZAP API scan of the merged OpenAPI document (authenticated) =="
 run_zap zap-api-scan.py -t "$TARGET/api/v1/openapi.json" -f openapi -c rules.tsv \
   -J zap-api.json -r zap-api.html -I \
-  -z "-config scanner.maxScanDurationInMins=${ACTIVE_SCAN_MINUTES} -config scanner.threadPerHost=2"
+  -z "$RATE_LIMIT -config scanner.maxScanDurationInMins=${ACTIVE_SCAN_MINUTES} -config scanner.threadPerHost=2"
 
 echo "== Gate: no unignored High alert =="
 python3 scripts/zap_gate.py "$OUTDIR/zap-baseline.json" "$OUTDIR/zap-api.json" --rules .zap/rules.tsv

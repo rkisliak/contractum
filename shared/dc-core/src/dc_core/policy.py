@@ -6,7 +6,7 @@ Two layers enforce it:
   app fails to start (and so every test fails).
 * ``assert_all_routes_have_policy`` walks the *effective* routes of an app as a backstop for
   routes added with ``app.add_api_route``, plain routers, mounts and framework routes.
-  FastAPI 0.162 keeps included routers as private ``_IncludedRouter`` objects, so walking
+  FastAPI 0.162+ keeps included routers as private ``_IncludedRouter`` objects, so walking
   ``app.routes`` directly sees nothing; the public ``iter_route_contexts`` is used instead and
   the walk must find at least ``min_routes`` API routes (a vacuous pass is a failure).
 """

@@ -7,7 +7,7 @@ dependencies = [
   "dc-core",
   "pyjwt[crypto]==2.15.1",
   "cryptography==50.0.2",
-  "cachetools>=8.0.2,<9",
+  "cachetools>=8.0,<9",
 ]
 
 [tool.uv.sources]

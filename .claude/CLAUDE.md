@@ -162,7 +162,7 @@ A central data-contract service for a large company with many data-engineering t
 | Tool | Version | Purpose | Notes | Confidence |
 |------|---------|---------|-------|------------|
 | pytest | 9.2.0 | Test runner | | HIGH |
-| pytest-asyncio | 1.4.1.post1 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
+| pytest-asyncio | 1.5.0 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
 | testcontainers | 4.15.0 | Real Postgres 18, NATS, mock IdP in tests | Prefer **real Postgres** over SQLite (ltree, JSONB, `SKIP LOCKED` are Postgres-specific). Use one container per session and a template DB or transaction rollback per test. | HIGH |
 | **navikt/mock-oauth2-server** | **7.0.1** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
 | In-process fake issuer | (own, about 60 lines) | Unit tests | Generate an RSA key, serve a JWKS through `respx`, mint tokens with PyJWT. Fast, no container, and covers expired, wrong-aud, wrong-iss and overage cases deterministically. | HIGH |

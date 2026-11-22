@@ -79,7 +79,7 @@ services:
     networks: [backend]
 
   nats:
-    image: nats:2.15.2-alpine
+    image: nats:2.15.3-alpine
     command: ["-c", "/run/secrets/nats.conf"]
     volumes:
       - natsdata:/data
@@ -151,7 +151,7 @@ services:
   # Compose-only mail catcher (SC5): the mail service sends here, the e2e runner reads it over
   # HTTP. Backend network only, no published port, no gateway route.
   mailpit:
-    image: axllent/mailpit:v1.33.1
+    image: axllent/mailpit:v1.34.0
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
@@ -663,7 +663,7 @@ services:
     networks: [edge]
 
   traefik:
-    image: traefik:v3.7.17
+    image: traefik:v3.7.18
     restart: unless-stopped
     volumes:
       - type: bind

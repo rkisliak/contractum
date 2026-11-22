@@ -169,6 +169,9 @@ Settings, Actions, General:
   - the `mcr.microsoft.com/playwright` image must equal `@playwright/test`
     (`tests/repo/test_compose_topology.py` enforces it),
   - the `node` image must equal `ui/.nvmrc` and `engines.node` in `ui/package.json`.
+- Python minor versions of the `python` base image are ignored for `/clients/python` (the SDK
+  tests Python 3.11 to 3.14) and `/infra/docker` (the server workspace requires Python below
+  3.15). Patch updates still come. A new Python minor is a deliberate upgrade made by hand.
 - Nothing merges automatically.
 
 ## Security scanners

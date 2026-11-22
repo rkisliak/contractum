@@ -411,7 +411,7 @@ async def fake_graph() -> AsyncIterator[FakeGraph]:
 
 
 class Mailpit:
-    """The compose mail catcher's HTTP API (``DC_E2E_MAILPIT_URL``, Mailpit v1.33.1).
+    """The compose mail catcher's HTTP API (``DC_E2E_MAILPIT_URL``, Mailpit v1.34.0).
 
     Endpoints confirmed by the Plan 04.1-17 spike: ``GET /api/v1/messages`` (a ``messages`` list),
     ``GET /api/v1/search?query=`` (same shape) and ``DELETE /api/v1/messages`` (``ok``).

@@ -6,9 +6,9 @@ requires-python = ">=3.13,<3.15"
 dependencies = [
   "fastapi==0.165.0",
   "pydantic==2.14.3",
-  "pydantic-settings==2.16.2",
-  "sqlalchemy[asyncio]>=2.1,<2.2",
-  "psycopg[binary,pool]==3.3.8",
+  "pydantic-settings==2.16.3",
+  "sqlalchemy[asyncio]>=2.1.9,<2.2",
+  "psycopg[binary,pool]==3.3.9",
   "alembic==1.20.1",
   "httpx==0.28.1",
   "uvicorn==0.54.0",
@@ -20,5 +20,5 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.13.7,<0.14"]
+requires = ["uv_build>=0.13.9,<0.14"]
 build-backend = "uv_build"

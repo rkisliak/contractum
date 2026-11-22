@@ -58,7 +58,7 @@ A central data-contract service for a large company with many data-engineering t
 | FastAPI | **0.165.0** (pin `==`) | HTTP API, OpenAPI | Project constraint. Pin exactly: 0.145-0.162 contained breaking changes to request-parameter semantics (see Pitfalls). FastAPI also now has native OpenTelemetry support (0.142, opt-in auto-configure since 0.143). | HIGH |
 | Starlette | 1.10.0 (transitive) | ASGI toolkit | Starlette is past 1.0. Do not pin separately; let the lock resolve it through FastAPI. | HIGH |
 | Pydantic | **2.14.3** | Validation, DTOs, JSON | v2 only. Never use the `pydantic.v1` shim. API DTOs, DB models and the ODCS document stay separate types. | HIGH |
-| pydantic-settings | 2.16.2 | Env/secret config | One `Settings` class per service. Supports `/run/secrets` files for Docker secrets. | HIGH |
+| pydantic-settings | 2.16.3 | Env/secret config | One `Settings` class per service. Supports `/run/secrets` files for Docker secrets. | HIGH |
 | uvicorn | 0.54.0 | ASGI server | One process per container (scale with compose replicas), or `--workers N`. Gunicorn is unnecessary. | HIGH |
 | httpx | **0.28.1** (pin) | Inter-service, JWKS and Graph calls | Mature, with first-class mocking via `respx` and `pytest-httpx`. **Caveat:** httpx has had no release since Dec 2024. Pydantic now stewards a successor, `httpx2` (2.16.0, May 2026), and FastAPI's `standard` extra now lists both. Keep all HTTP use behind one `dc_core.http` factory so a swap is a one-file change. Revisit when `respx` supports `httpx2`. | MEDIUM |
 | structlog | 26.1.0 | Structured JSON logs | Bind `request_id`, `principal_id` and `service`. Pair with `asgi-correlation-id` 5.0.1. | HIGH |
@@ -68,8 +68,8 @@ A central data-contract service for a large company with many data-engineering t
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
 | PostgreSQL | **18** (`postgres:18`, 18.6) | Primary store, one DB per service | 19 is RC1 only, so 18 is current GA. Native `uuidv7()` for time-ordered PKs, JSONB for contracts, **`ltree`** (bundled contrib) for the folder hierarchy, `FOR UPDATE SKIP LOCKED` for the outbox relay. One instance in dev, with a separate database and DB role per service (identity, contracts, validation, audit). | HIGH |
-| SQLAlchemy | **2.1.8** (`sqlalchemy[asyncio]`) | ORM and Core | 2.1 (GA 2026-09-24, then 8 patch releases) makes psycopg 3 the default PG driver and requires Python >=3.11. Typed `Mapped[]` models. **Fallback: 2.0.57**, which is still maintained. Pin `>=2.1,<2.2`. Watch the 2.1 behaviour changes: unconditional autoflush, changed dataclass-default handling, and `greenlet` only installed via the `[asyncio]` extra. | MEDIUM-HIGH |
-| psycopg | **3.3.8** (`psycopg[binary,pool]`) | Async + sync PG driver | Same driver for the async app and sync Alembic runs, and the SQLAlchemy 2.1 default. Native `LISTEN/NOTIFY`, COPY and pipeline mode. asyncpg (0.32.0) is faster but needs a second driver for migrations and has PgBouncer prepared-statement quirks. Speed is not the bottleneck for this workload. | MEDIUM-HIGH |
+| SQLAlchemy | **2.1.9** (`sqlalchemy[asyncio]`) | ORM and Core | 2.1 (GA 2026-09-24, then 9 patch releases) makes psycopg 3 the default PG driver and requires Python >=3.11. Typed `Mapped[]` models. **Fallback: 2.0.57**, which is still maintained. Pin `>=2.1.9,<2.2`. Watch the 2.1 behaviour changes: unconditional autoflush, changed dataclass-default handling, and `greenlet` only installed via the `[asyncio]` extra. | MEDIUM-HIGH |
+| psycopg | **3.3.9** (`psycopg[binary,pool]`) | Async + sync PG driver | Same driver for the async app and sync Alembic runs, and the SQLAlchemy 2.1 default. Native `LISTEN/NOTIFY`, COPY and pipeline mode. asyncpg (0.32.0) is faster but needs a second driver for migrations and has PgBouncer prepared-statement quirks. Speed is not the bottleneck for this workload. | MEDIUM-HIGH |
 | Alembic | **1.20.1** | Migrations | One `alembic/` dir per service, with its own `version_table`. Set a `naming_convention` on `MetaData` from day one. Run migrations as a one-shot compose job (`migrate`) that the app `depends_on`. Run Alembic with the sync psycopg URL (simplest). | HIGH |
 - Contract versions are immutable rows holding `document JSONB`, `odcs_api_version`, `semver`, `lifecycle_state` and `ruleset_pins JSONB`. Lifecycle state lives **outside** the ODCS document, because ODCS has its own `status` field (proposed/draft/active/deprecated/retired) that does not map 1:1 to Draft/Preview/Latest/Unpublished/Deprecated.
 - Folders: `id, parent_id, kind, path ltree` with a GiST index. Ancestor lookups become `path @> :p`.
@@ -84,7 +84,7 @@ A central data-contract service for a large company with many data-engineering t
 | jsonschema-rs | **0.61.0** | JSON Schema validator for ODCS | Supports 2019-09 and `unevaluatedProperties`. 5 ms vs 1,396 ms (pure-Python `jsonschema` 4.26) on a 20-table x 50-column contract (tested). It runs on every save and publish, so this matters. Error output carries `instance_path` and a message, which is enough to map to rule results. It is 0.x, so pin exactly. Keep `jsonschema` 4.26.0 as a **test-only cross-check oracle**. | HIGH (perf, tested), MEDIUM (0.x API stability) |
 | open-data-contract-standard | **3.2.0** | Typed Pydantic view of ODCS | Light (depends only on `pydantic>=2.8`, `pyyaml`), version tracks the spec (maps 3.2.0 to >=3.2.0). Use it for typed read access, YAML export and template scaffolding. **It sets `extra=forbid` (tested). Never persist a model round-trip; persist the original validated JSON.** It only knows its own spec version. | HIGH (what it is), MEDIUM (as the persistence model; do not use it as one) |
 | PyYAML | 6.0.3 | YAML <-> dict | Always `yaml.safe_load`. Convert to JSON-native types (strings for dates) before JSONB storage and before validation. | HIGH |
-| semver (python-semver) | 3.1.1 | Semver bump enforcement | Compare the declared contract `version` against the previous published one. | MEDIUM-HIGH |
+| semver (python-semver) | 3.1.2 | Semver bump enforcement | Compare the declared contract `version` against the previous published one. | MEDIUM-HIGH |
 - No mature ODCS-native library exists. `pyodcs` 0.9.1 is a single-author project whose 9 releases landed in about 2 days (Jul 2026), and its breaking-change rules are undocumented (LOW). `datacontract-cli` has `changelog` and `breaking` commands, but it is a heavy application (see "What NOT to Use").
 - Implement a **normalise-then-classify** diff in `dc-odcs`: (1) convert `schema[]` and `properties[]` lists into dicts keyed by `name` (or `id`) so reordering is not a change and diffs are readable; (2) walk both versions; (3) classify each change with an explicit rule table.
 - Use the published `datacontract-cli` rule semantics as the **specification to copy** (documented at cli.datacontract.com, an ERROR/WARNING/INFO model):
@@ -138,9 +138,9 @@ A central data-contract service for a large company with many data-engineering t
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
 | Transactional outbox (hand-written, `dc-core`) | - | Atomic "write + audit event" | Insert the domain row **and** the `outbox` row in the same transaction. A relay task does `SELECT ... FOR UPDATE SKIP LOCKED`, publishes, and marks rows sent. This is the only way to guarantee "every write recorded" without distributed transactions. About 100 lines. | HIGH |
-| NATS Server (JetStream) | **2.15.2** (`nats:2.15`, `-js`) | Event bus between services | A single small container, no stateful cluster needed. Durable pull consumers, per-message `Nats-Msg-Id` de-duplication on publish, replay, and subject-based routing (`audit.contracts.*`) leave room for notifications, webhooks and SIEM export later. Redis is **not otherwise needed** (authz cache is in-process, rate limiting is at the gateway), so choosing it just for streams adds a dependency. | MEDIUM |
+| NATS Server (JetStream) | **2.15.3** (`nats:2.15`, `-js`) | Event bus between services | A single small container, no stateful cluster needed. Durable pull consumers, per-message `Nats-Msg-Id` de-duplication on publish, replay, and subject-based routing (`audit.contracts.*`) leave room for notifications, webhooks and SIEM export later. Redis is **not otherwise needed** (authz cache is in-process, rate limiting is at the gateway), so choosing it just for streams adds a dependency. | MEDIUM |
 | nats-py | **2.16.0** | Async NATS client | Official asyncio client. Use it directly, without a framework layer. | MEDIUM-HIGH |
-| jsonpatch | **1.45** | RFC 6902 diff for audit | Store `before` and `after` snapshots (JSONB) **and** a `changes` RFC 6902 patch computed by `jsonpatch.make_patch`. It is a standard, language-neutral, replayable format that the future SDK and UI can consume. **Normalise first** (key `schema[]`/`properties[]` by `name`) so array reorders are not noise. | HIGH |
+| jsonpatch | **1.47** | RFC 6902 diff for audit | Store `before` and `after` snapshots (JSONB) **and** a `changes` RFC 6902 patch computed by `jsonpatch.make_patch`. It is a standard, language-neutral, replayable format that the future SDK and UI can consume. **Normalise first** (key `schema[]`/`properties[]` by `name`) so array reorders are not noise. | HIGH |
 | deepdiff | 9.1.0 | Optional human-readable/typed diff | Only where type-aware diffs are wanted. Not the primary storage format. | MEDIUM |
 - **Writes** go through the outbox (atomic, at-least-once). The audit consumer inserts with a **unique `event_id`** so redelivery is harmless.
 - **Reads/access logs and permission decisions** are high volume and cannot sit in a business transaction. Publish them directly (fire-and-forget through a bounded in-process queue with batching), accepting that loss during a broker outage is tolerable (the requirement is audited access, not an immutable ledger, which PROJECT.md puts out of scope).
@@ -152,7 +152,7 @@ A central data-contract service for a large company with many data-engineering t
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| **Traefik** | **v3.7** (v3.7.17) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
+| **Traefik** | **v3.7** (v3.7.18) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
 - Option chosen (MEDIUM): a ~100-line Python script, run at image build or container start, fetches each service's `/openapi.json`, prefixes paths under `/api/v1/<module>`, merges `components` (fail loudly on schema-name collisions), and writes one `openapi.json`. A static-file container serves it with Swagger UI or Scalar at `/api/v1/docs`, routed by Traefik.
 - To avoid component-name collisions, give Pydantic models module-unique names (`IdentityUserOut`, `ContractVersionOut`) and keep `separate_input_output_schemas` consistent across services.
 - `root_path` as a `FastAPI()` argument is **deprecated** (0.146). Mount each service's routes under their real prefix (`/api/v1/<module>`) in the app, or use `fastapi run --root-path`. Do not depend on a stripPrefix plus `root_path` combination. Keep real routes prefixed so the services stay gateway-independent.
@@ -162,7 +162,7 @@ A central data-contract service for a large company with many data-engineering t
 | Tool | Version | Purpose | Notes | Confidence |
 |------|---------|---------|-------|------------|
 | pytest | 9.2.0 | Test runner | | HIGH |
-| pytest-asyncio | 1.4.1.post1 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
+| pytest-asyncio | 1.5.0 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
 | testcontainers | 4.15.0 | Real Postgres 18, NATS, mock IdP in tests | Prefer **real Postgres** over SQLite (ltree, JSONB, `SKIP LOCKED` are Postgres-specific). Use one container per session and a template DB or transaction rollback per test. | HIGH |
 | **navikt/mock-oauth2-server** | **7.0.1** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
 | In-process fake issuer | (own, about 60 lines) | Unit tests | Generate an RSA key, serve a JWKS through `respx`, mint tokens with PyJWT. Fast, no container, and covers expired, wrong-aud, wrong-iss and overage cases deterministically. | HIGH |
@@ -170,7 +170,7 @@ A central data-contract service for a large company with many data-engineering t
 | Hypothesis | 6.170.15 | Property tests | RBAC inheritance equivalence, diff-classifier invariants, normalise/denormalise round-trips. | HIGH |
 | Schemathesis | 4.33.1 | OpenAPI-driven API fuzz and conformance | Directly supports "every endpoint documented in OpenAPI": it fails when responses diverge from the spec. Run against each service in CI. | HIGH |
 | polyfactory | 3.5.0 | Test data | Optional. | MEDIUM |
-| ruff | 0.17.4 | Lint + format | | HIGH |
+| ruff | 0.17.5 | Lint + format | | HIGH |
 | mypy | 2.4.1 | Type checking | Use `strict` with the Pydantic plugin. SQLAlchemy 2.1 row typing needs mypy >=1.7. `ty` 0.0.99 is still pre-1.0, so do not gate CI on it. | MEDIUM-HIGH |
 | Keycloak | 26.8.2 | *Optional* higher-fidelity IdP | Heavier (realm import, slow start). Use only if you need a realistic interactive login flow for the UI phase. | MEDIUM |
 
@@ -280,7 +280,7 @@ A central data-contract service for a large company with many data-engineering t
 | datacontract-cli 1.2.9 (dev-only) | `pydantic<2.15`, `open-data-contract-standard<3.3` | Reason it stays out of the lock. |
 | jsonschema-rs 0.61.0 | Python >=3.10, abi3 wheels | 2019-09 validator selected via `validator_for(schema)` (uses `$schema`). |
 | cel-expr-python 0.1.4 | Python 3.10-3.14, manylinux_2_27+ / macOS / Windows wheels | No musl wheels. Extensions in `cel_expr_python.ext.*`. |
-| pydantic-settings 2.16.2 | Python >=3.11 | Sets the floor with SA 2.1 (Python >=3.11). |
+| pydantic-settings 2.16.3 | Python >=3.11 | Sets the floor with SA 2.1 (Python >=3.11). |
 | respx 0.23.1 / pytest-httpx 0.36.2 | `httpx` 0.28.x | Do not move to `httpx2` until these support it. |
 | PostgreSQL 18 | `ltree`, `uuidv7()` | `ltree` is in the official image contrib. 19 is RC only. |
 

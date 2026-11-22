@@ -401,7 +401,7 @@ def test_mailpit_is_a_pinned_image_and_the_sink_reuses_the_identity_image(
     config: dict[str, Any],
 ) -> None:
     services = _services(config)
-    assert services["mailpit"]["image"] == "axllent/mailpit:v1.33.1"
+    assert services["mailpit"]["image"] == "axllent/mailpit:v1.34.0"
     sink = services["webhook-sink"]
     assert not sink.get("build")
     assert sink["image"] == services["identity"]["image"]

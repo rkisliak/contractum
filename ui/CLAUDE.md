@@ -554,7 +554,7 @@ check (`node scripts/check-pin-age.mjs`).
 | Node                 | 26.13.1 (`.nvmrc`, `engines.node`, Dockerfile `FROM`); no corepack on Node 26 (A-6)   |
 | pnpm                 | 12.17.0 (`packageManager`; installed with `npm i -g pnpm@12.17.0`, never on the host) |
 | nginx runtime        | `nginxinc/nginx-unprivileged:1.31.7-alpine-slim`                                      |
-| Playwright runner    | `mcr.microsoft.com/playwright:v1.64.1-noble` (equals `@playwright/test`)              |
+| Playwright runner    | `mcr.microsoft.com/playwright:v1.65.1-noble` (equals `@playwright/test`)              |
 | monaco-editor        | 0.57.0 (installed with the contract screens)                                          |
 | @monaco-editor/react | 4.7.0 (installed with the contract screens)                                           |
 
@@ -566,7 +566,7 @@ Runtime dependencies (`dependencies`):
 
 | Package                         | Version  |
 | ------------------------------- | -------- |
-| `@azure/msal-browser`           | 5.27.0   |
+| `@azure/msal-browser`           | 5.29.0   |
 | `@fontsource-variable/inter`    | 5.3.0    |
 | `@monaco-editor/react`          | 4.7.0    |
 | `@radix-ui/react-alert-dialog`  | 1.2.1    |
@@ -576,10 +576,10 @@ Runtime dependencies (`dependencies`):
 | `@radix-ui/react-tabs`          | 1.2.1    |
 | `@radix-ui/react-toast`         | 1.3.1    |
 | `@radix-ui/react-tooltip`       | 1.4.1    |
-| `@tanstack/react-query`         | 5.105.0  |
+| `@tanstack/react-query`         | 5.107.1  |
 | `@tanstack/react-router`        | 1.170.46 |
 | `jsonc-parser`                  | 3.3.1    |
-| `lucide-react`                  | 1.65.0   |
+| `lucide-react`                  | 1.70.0   |
 | `monaco-editor`                 | 0.57.0   |
 | `openapi-fetch`                 | 0.17.0   |
 | `react`                         | 19.3.1   |
@@ -592,7 +592,7 @@ Tooling (`devDependencies`):
 | ----------------------------- | -------- |
 | `@axe-core/playwright`        | 4.14.0   |
 | `@eslint/js`                  | 10.0.1   |
-| `@playwright/test`            | 1.64.1   |
+| `@playwright/test`            | 1.65.1   |
 | `@tanstack/router-plugin`     | 1.168.48 |
 | `@testing-library/dom`        | 10.4.2   |
 | `@testing-library/jest-dom`   | 7.0.1    |
@@ -601,20 +601,20 @@ Tooling (`devDependencies`):
 | `@types/node`                 | 26.6.6   |
 | `@types/react`                | 19.3.0   |
 | `@types/react-dom`            | 19.3.0   |
-| `@vitejs/plugin-react`        | 6.1.2    |
-| `eslint`                      | 10.14.0  |
+| `@vitejs/plugin-react`        | 6.2.1    |
+| `eslint`                      | 10.15.0  |
 | `eslint-plugin-jsx-a11y`      | 6.10.2   |
 | `eslint-plugin-react-hooks`   | 7.1.1    |
-| `globals`                     | 17.13.0  |
-| `jsdom`                       | 30.1.3   |
-| `msw`                         | 3.0.3    |
+| `globals`                     | 17.14.0  |
+| `jsdom`                       | 31.0.1   |
+| `msw`                         | 3.0.4    |
 | `openapi-typescript`          | 7.13.0   |
 | `prettier`                    | 3.9.10   |
-| `stylelint`                   | 17.16.0  |
+| `stylelint`                   | 18.0.0   |
 | `typescript`                  | 6.0.3    |
-| `typescript-eslint`           | 8.72.1   |
-| `vite`                        | 8.3.5    |
-| `vitest`                      | 5.0.5    |
+| `typescript-eslint`           | 8.73.0   |
+| `vite`                        | 8.3.6    |
+| `vitest`                      | 5.1.0    |
 
 ## Known exceptions
 

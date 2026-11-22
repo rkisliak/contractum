@@ -22,7 +22,7 @@ from testcontainers.community.postgres import PostgresContainer
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 
-NATS_IMAGE = "nats:2.15.2-alpine"
+NATS_IMAGE = "nats:2.15.3-alpine"
 
 
 @pytest.fixture(scope="session")

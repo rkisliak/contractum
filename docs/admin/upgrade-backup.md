@@ -48,9 +48,10 @@ commit Secret values to a repository.
 1. Back up (see above).
 2. Note the migration head of each database. In the web app, open **Administration > Settings >
    Platform** and look at **About**. You need this to decide later whether a rollback is safe.
-3. Build and push the new images with a new tag (see
-   [Build and push the images](deploy-kubernetes.md#build-and-push-the-images)).
-4. Set `global.imageTag` to the new tag in your values file and run:
+3. Use the chart of the new release: its default image tag is that release. If you set
+   `global.imageTag` or run from your own registry, mirror or build the new images first (see
+   [Images](deploy-kubernetes.md#images)) and set the new tag.
+4. Run:
 
    ```bash
    helm upgrade dc deploy/helm/contractum -n contractum -f my-values.yaml
@@ -79,6 +80,16 @@ What happens during an upgrade:
 
 To change only configuration (no new images), run the same `helm upgrade` with the changed values.
 A migration Job still runs, and finds nothing to do.
+
+The bundled Postgres and NATS run as uid and gid 10001. A data volume owned by another user (for
+example one created by the images' own users, Postgres 999 or NATS root) is not usable by them, and
+their pods do not become ready. Move such an evaluation release over with a dump:
+
+1. Back up the databases (see [Back up](#back-up)) and stop the services.
+2. Delete the two StatefulSets and their volumes:
+   `kubectl -n contractum delete statefulset postgres nats`, then
+   `kubectl -n contractum delete pvc data-postgres-0 data-nats-0`.
+3. Upgrade, then restore the databases (see [Restore](#restore)).
 
 ## Roll back
 

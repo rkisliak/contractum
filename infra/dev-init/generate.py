@@ -48,7 +48,10 @@ SERVICES = ("identity", "contracts", "validation", "audit")
 #   identity..audit 10001   the service image's `app` user (infra/docker/service.Dockerfile)
 #   fake-graph 10001        the identity image's `app` user (it reuses that image)
 #   (webhook-sink, mail and mailpit mount no secret and so have no entry)
-#   nats, traefik, e2e 0:0  the official nats and traefik images and the e2e image run as root
+#   nats, traefik 0:0       the official nats and traefik images run as root
+#   e2e 10001:10001         the test runners (compose.test.yaml) run non-root, as the invoking host
+#                           user or their image's user, and always hold the group 10001: this one
+#                           subpath is group-readable (GROUP_READABLE), every other is owner-only
 #   _canonical 0:0          root only
 # mock-oidc and problem-responder mount no secret and so have no entry.
 OWNERS: dict[str, tuple[int, int]] = {
@@ -61,8 +64,11 @@ OWNERS: dict[str, tuple[int, int]] = {
     "fake-graph": (10001, 10001),
     "nats": (0, 0),
     "traefik": (0, 0),
-    "e2e": (0, 0),
+    "e2e": (10001, 10001),
 }
+
+# Consumers whose directory (0550) and files (0440) the owning group may read, not only the owner.
+GROUP_READABLE = frozenset({"e2e"})
 
 # Local-IdP signing key: RSA-3072 (NIST SP 800-57 and ASVS 6.2.x guidance for new keys). A smaller
 # key is rotated once; its public key stays in the JWKS for the overlap, which is far above the
@@ -79,12 +85,17 @@ def _say(message: str) -> None:
     print(f"dev-init: {message}", flush=True)
 
 
+def _modes(consumer: str) -> tuple[int, int]:
+    """The (directory, file) modes of a consumer subpath."""
+    return (0o550, 0o440) if consumer in GROUP_READABLE else (0o500, 0o400)
+
+
 def _ensure_dir(consumer: str) -> Path:
     path = OUT / consumer
     uid, gid = OWNERS[consumer]
     path.mkdir(parents=True, exist_ok=True)
     os.chown(path, uid, gid)
-    path.chmod(0o500)
+    path.chmod(_modes(consumer)[0])
     return path
 
 
@@ -115,13 +126,21 @@ def _write_private(target: Path, data: bytes, *, uid: int, gid: int, mode: int) 
 
 
 def _write(consumer: str, name: str, data: bytes, *, overwrite: bool = False) -> bool:
-    """Write ``data`` to ``/out/<consumer>/<name>`` (0400) unless it already exists."""
+    """Write ``data`` to ``/out/<consumer>/<name>`` (0400, or 0440) unless it already exists.
+
+    An existing file whose owner or mode differs (a warm volume from before an owner change) is
+    rewritten with the same bytes, so a volume never keeps stale permissions.
+    """
     directory = _ensure_dir(consumer)
     target = directory / name
-    if target.exists() and (not overwrite or target.read_bytes() == data):
-        return False
     uid, gid = OWNERS[consumer]
-    _write_private(target, data, uid=uid, gid=gid, mode=0o400)
+    mode = _modes(consumer)[1]
+    if target.exists() and (not overwrite or target.read_bytes() == data):
+        current = target.lstat()
+        if (current.st_uid, current.st_gid, stat.S_IMODE(current.st_mode)) == (uid, gid, mode):
+            return False
+        data = target.read_bytes()
+    _write_private(target, data, uid=uid, gid=gid, mode=mode)
     _say(f"wrote {consumer}/{name}")
     return True
 

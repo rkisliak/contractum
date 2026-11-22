@@ -1,10 +1,13 @@
-{{/* Image reference for a platform component: [registry/]contractum/<name>:<tag>. */}}
+{{/* Image reference for a platform component: [registry/]contractum/<name>:<tag>. The default
+registry is ghcr.io/rkisliak, where .github/workflows/release.yml publishes the images; the tag
+defaults to the chart's appVersion, the release that published them. */}}
 {{- define "dc.image" -}}
 {{- $ctx := index . 0 -}}{{- $name := index . 1 -}}
+{{- $tag := $ctx.Values.global.imageTag | default $ctx.Chart.AppVersion -}}
 {{- if $ctx.Values.global.imageRegistry -}}
-{{ printf "%s/contractum/%s:%s" $ctx.Values.global.imageRegistry $name $ctx.Values.global.imageTag }}
+{{ printf "%s/contractum/%s:%s" $ctx.Values.global.imageRegistry $name $tag }}
 {{- else -}}
-{{ printf "contractum/%s:%s" $name $ctx.Values.global.imageTag }}
+{{ printf "contractum/%s:%s" $name $tag }}
 {{- end -}}
 {{- end -}}
 

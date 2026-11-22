@@ -60,19 +60,19 @@ jobs:
           echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/trivy-bin/trivy" --version
       # Covers uv.lock, ui/pnpm-lock.yaml, secrets, and misconfig in the Dockerfiles, compose and
-      # deploy/helm. Report only: findings land in code scanning.
+      # deploy/helm. Report only: findings land in code scanning. infra/trivy holds the data the
+      # misconfiguration checks read (the trusted image registries of KSV-0125), not ignores.
       - name: Trivy filesystem scan (SARIF)
-        run: trivy fs --scanners vuln,secret,misconfig --format sarif --output trivy-fs.sarif --exit-code 0 --ignorefile .trivyignore .
+        run: trivy fs --scanners vuln,secret,misconfig --config-data infra/trivy --format sarif --output trivy-fs.sarif --exit-code 0 --ignorefile .trivyignore .
       - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         if: always() && hashFiles('trivy-fs.sarif') != ''
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
 
-  # The gate covers vulnerabilities and secrets (the CVE gate). Misconfig findings, which include
-  # deliberate dev-only choices such as root test-runner images, go only to code scanning through
-  # the report job above, where they are triaged or dismissed. Gating on them would need entries
-  # in .trivyignore, which must stay empty.
+  # The gate covers vulnerabilities and secrets (the CVE gate). Misconfig findings go to code
+  # scanning through the report job above, where each is fixed at its root; .trivyignore stays
+  # empty.
   trivy-fs-gate:
     name: trivy-fs-gate
     runs-on: ubuntu-latest

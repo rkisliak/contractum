@@ -34,13 +34,14 @@ spec:
     spec:
       # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
       automountServiceAccountToken: false
-      # The image's own postgres user (999): the data directory of an existing release is owned by
-      # it, so the uid stays (the KSV-0020/0021 uid above 10000 would need a data migration).
+      # An unprivileged uid above 10000, not the image's postgres user (999). The entrypoint supports
+      # an arbitrary uid: it creates PGDATA (below the data volume) owned by that uid and gives initdb
+      # a passwd entry through nss_wrapper (a file in /tmp). fsGroup makes the volume writable.
       securityContext:
         runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: postgres
@@ -128,7 +129,13 @@ spec:
     spec:
       # No pod calls the Kubernetes API; the token would also collide with /run/secrets.
       automountServiceAccountToken: false
+      # Non-root: nats-server needs no privilege (ports 4222 and 8222). fsGroup makes the JetStream
+      # volume writable and the 0440 config readable.
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: nats

@@ -205,7 +205,9 @@ Only Traefik publishes a host port: **`8443 → 443`**.
 | `traefik` | The gateway | edge (`172.28.0.10`) | `gateway/traefik.yml`, `gateway/dynamic`, `dev-secrets/traefik` | `traefik healthcheck --ping` |
 
 The test overlay `compose.test.yaml` adds two more containers (profile `test`): `e2e`, on both
-networks, and `ui-e2e` (the browser tests), on edge only; see "Testing" below.
+networks, and `ui-e2e` (the browser tests), on edge only; see "Testing" below. Both run non-root,
+as the user who starts them, with the group 10001 that may read `dev-secrets/e2e`. Only `e2e`
+mounts the Docker socket and joins its group.
 
 The `dev-init`, `fake-graph`, `webhook-sink` and `problem-responder` containers reuse the identity
 image, with their code bind-mounted read-only. Health checks run every 5 s, with up to 30 retries.
@@ -285,8 +287,10 @@ No secret has a value or a default anywhere in the repository. On first start `d
 1. **Canonical values** go to `/out/_canonical` (readable by root only). Each is created only if
    missing, so running `dev-init` again changes nothing.
 2. **Each consumer gets only its own copy** in `/out/<consumer>/`, owned by that container's user,
-   mode 0400. Compose mounts just that subdirectory at `/run/secrets` (a volume *subpath*), read
-   only. No container can read another one's secrets.
+   mode 0400. The one exception is `e2e`: the test runners run as the user who starts them, so
+   their copy is also readable by the group 10001 that they join (0440). Compose mounts just that
+   subdirectory at `/run/secrets` (a volume *subpath*), read only. No container can read another
+   one's secrets.
 3. Only file **names** are printed, never values.
 
 | Consumer (`/run/secrets` in…) | Files |

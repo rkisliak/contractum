@@ -31,7 +31,8 @@ on). Install **one release per namespace**.
 ## Prerequisites
 
 - Kubernetes 1.28 or newer, `kubectl` and Helm 3.
-- A container registry the cluster can pull from.
+- Access to the release images on `ghcr.io/rkisliak`, or a registry of your own that the cluster
+  can pull from (see [Images](#images)).
 - **PostgreSQL 18** with the `ltree` extension, or the bundled one for evaluation.
 - **NATS 2.15 with JetStream** and persistent storage, or the bundled one.
 - An SMTP server for notification email.
@@ -46,7 +47,7 @@ on). Install **one release per namespace**.
 This is for evaluation only, on Docker Desktop Kubernetes, kind or minikube.
 
 1. Build the images locally. From the repository root, run `docker compose build`. It tags them
-   `contractum/<component>:dev`, which is the chart's default tag.
+   `contractum/<component>:dev`. Step 4 points the chart at them instead of the release images.
 2. Make the images visible to the cluster:
    - Docker Desktop with the kubeadm provisioner: nothing to do.
    - kind (including Docker Desktop's kind provisioner): import each image into every node:
@@ -68,7 +69,8 @@ This is for evaluation only, on Docker Desktop Kubernetes, kind or minikube.
 4. Install the release, still from `deploy/helm/contractum`:
 
    ```bash
-   helm install dc . -n contractum --set mailpit.enabled=true --set gateway.service.port=8443
+   helm install dc . -n contractum --set mailpit.enabled=true --set gateway.service.port=8443 \
+     --set global.imageRegistry= --set global.imageTag=dev
    ```
 
 5. Open `https://localhost:8443/`. Docker Desktop publishes LoadBalancer services on localhost.
@@ -78,7 +80,24 @@ This is for evaluation only, on Docker Desktop Kubernetes, kind or minikube.
 Without your own certificate, the gateway uses a self-signed certificate for `localhost`, so the
 browser warns once.
 
-## Build and push the images
+## Images
+
+Each release `vX.Y.Z` publishes the seven platform images to GitHub Container Registry:
+`ghcr.io/rkisliak/contractum/<component>:X.Y.Z` (identity, contracts, validation, audit, mail,
+api-docs, ui). The chart uses them by default: `global.imageRegistry` is `ghcr.io/rkisliak` and an
+empty `global.imageTag` means the chart's `appVersion`, the release the chart belongs to.
+
+Every image carries an SBOM and SLSA build provenance. Check an image before you use it:
+
+```bash
+gh attestation verify oci://ghcr.io/rkisliak/contractum/identity:1.0.0 --repo rkisliak/contractum
+```
+
+To run from your own registry, mirror the release images (for example with `crane copy` or
+`docker buildx imagetools create`) or build them yourself, and set `global.imageRegistry` to your
+registry. The image names below it stay `contractum/<component>:<tag>`.
+
+### Build and push the images yourself
 
 From the repository root, with `REG` your registry and `TAG` your release tag:
 
@@ -394,10 +413,10 @@ set `auth.graph.clientId` and the `ui.entra` values, add the key `graph_client_s
 - Every container runs on a read-only root file system with no privilege escalation, all
   capabilities dropped and no Kubernetes API token. Every resource names the release namespace,
   so install into a dedicated namespace, not `default`.
-- Every pod runs as a non-root user: the services, the UI, the API docs and Traefik above uid
-  10000 (Traefik listens on 8443 and the `gateway` Service maps port 443 to it), the bundled
-  Postgres as the image's own `postgres` user, 999, which owns its data directory. The one
-  exception is the bundled NATS, which runs as the image's root user.
+- Every pod runs as a non-root user above uid 10000: the services, the UI, the API docs, Traefik
+  (it listens on 8443 and the `gateway` Service maps port 443 to it) and the bundled Postgres and
+  NATS (uid and gid 10001; `fsGroup` makes their data volumes writable). The optional Mailpit
+  catcher (`mailpit.enabled`, evaluation only) is the exception: it runs with its image's defaults.
 - The bootstrap admin secret works once. It is used up when the admin sets a new password. Keep
   the `dc-identity` Secret restricted anyway: it also holds the signing key.
 - The security standard the platform follows is in [ASVS Level 2](security/asvs-l2.md).

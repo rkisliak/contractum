@@ -127,15 +127,10 @@ def test_the_other_new_blocks_are_overridable() -> None:
 # --- pod hardening (code scanning, Trivy KSV rules) -------------------------------------------
 # Every resource names its release namespace, every container runs on a read-only root
 # filesystem without privilege escalation and with all capabilities dropped, and every pod runs
-# as a non-root user, except the bundled NATS, whose data volume in an existing release is owned
-# by root. The exception is listed exactly, so a new one fails. The gateway runs non-root on the
-# unprivileged port 8443 behind the Service's port 443.
+# as a non-root user above uid and gid 10000, the bundled Postgres and NATS included. The gateway
+# runs non-root on the unprivileged port 8443 behind the Service's port 443.
 
 NAMESPACE = "contractum"
-# Pods that still start as root: the bundled NATS (its data volume is owned by root).
-ROOT_PODS = {"nats"}
-# Pods on the image's own fixed uid at or below 10000: postgres (999) owns its data directory.
-LOW_UID_PODS = {"postgres"}
 
 
 def _workloads(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -172,30 +167,45 @@ def test_every_container_has_a_read_only_root_and_no_privileges() -> None:
             assert context.get("capabilities", {}).get("drop") == ["ALL"], where
 
 
-def test_every_pod_but_the_listed_exceptions_runs_as_non_root() -> None:
-    starts_as_root = set()
-    for doc in _workloads(_render(namespace=NAMESPACE)):
+def test_every_pod_runs_as_non_root_above_uid_and_gid_10000() -> None:
+    workloads = _workloads(_render(namespace=NAMESPACE))
+    assert {doc["metadata"]["name"] for doc in workloads} >= {"postgres", "nats"}
+    for doc in workloads:
         context = _pod(doc).get("securityContext", {})
-        if context.get("runAsNonRoot") is not True:
-            starts_as_root.add(doc["metadata"]["name"])
-            continue
-        if doc["metadata"]["name"] not in LOW_UID_PODS:
-            assert context.get("runAsUser", 0) > 10000, doc["metadata"]["name"]
-            assert context.get("runAsGroup", 0) > 10000, doc["metadata"]["name"]
-    assert starts_as_root == ROOT_PODS
+        name = doc["metadata"]["name"]
+        assert context.get("runAsNonRoot") is True, name
+        assert context.get("runAsUser", 0) > 10000, name
+        assert context.get("runAsGroup", 0) > 10000, name
+        assert context.get("seccompProfile") == {"type": "RuntimeDefault"}, name
 
 
-def test_postgres_keeps_its_data_owner_and_writable_scratch_directories() -> None:
+@pytest.mark.parametrize("name", ["postgres", "nats"])
+def test_the_bundled_backing_services_own_their_data_volume_as_10001(name: str) -> None:
+    (backing,) = [
+        doc
+        for doc in _render(namespace=NAMESPACE)
+        if doc["metadata"]["name"] == name and doc["kind"] == "StatefulSet"
+    ]
+    context = _pod(backing)["securityContext"]
+    # fsGroup makes the data volume writable and the 0440 Secret files readable for the uid.
+    assert (context["runAsUser"], context["runAsGroup"], context["fsGroup"]) == (
+        10001,
+        10001,
+        10001,
+    )
+    assert backing["spec"]["volumeClaimTemplates"][0]["metadata"]["name"] == "data"
+
+
+def test_postgres_has_writable_scratch_directories() -> None:
     (postgres,) = [
         doc
         for doc in _render(namespace=NAMESPACE)
         if doc["metadata"]["name"] == "postgres" and doc["kind"] == "StatefulSet"
     ]
-    context = _pod(postgres)["securityContext"]
-    assert (context["runAsUser"], context["runAsGroup"], context["fsGroup"]) == (999, 999, 999)
     mounts = {m["name"] for m in _pod(postgres)["containers"][0]["volumeMounts"]}
     assert {"data", "run", "tmp"} <= mounts
     scratch = {v["name"] for v in _pod(postgres)["volumes"] if "emptyDir" in v}
+    # /tmp also holds the nss_wrapper passwd file that gives uid 10001 a name for initdb.
     assert {"run", "tmp"} <= scratch
 
 
@@ -214,3 +224,58 @@ def test_the_gateway_listens_unprivileged_behind_service_port_443() -> None:
     assert service["spec"]["ports"] == [{"name": "https", "port": 443, "targetPort": "websecure"}]
     policy = by_kind[("NetworkPolicy", "dc-gateway-from-anywhere")]
     assert policy["spec"]["ingress"] == [{"ports": [{"port": 8443}]}]
+
+
+# --- image references (code scanning, Trivy KSV-0125) -----------------------------------------
+# The platform images come from the release registry ghcr.io/rkisliak (release.yml) with the
+# chart's appVersion as the default tag. A local cluster points the chart at its imported
+# contractum/<component>:dev images with an empty registry and the dev tag.
+
+PLATFORM_IMAGES = {"identity", "contracts", "validation", "audit", "mail", "api-docs", "ui"}
+THIRD_PARTY = {"postgres", "nats", "traefik"}
+
+
+def _app_version() -> str:
+    chart = yaml.safe_load((CHART / "Chart.yaml").read_text(encoding="utf-8"))
+    version: str = chart["appVersion"]
+    return version
+
+
+def _images(docs: list[dict[str, Any]]) -> set[str]:
+    return {body["image"] for _, _, body in _containers(docs)}
+
+
+def _platform(image: str) -> bool:
+    return image.rsplit(":", 1)[0].rsplit("/", 1)[-1] in PLATFORM_IMAGES
+
+
+def test_platform_images_default_to_the_release_registry_and_the_app_version() -> None:
+    images = _images(_render(namespace=NAMESPACE))
+    platform = {image for image in images if _platform(image)}
+    assert platform == {
+        f"ghcr.io/rkisliak/contractum/{name}:{_app_version()}" for name in PLATFORM_IMAGES
+    }
+    # The third-party images carry no registry host (Docker Hub official images).
+    for image in images - platform:
+        assert "/" not in image, image
+        assert image.split(":")[0] in THIRD_PARTY, image
+
+
+def test_local_images_render_with_an_empty_registry_and_the_dev_tag() -> None:
+    images = _images(_render("global.imageRegistry=", "global.imageTag=dev", namespace=NAMESPACE))
+    assert {image for image in images if _platform(image)} == {
+        f"contractum/{name}:dev" for name in PLATFORM_IMAGES
+    }
+
+
+def test_a_mirror_registry_and_tag_reach_every_platform_image() -> None:
+    images = _images(
+        _render(
+            "global.imageRegistry=myregistry.azurecr.io",
+            "global.imageTag=1.2.3",
+            namespace=NAMESPACE,
+        )
+    )
+    assert {image for image in images if _platform(image)} == {
+        f"myregistry.azurecr.io/contractum/{name}:1.2.3" for name in PLATFORM_IMAGES
+    }

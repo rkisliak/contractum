@@ -6,16 +6,18 @@ happened.
 
 What the workflows publish:
 
+- `release.yml` publishes the seven server images to GitHub Container Registry, but only on a
+  `vX.Y.Z` tag (see [The server release](#the-server-release)).
 - `sdk-release.yml` publishes the SDK and CLI, but only on an `contractum-v*` tag (see
   [The SDK release](#the-sdk-release)).
 - `docs.yml` deploys the docs site to GitHub Pages, but only on a push to `main` when the
   repository variable `DOCS_PAGES_ENABLED` is `true`.
-- Every other workflow only builds, tests and scans. Server images are built but never pushed, and
-  nothing is deployed.
+- Every other workflow only builds, tests and scans. Pull requests and pushes to `main` build the
+  server images but never push them, and nothing is deployed.
 
 The only repository secret any workflow reads is `SONAR_TOKEN`, in the inactive `sonarqube` job.
-A few jobs use the automatic `GITHUB_TOKEN`: the SDK release (to create the release and push the
-CLI image), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
+A few jobs use the automatic `GITHUB_TOKEN`: the server release (to push the images and their
+attestations), the SDK release (to create the release and push the CLI image), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
 `e2e-nightly` and `dast-nightly` (to find the last green run and skip a nightly run when nothing
 changed).
 
@@ -29,6 +31,7 @@ changed).
 | `dast-nightly` (`dast-nightly.yml`) | nightly 03:17 UTC, manual | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
 | `sdk` (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor. `sdk-ok` is one aggregate result |
 | `sdk-release` (`sdk-release.yml`) | pull request that touches `clients/python/**` or the workflow; push of an `contractum-v*` tag; manual | `build-and-smoke`, `github-release`, `image` | Every run builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files, writes `SHA256SUMS`, builds the CLI image and runs an offline smoke on it. Only an `contractum-v*` tag runs `github-release` and `image`, which publish |
+| `release` (`release.yml`) | push of a `v*` tag; manual on such a tag | `version`, `image (<image>)` | Checks that the tag equals `appVersion` in `deploy/helm/contractum/Chart.yaml`, then builds the seven server images without cache and pushes them to `ghcr.io/<owner>/contractum/<image>:<version>` with SBOM and provenance attestations |
 | `docs` (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only on a push to `main` with `DOCS_PAGES_ENABLED` set to `true` |
 | `docs-links-weekly` (`docs-links-weekly.yml`) | Mondays 05:17 UTC, manual | `external-links` | lychee over the external links of every Markdown file. It never runs on pull requests, so a remote site that is down never blocks a merge |
 
@@ -52,6 +55,27 @@ example `contractum-v0.1.0` for version 0.1.0). The run fails on a mismatch. On 
 
 Nothing goes to a package index. Users install the wheel from its release URL; see the
 [SDK and CLI guide](../user/sdk-cli.md).
+
+### The server release
+
+Push a tag `vX.Y.Z` that equals `appVersion` in `deploy/helm/contractum/Chart.yaml` (for example
+`v1.0.0` for `appVersion: "1.0.0"`). The run fails on a mismatch, so the chart's default image tag
+(its `appVersion`) always names published images. On the tag:
+
+1. `version` checks the tag.
+2. `image (<image>)` builds each of identity, contracts, validation, audit, mail, api-docs and ui
+   from scratch (no build cache) and pushes it to `ghcr.io/<owner>/contractum/<image>:<version>`.
+   BuildKit attaches an SBOM and SLSA provenance (`mode=max`) to the image, and `actions/attest`
+   pushes a GitHub build provenance attestation next to it. Only this job holds `packages: write`,
+   `id-token: write` and `attestations: write`.
+
+To publish a tag again, run the workflow by hand on that tag. On any other ref it fails at
+`version`. Check a published image with
+`gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum`.
+
+A container package that GitHub creates on the first push is private. Make each
+`contractum/<image>` package public (or give the cluster a pull Secret) under the package's
+settings, and check that it is linked to this repository.
 
 ### The nightly end-to-end run
 
@@ -147,8 +171,8 @@ protection and validity checks need GitHub Secret Protection. Both are billed pe
 Settings, Actions, General:
 
 - Workflow permissions: read repository contents. Do not allow Actions to create or approve pull
-  requests. Jobs that need more (the SDK release, the Pages deploy) ask for it in their own
-  `permissions:` block.
+  requests. Jobs that need more (the server and SDK releases, the Pages deploy) ask for it in
+  their own `permissions:` block.
 - Fork pull requests: require approval for first-time contributors.
 - Allowed actions: GitHub-owned actions, plus exactly `astral-sh/setup-uv`, `pnpm/action-setup`,
   `docker/setup-buildx-action`, `docker/build-push-action` and `SonarSource/sonarqube-scan-action`
@@ -181,7 +205,7 @@ wrapper action wraps a scanner.
 
 | Tool | What it covers | Workflow and job | Gate | Results |
 |------|----------------|------------------|------|---------|
-| Trivy filesystem (report) | Vulnerabilities in `uv.lock` and `ui/pnpm-lock.yaml`, secrets, misconfiguration in Dockerfiles, compose and Helm | `security.yml`, `trivy-fs-report` | none (report) | code scanning, category `trivy-fs` |
+| Trivy filesystem (report) | Vulnerabilities in `uv.lock` and `ui/pnpm-lock.yaml`, secrets, misconfiguration in Dockerfiles, compose and Helm (the check data in `infra/trivy`, see below) | `security.yml`, `trivy-fs-report` | none (report) | code scanning, category `trivy-fs` |
 | Trivy filesystem (gate) | Fixable CRITICAL and HIGH vulnerabilities, secrets | `security.yml`, `trivy-fs-gate` | fails on any finding | job log |
 | Trivy image | Vulnerabilities and secrets in the 7 service images and the `contractum-cli` image | `security.yml`, `trivy-image (<image>)` | none (report) | code scanning, category `trivy-image-<image>` |
 | dependency review | New dependencies with advisories | `security.yml`, `dependency-review` (pull requests) | fails on high or above | job log |
@@ -195,8 +219,14 @@ wrapper action wraps a scanner.
 | OWASP ZAP API scan | Active scan of the merged OpenAPI document with the admin token | `dast-nightly.yml`, `dast` | same | `zap-api.html` and `.json` in the artifact |
 | ruff `S` rules | Bandit checks on every Python file | `ci.yml`, `python-lint` | fails on any finding | job log |
 
-Trivy misconfiguration findings are reported but not gated. They include deliberate dev-only
-choices, such as root test-runner images. Triage or dismiss them in code scanning.
+Trivy misconfiguration findings are reported but not gated. Fix each one at its root; never
+dismiss or ignore it.
+
+`infra/trivy` holds data for Trivy's misconfiguration checks, passed with `--config-data
+infra/trivy`. It is configuration, not an ignore list: `ksv0125.trusted_registries` names the
+registry hosts that KSV-0125 trusts, `ghcr.io`, where the release images live. The check matches
+the registry host only (the first part of the image name), and the list replaces Trivy's default
+one. Images without a registry host, such as `postgres:18`, are not judged by it.
 
 ### Ignore lists
 
@@ -241,7 +271,7 @@ and a Kubernetes gateway cannot hold host port 8443 at the same time.
 | gitleaks (full history) | `gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts="--all" --report-format sarif --report-path .security-reports/gitleaks.sarif .` |
 | pip-audit | `uv export --frozen --all-packages --all-groups --no-hashes --no-emit-workspace -o .security-reports/requirements-audit.txt`, then `uvx pip-audit==<PIP_AUDIT_VERSION> -r .security-reports/requirements-audit.txt --strict --no-deps --disable-pip --desc`. Repeat for the package: `cd clients/python && uv export --frozen --all-groups --no-hashes --no-emit-project -o ../../.security-reports/requirements-audit-cli.txt` and audit that file the same way |
 | pnpm audit | `pnpm --dir ui audit --prod --audit-level high` |
-| Trivy filesystem | Scan a clean export so `.venv` and `node_modules` are skipped: `git archive HEAD \| tar -x -C <empty dir>`, then `trivy fs --scanners vuln,secret,misconfig --ignorefile .trivyignore <dir>` and the gate command from `security.yml` |
+| Trivy filesystem | Scan a clean export so `.venv` and `node_modules` are skipped: `git archive HEAD \| tar -x -C <empty dir>`, then `trivy fs --scanners vuln,secret,misconfig --config-data <dir>/infra/trivy --ignorefile .trivyignore <dir>` and the gate command from `security.yml` |
 | Trivy image | `trivy image --scanners vuln,secret --ignore-unfixed contractum/<service>:dev`; for the CLI, build `docker build -t contractum-cli:scan clients/python` and scan `contractum-cli:scan` |
 | CodeQL | The official CodeQL bundle: `codeql database create <db> --language=<python\|javascript-typescript> --build-mode=none --source-root <clean export>`, then `codeql database analyze <db> <language>-security-extended.qls --format=sarif-latest --output=<file>.sarif` |
 | Schemathesis | `docker compose up -d --build --wait` and `bash scripts/skeleton-smoke.sh`, then `bash scripts/e2e.sh tests/e2e/test_phase7_schemathesis.py` |

@@ -123,6 +123,16 @@ function Invoke-E2E {
     if (-not (Test-Prereqs)) { exit 1 }
     $paths = if ($Rest -and $Rest.Count -gt 0) { $Rest } else { @("tests/e2e") }
     Invoke-Native docker @("compose", "up", "-d", "--build", "--wait", "--wait-timeout", $WaitTimeout)
+    # The runner is non-root (scripts/e2e-runner-env.sh): the invoking user where `id` exists, so it
+    # can write the .dev bind, else the image's user 10001; plus the Docker socket's group.
+    if ((Get-Command id -ErrorAction SilentlyContinue) -and -not $env:DC_E2E_UID) {
+        $hostUid = (& id -u).Trim()
+        if ($hostUid -ne "0") { $env:DC_E2E_UID = $hostUid; $env:DC_E2E_GID = (& id -g).Trim() }
+    }
+    if (-not $env:DC_DOCKER_GID) {
+        $env:DC_DOCKER_GID = (& docker run --rm --pull never --network none --entrypoint stat `
+            -v /var/run/docker.sock:/var/run/docker.sock:ro contractum/identity:dev -c %g /var/run/docker.sock).Trim()
+    }
     & docker compose -f compose.yaml -f compose.test.yaml --profile test `
         run --rm --build e2e pytest -m e2e -q -o asyncio_default_test_loop_scope=session @paths
     exit $LASTEXITCODE

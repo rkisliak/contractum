@@ -145,6 +145,14 @@ def test_the_runner_images_end_on_a_non_root_user(dockerfile: str, user: str) ->
     assert _final_user(dockerfile) == user
 
 
+def test_the_playwright_workdir_is_writable_by_the_runner_group() -> None:
+    # Playwright removes its bind-mounted outputDir (/app/test-results) before a run: a non-root
+    # runner needs write access to /app or the run stops with EACCES.
+    text = (ROOT / "infra/docker/playwright.Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"(?m)^RUN chgrp 10001 /app && chmod 0775 /app$", text)
+    assert text.index("chmod 0775 /app") < text.index("USER pwuser")
+
+
 def _runner(name: str) -> dict[str, Any]:
     service: dict[str, Any] = _yaml(ROOT / "compose.test.yaml")["services"][name]
     return service

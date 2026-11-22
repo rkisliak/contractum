@@ -18531,6 +18531,15 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "body-token": {
+                  "description": "Every client that did not opt into cookie delivery.",
+                  "summary": "Refresh token in the body",
+                  "value": {
+                    "refresh_token": "the-refresh-token-from-login"
+                  }
+                }
+              },
               "schema": {
                 "anyOf": [
                   {

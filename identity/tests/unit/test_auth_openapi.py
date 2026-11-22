@@ -129,3 +129,14 @@ def test_a_failed_refresh_declares_the_clearing_set_cookie_header(
     document: dict[str, Any],
 ) -> None:
     assert "Set-Cookie" in _op(document, "refresh")["responses"]["401"]["headers"]
+
+
+def test_the_refresh_body_carries_a_well_formed_example(document: dict[str, Any]) -> None:
+    # The optional body is `anyOf[model, null]`; OWASP ZAP builds a request from the example, and
+    # without one it sends a body identity refuses with 422 before the refresh logic runs.
+    content = _op(document, "refresh")["requestBody"]["content"]["application/json"]
+    values = [example["value"] for example in content["examples"].values()]
+    assert len(values) == 1
+    assert set(values[0]) == {"refresh_token"}
+    assert isinstance(values[0]["refresh_token"], str)
+    assert values[0]["refresh_token"]

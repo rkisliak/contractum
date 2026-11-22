@@ -20,7 +20,7 @@ from dc_core.app import read_session
 from dc_core.policy import PolicyRouter, public
 from dc_core.problems import ProblemError
 from dc_core.uow import UnitOfWork
-from fastapi import Cookie, Depends, Header, Request, Response
+from fastapi import Body, Cookie, Depends, Header, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -166,6 +166,23 @@ class IdentityRefreshIn(BaseModel):
 
     # Optional: a browser that opted into cookie delivery sends the token as a cookie instead.
     refresh_token: SecretStr | None = Field(default=None, min_length=1, max_length=512)
+
+
+# The body is optional (a cookie-delivery browser sends none), so its schema is
+# `anyOf[model, null]`, which OpenAPI tooling cannot build a request from. The example gives
+# generated clients and scanners (OWASP ZAP sends it) a well-formed body to start from.
+RefreshBody = Annotated[
+    IdentityRefreshIn | None,
+    Body(
+        openapi_examples={
+            "body-token": {
+                "summary": "Refresh token in the body",
+                "description": "Every client that did not opt into cookie delivery.",
+                "value": {"refresh_token": "the-refresh-token-from-login"},
+            }
+        },
+    ),
+]
 
 
 class IdentityLogoutIn(BaseModel):
@@ -490,7 +507,7 @@ async def login(
 async def refresh(
     request: Request,
     response: Response,
-    body: IdentityRefreshIn | None = None,
+    body: RefreshBody = None,
     delivery: DeliveryHeader = None,
     cookie_token: RefreshCookie = None,
 ) -> IdentityTokenOut:

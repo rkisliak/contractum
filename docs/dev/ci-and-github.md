@@ -25,7 +25,7 @@ changed).
 
 | Workflow | Trigger | Jobs | What it checks or publishes |
 |----------|---------|------|-----------------------------|
-| Continuous Integration (`ci.yml`) | pull request, push to `main` | `python-lint`, `python-unit`, `python-integration`, `ui`, `docker-build (<image>)`, `ci-ok` | The job-level mirror of `scripts/ci.sh` without the end-to-end step: lock check, ruff, mypy and import rules; unit tests; integration tests against the runner's Docker; the UI static checks (`pnpm ci:static`); every image builds (identity, contracts, validation, audit, mail, api-docs, ui), never pushed. `ci-ok` is one aggregate result |
+| Continuous Integration (`ci.yml`) | pull request, push to `main` | `changes`, `docs-repo-tests`, `python-lint`, `python-unit`, `python-integration`, `ui`, `docker-build (<image>)`, `ci-ok` | The job-level mirror of `scripts/ci.sh` without the end-to-end step: lock check, ruff, mypy and import rules; unit tests; integration tests against the runner's Docker; the UI static checks (`pnpm ci:static`); every image builds (identity, contracts, validation, audit, mail, api-docs, ui), never pushed. A docs-only change skips the code jobs (see [The docs-only skip](#the-docs-only-skip)). `ci-ok` is one aggregate result |
 | Security (`security.yml`) | pull request, push to `main`, daily 04:23 UTC, manual | `trivy-fs-report`, `trivy-fs-gate`, `trivy-image (<image>)`, `dependency-review`, `codeql (<language>)`, `gitleaks`, `pip-audit`, `pnpm-audit`, `sonarqube` | The scanners in [Security scanners](#security-scanners). `dependency-review` runs on pull requests only. `sonarqube` is inactive until `SONAR_ENABLED` is `true` |
 | E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`) | `gate`, `checks`, `ui-static`, `ui-e2e (<part>)`, `py-e2e`, `operation-coverage` | `CI_E2E=1 bash scripts/ci.sh`, or the full gate when `full` is ticked, as parallel jobs, one per part of the script (`CI_PART`): the checks, the UI static checks, the Playwright UI tests on one cold stack per shard or volume project, and the Python end-to-end tests on their own cold stack. `operation-coverage` runs under the full gate only |
 | DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
@@ -37,6 +37,28 @@ changed).
 
 The nightly `e2e-nightly` and `dast-nightly` runs skip a scheduled run when the head of `main`
 equals the head of the last green run. A manual run always runs.
+
+### The docs-only skip
+
+- The `changes` job lists the changed paths with plain `git diff --name-only` (the pull request's
+  base and head, or the push's before and after commits) and `scripts/ci_changes.py classify`
+  decides. No third-party paths-filter action is used.
+- A change is docs-only when every changed path matches one of these: `docs/**` (pages, diagrams
+  and their images), `*.md` at any depth, `mkdocs.yml`, `.markdownlint-cli2.jsonc`, `_typos.toml`
+  and `lychee.toml`. The list is `DOCS_PATTERNS` in `scripts/ci_changes.py`.
+- On a docs-only change `python-lint`, `python-unit`, `python-integration`, `ui` and every
+  `docker-build` job are skipped, and `docs-repo-tests` runs the repository tests (`tests/repo`)
+  instead, because several of them check the docs. Any other change runs everything and skips
+  `docs-repo-tests` (`python-unit` runs those tests anyway).
+- When the paths cannot be listed (a new branch, a force push, a failed `git diff`) or the diff is
+  empty, the change counts as not docs-only and everything runs.
+- `ci-ok` (`scripts/ci_changes.py verdict`) passes only when every job that should have run
+  succeeded. A code job may be skipped only on a docs-only change and `docs-repo-tests` only on any
+  other change. A failed, cancelled or unexpectedly skipped job, or a failed `changes` job, fails
+  `ci-ok`, so it stays a safe required check.
+- The Documentation and Security workflows always run.
+- `tests/repo/test_ci_changes.py` checks the filter list, the classification, the `ci-ok` rules
+  and the workflow wiring.
 
 ### The SDK release
 
@@ -136,8 +158,9 @@ Settings, Rules, Rulesets (or classic branch protection):
 
 - Require a pull request before merging. Block force pushes. Block deletion.
 - Require these status checks: `ci-ok`, `trivy-fs-gate` and `dependency-review`. `ci-ok` rolls up
-  `python-lint`, `python-unit`, `python-integration`, `ui` and every `docker-build` job, so a change
-  to the image matrix never orphans a required check.
+  `changes`, `docs-repo-tests`, `python-lint`, `python-unit`, `python-integration`, `ui` and every
+  `docker-build` job, so a change to the image matrix never orphans a required check, and a
+  docs-only change that skips the code jobs still reports a result.
 - `docs-lint` and `docs-build` run on every pull request and are good candidates to require.
 - `sdk-ok` rolls up every `sdk.yml` job. `sdk.yml` runs only when its paths change, so a required
   `sdk-ok` would wait forever on a pull request that does not touch them. Require it only together
@@ -205,7 +228,28 @@ Settings, Actions, General:
 - Python minor versions of the `python` base image are ignored for `/clients/python` (the SDK
   tests Python 3.11 to 3.14) and `/infra/docker` (the server workspace requires Python below
   3.15). Patch updates still come. A new Python minor is a deliberate upgrade made by hand.
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): every
+  package ecosystem opens `build(deps): ...` pull requests and GitHub Actions updates open
+  `ci(deps): ...`. `tests/repo/test_dependabot.py` checks the prefixes.
 - Nothing merges automatically.
+
+## Repository tests
+
+`tests/repo` holds the checks on the repository itself: workflows, Dockerfiles, the Helm chart,
+the docs site, the OpenAPI documents and the authorization matrix. They run in `python-unit`, and
+in `docs-repo-tests` on a docs-only change. Run them with `uv run pytest tests/repo -q`.
+
+- `test_no_personal_data.py` is the leak guard. It scans every tracked text file
+  (`git ls-files`, binary files skipped) and fails on a home-directory path (`/Users/<name>/`,
+  `/home/<name>/`, `C:\Users\<name>\`) and on any author or committer email from the git
+  history (`git log --format='%ae%n%ce'`, GitHub `noreply` and bot addresses excluded). Each hit is
+  reported as `file:line`, and an email hit never prints the address. The test holds no personal
+  data, only the mechanism. Write `$HOME`, `~` or a placeholder such as `/Users/you` or
+  `/home/<user>` instead of a real path; the allowed placeholder names are `PLACEHOLDER_USERS` in
+  the test. A real hit is fixed in the file, never added to that list. CI checks out the whole
+  history for this test.
+- `test_ci_changes.py` covers the [docs-only skip](#the-docs-only-skip) and `test_dependabot.py`
+  the Dependabot commit prefixes.
 
 ## Security scanners
 

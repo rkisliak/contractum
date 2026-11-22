@@ -123,13 +123,23 @@ async function journey(page: Page, persona: Persona) {
   // The account menu (the rail's avatar) names the folder where the role is held.
   await openAccountMenu(page);
   await expect(page.getByRole("menu").getByText(/· Ledger$/)).toBeVisible();
-  // "Versions" lists every component with its build; every service answers.
+  // "Versions" leads with the platform version and lists every component with its build; every
+  // component answers, all with the same version (one build of the stack).
   await page.getByRole("menuitem", { name: "Versions" }).click();
   const versions = page.getByRole("dialog", { name: "Versions" });
-  for (const name of ["Web UI", "Identity", "Contracts", "Validation", "Audit"])
+  await expect(versions.getByText(/^Contractum \S+$/)).toBeVisible();
+  for (const name of [
+    "Web UI",
+    "Identity",
+    "Contracts",
+    "Validation",
+    "Audit",
+    "API docs",
+  ])
     await expect(versions.getByRole("rowheader", { name })).toBeVisible();
   await expect(versions.getByText("Loading…")).toHaveCount(0);
   await expect(versions.getByText("Unavailable")).toHaveCount(0);
+  await expect(versions.getByText("Different version")).toHaveCount(0);
   await versions.getByRole("button", { name: "Close", exact: true }).click();
   await expectCleanPage(page, issues, "versions dialog", {
     h1: `Welcome, ${persona.displayName}`,

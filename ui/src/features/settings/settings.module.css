@@ -125,3 +125,16 @@
   color: var(--color-heading);
   font-weight: var(--font-weight-semibold);
 }
+
+.platformVersion {
+  margin: 0 0 var(--spacing-3);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-heading);
+}
+
+.skew {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+}

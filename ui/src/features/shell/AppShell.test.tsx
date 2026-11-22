@@ -171,12 +171,12 @@ describe("app shell", () => {
 
   it("lists each component's build in Versions, a silent service as Unavailable", async () => {
     const user = userEvent.setup();
-    const ok = (service: string) =>
+    const ok = (service: string, version = "dev") =>
       http.get(`*/api/v1/${service}/version`, () =>
         HttpResponse.json({
           service,
-          version: "0.1.0",
-          commit: "abc1234",
+          version,
+          commit: "abc1234def56",
           built_at: "2026-11-15T20:00:00Z",
         }),
       );
@@ -184,7 +184,8 @@ describe("app shell", () => {
       handlers: [
         ok("identity"),
         ok("validation"),
-        ok("audit"),
+        ok("audit", "1.4.0"),
+        ok("docs"),
         http.get("*/api/v1/contracts/version", () =>
           HttpResponse.json({}, { status: 503 }),
         ),
@@ -205,10 +206,16 @@ describe("app shell", () => {
           .getByRole("rowheader", { name })
           .closest("tr") as HTMLElement,
       );
+    // The UI build of a test reads "dev": the platform version leads the dialog.
+    expect(within(dialog).getByText("Contractum dev")).toBeVisible();
     expect(row("Web UI").getAllByText("dev").length).toBeGreaterThan(0);
-    expect(await row("Identity").findByText("0.1.0")).toBeVisible();
-    expect(row("Identity").getByText("abc1234")).toBeVisible();
+    expect(await row("Identity").findByText("abc1234def56")).toBeVisible();
+    expect(await row("API docs").findByText("abc1234def56")).toBeVisible();
     expect(await row("Contracts").findByText("Unavailable")).toBeVisible();
+    // A component on another version than the UI is named in text, not by colour alone.
+    expect(await row("Audit").findByText("1.4.0")).toBeVisible();
+    expect(row("Audit").getByText("Different version")).toBeVisible();
+    expect(within(dialog).getAllByText("Different version")).toHaveLength(1);
     expect(within(dialog).queryByText("Request ID")).toBeNull();
   });
 });
@@ -379,6 +386,9 @@ describe("the Versions dialog", () => {
             built_at: "dev",
           }),
         ),
+        http.get("*/api/v1/docs/version", () =>
+          HttpResponse.json({}, { status: 404 }),
+        ),
       ],
     });
     await screen.findByRole("heading", { level: 1, name: /Welcome/ });
@@ -395,6 +405,7 @@ describe("the Versions dialog", () => {
     expect(await row("Identity").findByText("not-a-date")).toBeVisible();
     expect(await row("Contracts").findByText("def5678")).toBeVisible();
     expect(await row("Validation").findByText("Unavailable")).toBeVisible();
+    expect(await row("API docs").findByText("Unavailable")).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Versions" })).toBeNull();

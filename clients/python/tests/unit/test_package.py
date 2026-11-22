@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 import subprocess
 import sys
 
@@ -11,7 +12,7 @@ import contractum
 
 
 def test_version() -> None:
-    assert contractum.__version__ == "0.1.0"
+    assert contractum.__version__ == importlib.metadata.version("contractum")
 
 
 def test_import_is_lazy() -> None:

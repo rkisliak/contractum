@@ -47,11 +47,20 @@ RUN apt-get update \
  && useradd --system --uid 10001 app
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
-# Build identity served by GET /api/v1/<module>/version (dc_core.app.service_version). Last, so a
-# new commit or build time only rebuilds this metadata layer.
+# Build identity served by GET /api/v1/<module>/version (dc_core.app.service_version): the
+# platform version (the Release workflow passes the released version; "dev" for any other build),
+# the 12-character commit and the commit time. Last, so a new version, commit or build time only
+# rebuilds this metadata layer.
+ARG PACKAGE
+ARG VERSION=dev
 ARG GIT_SHA=dev
 ARG BUILD_TIME=dev
-ENV DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
+ENV DC_VERSION=$VERSION DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.title="contractum ${PACKAGE}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_TIME}" \
+      org.opencontainers.image.source="https://github.com/rkisliak/contractum"
 USER app
 # The services answer GET /healthz on port 8000. Compose and the chart's probes set their own
 # checks; this one makes a plain `docker run` report health too. A container that reuses the image

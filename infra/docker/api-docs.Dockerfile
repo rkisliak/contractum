@@ -22,9 +22,20 @@ RUN mkdir -p /opt/swagger \
  && tar -xzf /tmp/swagger.tgz -C /opt/swagger --strip-components=1 package/ \
  && rm /tmp/swagger.tgz \
  && echo "swagger-ui-dist 5.35.0" > /opt/swagger/VERSION
-LABEL org.opencontainers.image.title="contractum api-docs" \
-      dc.swagger-ui-dist.version="5.35.0"
 COPY gateway/api-docs/ /opt/api-docs/
+# Build identity served by GET /api/v1/docs/version (server.py): the platform version (the
+# Release workflow passes the released version; "dev" otherwise), the 12-character commit and the
+# commit time. Last, so a new version only rebuilds this metadata layer.
+ARG VERSION=dev
+ARG GIT_SHA=dev
+ARG BUILD_TIME=dev
+ENV DC_VERSION=$VERSION DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.title="contractum api-docs" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_TIME}" \
+      org.opencontainers.image.source="https://github.com/rkisliak/contractum" \
+      dc.swagger-ui-dist.version="5.35.0"
 USER 65534:65534
 EXPOSE 8080
 # The same check as compose's, so a plain `docker run` reports health too. Kubernetes ignores it

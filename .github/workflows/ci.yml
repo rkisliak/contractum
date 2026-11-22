@@ -1,12 +1,15 @@
 # CI only: the job-level mirror of scripts/ci.sh steps 1-8 (lint, unit, integration, ui) plus an
 # image build check. Images are built but never pushed, and no registry login happens here.
 # The cold-start e2e (scripts/ci.sh step 9) lives in e2e-nightly.yml, scanning in security.yml.
+# A manual run exists for the Release gate (release.yml): a commit pushed with [skip ci] gets its
+# successful CI run that way.
 name: Continuous Integration
 
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -46,7 +49,7 @@ jobs:
             identity/src contracts/src validation/src audit/src mail/src \
             gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
             scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
-            scripts/gen_http_reference.py
+            scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py
       - name: lint-imports
         run: uv run lint-imports
 

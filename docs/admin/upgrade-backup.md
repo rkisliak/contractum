@@ -48,14 +48,20 @@ commit Secret values to a repository.
 1. Back up (see above).
 2. Note the migration head of each database. In the web app, open **Administration > Settings >
    Platform** and look at **About**. You need this to decide later whether a rollback is safe.
-3. Use the chart of the new release: its default image tag is that release. If you set
-   `global.imageTag` or run from your own registry, mirror or build the new images first (see
-   [Images](deploy-kubernetes.md#images)) and set the new tag.
-4. Run:
+3. Pick the new version on the repository's Releases page. A stable release `vX.Y.Z` is marked
+   Latest; a release candidate `vX.Y.Z-rc.N` is a pre-release, for a test installation first.
+   Read its notes: a major version (the first number) lists its breaking changes. The chart of a
+   release uses that release's images by default. If you set `global.imageTag` or run from your
+   own registry, mirror or build the new images first (see [Images](deploy-kubernetes.md#images))
+   and set the new tag.
+4. Run, with the new version:
 
    ```bash
-   helm upgrade dc deploy/helm/contractum -n contractum -f my-values.yaml
+   helm upgrade dc oci://ghcr.io/rkisliak/charts/contractum --version X.Y.Z \
+     -n contractum -f my-values.yaml
    ```
+
+   From a source checkout, run `helm upgrade dc deploy/helm/contractum -n contractum -f my-values.yaml --set global.imageTag=X.Y.Z` instead.
 
 5. Watch the migration Job and the pods:
 
@@ -75,6 +81,9 @@ What happens during an upgrade:
   at the new schema. No pod serves traffic on an old schema, and two replicas never migrate at
   the same time.
 - `api-docs` restarts on every upgrade, so the merged API document matches the new services.
+- Every image of a release reports the same version. After the upgrade, **About** (in
+  **Administration > Settings > Platform**) and the **Versions** dialog show it for every
+  component; a component on another version is marked "Different version".
 - Settings saved in the web app are kept. The values in your values file stay the defaults below
   them (see [Runtime settings](settings.md)).
 

@@ -449,7 +449,20 @@ type AboutRow = {
 
 const aboutColumns: Column<AboutRow>[] = [
   { id: "service", header: "Service", rowHeader: true, cell: (r) => r.service },
-  { id: "version", header: "Version", cell: (r) => orNotSet(r.version) },
+  {
+    id: "version",
+    header: "Version",
+    // One release gives every component the same version; another one is named in text.
+    cell: (r) =>
+      r.version !== null && r.version !== uiBuild.version ? (
+        <span className={styles.skew}>
+          {r.version}
+          <Badge intent="warning">Different version</Badge>
+        </span>
+      ) : (
+        orNotSet(r.version)
+      ),
+  },
   {
     id: "commit",
     header: "Commit",
@@ -513,13 +526,16 @@ function About() {
     ...about.data.services.map((s: SettingsAboutService) => ({ ...s })),
   ];
   return (
-    <DataTable
-      caption="Services"
-      captionHidden
-      columns={aboutColumns}
-      rows={rows}
-      getRowId={(row) => row.service}
-    />
+    <>
+      <p className={styles.platformVersion}>Contractum {uiBuild.version}</p>
+      <DataTable
+        caption="Services"
+        captionHidden
+        columns={aboutColumns}
+        rows={rows}
+        getRowId={(row) => row.service}
+      />
+    </>
   );
 }
 

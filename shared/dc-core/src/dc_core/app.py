@@ -11,8 +11,6 @@ import asyncio
 import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as package_version
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -102,7 +100,7 @@ def _health_router() -> APIRouter:
 
 
 class ServiceVersionOut(BaseModel):
-    """What build of a service is running: its package version, git commit and build time."""
+    """What build of a service is running: the platform version, git commit and build time."""
 
     service: str
     version: str
@@ -111,21 +109,25 @@ class ServiceVersionOut(BaseModel):
 
 
 #: Build arguments the service image bakes in (infra/docker/service.Dockerfile); "dev" otherwise.
+#: DC_VERSION is the platform version the Release workflow builds (one for every image).
+BUILD_VERSION_ENV = "DC_VERSION"
 BUILD_COMMIT_ENV = "DC_GIT_SHA"
 BUILD_TIME_ENV = "DC_BUILD_TIME"
+DEV = "dev"
+
+
+def platform_version() -> str:
+    """The platform version of this build (``DC_VERSION``), or "dev" for a local build."""
+    return os.environ.get(BUILD_VERSION_ENV) or DEV
 
 
 def service_version(service: str) -> ServiceVersionOut:
-    """The running build of ``service`` (package ``dc-<service>``)."""
-    try:
-        version = package_version(f"dc-{service}")
-    except PackageNotFoundError:
-        version = "dev"
+    """The running build of ``service``: platform version, commit and build time."""
     return ServiceVersionOut(
         service=service,
-        version=version,
-        commit=os.environ.get(BUILD_COMMIT_ENV) or "dev",
-        built_at=os.environ.get(BUILD_TIME_ENV) or "dev",
+        version=platform_version(),
+        commit=os.environ.get(BUILD_COMMIT_ENV) or DEV,
+        built_at=os.environ.get(BUILD_TIME_ENV) or DEV,
     )
 
 
@@ -146,8 +148,9 @@ def _version_router(service: str) -> APIRouter:
         response_model=ServiceVersionOut,
         summary="Service build version",
         description=(
-            "The running build of this service: package version, git commit and build time "
-            '("dev" for a local build). Public, no token; cacheable for 60 seconds.'
+            "The running build of this service: the platform version (the same for every "
+            'component of a release), git commit and build time ("dev" for a local build). '
+            "Public, no token; cacheable for 60 seconds."
         ),
     )
     return router
@@ -211,6 +214,7 @@ def create_app(
     openapi_url = f"/api/v1/{service}/openapi.json"
     app = FastAPI(
         title=f"contractum {service}",
+        version=platform_version(),
         docs_url=None,
         redoc_url=None,
         openapi_url=openapi_url,

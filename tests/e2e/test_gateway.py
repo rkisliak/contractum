@@ -862,6 +862,21 @@ async def test_docs_index_is_the_vendored_swagger_ui_with_a_same_origin_csp(
     assert "<script>" not in response.text  # no inline script: script-src 'self' holds
 
 
+async def test_every_component_answers_its_version_through_the_gateway(
+    gateway: httpx.AsyncClient,
+) -> None:
+    # The UI's "Versions" dialog reads these: one shape, public, the same platform version.
+    versions = set()
+    for module in ("identity", "contracts", "validation", "audit", "docs"):
+        response = await gateway.get(f"/api/v1/{module}/version")
+        assert response.status_code == 200, (module, response.text)
+        body = response.json()
+        assert set(body) == {"service", "version", "commit", "built_at"}, module
+        assert response.headers["cache-control"] == "public, max-age=60", module
+        versions.add(body["version"])
+    assert len(versions) == 1, versions
+
+
 async def test_docs_assets_and_the_initializer_are_served_same_origin_only(
     gateway: httpx.AsyncClient,
 ) -> None:

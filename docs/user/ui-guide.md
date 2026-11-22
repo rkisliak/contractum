@@ -25,7 +25,10 @@ The UI follows your system theme (light or dark) and works on a phone.
   contracts a team depends on, so it is told before a contract changes or is retired.
 - The **account menu** (your initials) holds **Account settings** (profile and password),
   **Access tokens** for scripts and the CLI, **Versions** of the running services, and
-  **Sign out**.
+  **Sign out**. **Versions** starts with the platform version of the web app ("Contractum
+  1.4.0") and lists the web UI, Identity, Contracts, Validation, Audit and API docs with their
+  version, commit and build time. A component on another version than the web app is marked
+  **Different version**; name the versions when you report a problem.
 
 ![The folder tree: Root, organizations, projects and teams](../images/ui/folders.png)
 

@@ -40,14 +40,34 @@ headers.
 **Fix:**
 
 - The name is `[global.imageRegistry/]contractum/<component>:<global.imageTag>`. The defaults
-  give `ghcr.io/rkisliak/contractum/<component>:<chart appVersion>`. With your own registry or
-  tag, make sure every image was pushed with that tag.
+  give `ghcr.io/rkisliak/contractum/<component>:<chart appVersion>`: a released chart
+  (`oci://ghcr.io/rkisliak/charts/contractum --version X.Y.Z`) names its own version, while the
+  chart in a source checkout names `dev`, which only exists for images you built. Set
+  `global.imageTag` to a released version, or install the released chart. With your own registry
+  or tag, make sure every image was pushed with that tag.
 - A private registry needs a pull Secret listed in `global.imagePullSecrets`.
 - Images you built and imported into a local cluster need `global.imageRegistry` set to `""` and
   `global.imageTag` to their tag (for example `dev`).
 - On a local kind cluster, images you built with Docker are not in the cluster until you import
   them into every node. See
   [Try it on a local cluster (kind)](deploy-kubernetes.md#try-it-on-a-local-cluster-kind).
+
+## A component shows "Different version"
+
+**Symptom:** the **Versions** dialog or **About** (in **Administration > Settings > Platform**)
+marks a component "Different version".
+
+**Check:** every image of one release reports the same platform version. Compare the versions
+in the dialog, or run `kubectl -n contractum get pods -o jsonpath='{range .items[*]}{.spec.containers[0].image}{"\n"}{end}'`.
+
+**Fix:**
+
+- An upgrade that is still rolling out shows old and new versions side by side. Wait for the
+  rollout to finish and reload the page (the browser may keep the old web app until then).
+- A `--set <component>.image...` or a mirrored image with another tag pins one component to
+  another version. Use one `global.imageTag` for every component.
+- Images you built yourself without the `VERSION` build argument report `dev`. Build every image
+  with the same `VERSION` (see [Build and push the images yourself](deploy-kubernetes.md#build-and-push-the-images-yourself)).
 
 ## The migration Job failed or pods wait in `wait-for-migrations`
 

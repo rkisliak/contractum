@@ -15,10 +15,12 @@ served; ``docker compose restart api-docs`` re-runs the merge.
 Swagger UI (D-178): ``/api/v1/docs`` redirects (308) to ``/api/v1/docs/``, whose relative asset
 links need the slash. Under ``/api/v1/docs/`` only an explicit allow-list of the vendored
 ``swagger-ui-dist`` files is served, read into memory at start, plus this directory's own
-``swagger-initializer.js`` in place of the tarball's; anything else is 404, so there is no path
-traversal. Every response carries ``X-Content-Type-Options: nosniff`` and a same-origin
-Content-Security-Policy that also forbids framing (``frame-ancestors 'none'``). The query string
-and request headers are never reflected. Each connection's socket times out after 30 s.
+``swagger-initializer.js`` in place of the tarball's, and ``/api/v1/docs/version``, the build
+identity (``{service, version, commit, built_at}``, the shape of the services' ``/version``);
+anything else is 404, so there is no path traversal. Every response carries
+``X-Content-Type-Options: nosniff`` and a same-origin Content-Security-Policy that also forbids
+framing (``frame-ancestors 'none'``). The query string and request headers are never reflected.
+Each connection's socket times out after 30 s.
 """
 
 from __future__ import annotations
@@ -49,6 +51,10 @@ DEFAULT_SERVICES = "identity,contracts,validation,audit"
 MERGED_PATH = "/api/v1/openapi.json"
 DOCS_PATH = "/api/v1/docs"
 DOCS_PREFIX = DOCS_PATH + "/"
+VERSION_PATH = DOCS_PREFIX + "version"
+# Build arguments the image bakes in (infra/docker/api-docs.Dockerfile); "dev" otherwise. The same
+# variables and answer shape as the services' GET /api/v1/<module>/version (dc_core.app).
+BUILD_ENV = (("version", "DC_VERSION"), ("commit", "DC_GIT_SHA"), ("built_at", "DC_BUILD_TIME"))
 HERE = Path(__file__).resolve().parent
 DEFAULT_SWAGGER_DIR = "/opt/swagger"
 
@@ -177,6 +183,13 @@ def build_merged_document(services: list[str]) -> None:
     log.info("merged %d paths from %s", len(merged["paths"]), ", ".join(services))
 
 
+def build_info() -> bytes:
+    """``{service, version, commit, built_at}`` of this build, "dev" where nothing was baked in."""
+    info = {"service": "api-docs"}
+    info.update({key: os.environ.get(name) or "dev" for key, name in BUILD_ENV})
+    return json.dumps(info).encode("utf-8")
+
+
 def _problem(status: int) -> bytes:
     slug, title, detail = _PROBLEMS[status]
     body = {"type": f"urn:dc:problem:{slug}", "title": title, "status": status, "detail": detail}
@@ -233,6 +246,11 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 cache = (("Cache-Control", "no-cache"),)
                 self._respond(200, "application/json", merged, cache)
+            return
+        if path == VERSION_PATH:
+            # Public build identity for the UI's "Versions" dialog, like the services' /version.
+            cache = (("Cache-Control", "public, max-age=60"),)
+            self._respond(200, "application/json", build_info(), cache)
             return
         if path == DOCS_PATH:
             self._respond(308, "text/plain; charset=utf-8", b"", (("Location", DOCS_PREFIX),))

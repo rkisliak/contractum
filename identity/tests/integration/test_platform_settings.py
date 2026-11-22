@@ -564,8 +564,8 @@ async def test_the_connection_test_answers_a_fixed_code_and_is_rate_limited(
 def _about_answer(service: str) -> dict[str, Any]:
     return {
         "service": service,
-        "version": "0.1.0",
-        "commit": "abc1234",
+        "version": "1.4.0",
+        "commit": "abc1234def56",
         "built_at": "2026-11-20T10:00:00Z",
         "database": "ok",
         "migration_head": f"{service}_head",
@@ -598,6 +598,8 @@ async def test_about_lists_five_services_and_marks_an_unreachable_one(
         assert services["identity"]["database"] == "ok"
         assert services["identity"]["migration_head"] == "0014_settings_seed"
         assert services["contracts"]["migration_head"] == "contracts_head"
+        assert services["contracts"]["version"] == "1.4.0"
+        assert services["identity"]["version"] == "dev"  # no DC_VERSION outside an image
         assert services["mail"]["status"] == "unreachable"
         assert services["mail"]["version"] is None
         assert seen and all(h == f"Bearer {w.admin}" for h in seen)  # the caller's own bearer

@@ -7430,7 +7430,7 @@
         "type": "object"
       },
       "ServiceVersionOut": {
-        "description": "What build of a service is running: its package version, git commit and build time.",
+        "description": "What build of a service is running: the platform version, git commit and build time.",
         "properties": {
           "built_at": {
             "title": "Built At",
@@ -9429,7 +9429,7 @@
     },
     "/api/v1/audit/version": {
       "get": {
-        "description": "The running build of this service: package version, git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
+        "description": "The running build of this service: the platform version (the same for every component of a release), git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
         "operationId": "get_service_version_api_v1_audit_version_get",
         "responses": {
           "200": {
@@ -17751,7 +17751,7 @@
     },
     "/api/v1/contracts/version": {
       "get": {
-        "description": "The running build of this service: package version, git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
+        "description": "The running build of this service: the platform version (the same for every component of a release), git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
         "operationId": "get_service_version_api_v1_contracts_version_get",
         "responses": {
           "200": {
@@ -27306,7 +27306,7 @@
     },
     "/api/v1/identity/version": {
       "get": {
-        "description": "The running build of this service: package version, git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
+        "description": "The running build of this service: the platform version (the same for every component of a release), git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
         "operationId": "get_service_version_api_v1_identity_version_get",
         "responses": {
           "200": {
@@ -30395,7 +30395,7 @@
     },
     "/api/v1/validation/version": {
       "get": {
-        "description": "The running build of this service: package version, git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
+        "description": "The running build of this service: the platform version (the same for every component of a release), git commit and build time (\"dev\" for a local build). Public, no token; cacheable for 60 seconds.",
         "operationId": "get_service_version_api_v1_validation_version_get",
         "responses": {
           "200": {

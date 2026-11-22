@@ -82,15 +82,34 @@ browser warns once.
 
 ## Images
 
-Each release `vX.Y.Z` publishes the seven platform images to GitHub Container Registry:
-`ghcr.io/rkisliak/contractum/<component>:X.Y.Z` (identity, contracts, validation, audit, mail,
-api-docs, ui). The chart uses them by default: `global.imageRegistry` is `ghcr.io/rkisliak` and an
-empty `global.imageTag` means the chart's `appVersion`, the release the chart belongs to.
+Each release `vX.Y.Z` publishes the seven platform images and the Helm chart to GitHub Container
+Registry, all with the same platform version:
 
-Every image carries an SBOM and SLSA build provenance. Check an image before you use it:
+- `ghcr.io/rkisliak/contractum/<component>:X.Y.Z` (identity, contracts, validation, audit, mail,
+  api-docs, ui);
+- the chart `oci://ghcr.io/rkisliak/charts/contractum`, version `X.Y.Z`.
+
+A release candidate `vX.Y.Z-rc.N` publishes the same set with the version `X.Y.Z-rc.N`, for a
+test installation. Install a released chart straight from the registry; its default image tag is
+its own version:
+
+```bash
+helm install dc oci://ghcr.io/rkisliak/charts/contractum --version 1.0.0 \
+  -n contractum -f values-prod.yaml
+```
+
+The chart in a source checkout carries placeholder versions: its default image tag is `dev`, the
+tag of images you build locally. To install a released version from a checkout, set
+`global.imageTag` (for example `--set global.imageTag=1.0.0`). Every resource carries the label
+`app.kubernetes.io/version` with the chart's app version.
+
+Every image and the chart archive carry SLSA build provenance, and the images an SBOM. Check
+them before you use them:
 
 ```bash
 gh attestation verify oci://ghcr.io/rkisliak/contractum/identity:1.0.0 --repo rkisliak/contractum
+gh release download v1.0.0 --repo rkisliak/contractum --pattern 'contractum-*.tgz'
+gh attestation verify contractum-1.0.0.tgz --repo rkisliak/contractum
 ```
 
 To run from your own registry, mirror the release images (for example with `crane copy` or
@@ -99,18 +118,26 @@ registry. The image names below it stay `contractum/<component>:<tag>`.
 
 ### Build and push the images yourself
 
-From the repository root, with `REG` your registry and `TAG` your release tag:
+From the repository root, with `REG` your registry and `TAG` your version. Pass the same
+`VERSION`, `GIT_SHA` and `BUILD_TIME` to every image: the web app's **Versions** dialog and the
+`/version` routes show them, and the images carry them as OCI labels. Without them a build
+reports `dev`.
 
 ```bash
 REG=myregistry.azurecr.io TAG=1.0.0
+ARGS="--build-arg VERSION=$TAG --build-arg GIT_SHA=$(git rev-parse --short=12 HEAD) \
+  --build-arg BUILD_TIME=$(git log -1 --format=%cI HEAD)"
 for svc in identity contracts validation audit mail; do
-  docker build -f infra/docker/service.Dockerfile --build-arg PACKAGE=dc-$svc \
-    --build-arg GIT_SHA=$(git rev-parse --short HEAD) -t $REG/contractum/$svc:$TAG .
+  docker build -f infra/docker/service.Dockerfile --build-arg PACKAGE=dc-$svc $ARGS \
+    -t $REG/contractum/$svc:$TAG .
 done
-docker build -f infra/docker/api-docs.Dockerfile -t $REG/contractum/api-docs:$TAG .
-docker build -f infra/docker/ui.Dockerfile --target runtime -t $REG/contractum/ui:$TAG ui
+docker build -f infra/docker/api-docs.Dockerfile $ARGS -t $REG/contractum/api-docs:$TAG .
+docker build -f infra/docker/ui.Dockerfile --target runtime $ARGS -t $REG/contractum/ui:$TAG ui
 for img in identity contracts validation audit mail api-docs ui; do docker push $REG/contractum/$img:$TAG; done
 ```
+
+To package the chart with the same version, run
+`helm package deploy/helm/contractum --version $TAG --app-version $TAG`.
 
 Set `global.imageRegistry` and `global.imageTag` to match. If the registry needs credentials,
 create a pull Secret and list it in `global.imagePullSecrets`.

@@ -64,9 +64,11 @@ def test_app_images_are_built_from_the_service_dockerfile_with_their_package(
         build = svc.get("build")
         if not build:
             continue
+        # Every platform image takes the release build identity ("dev" unless the caller sets it).
+        assert {"VERSION", "GIT_SHA", "BUILD_TIME"} <= set(build.get("args") or {}), name
         if name == "api-docs":
             assert build["dockerfile"] == API_DOCS_DOCKERFILE
-            assert not build.get("args")
+            assert set(build["args"]) == {"VERSION", "GIT_SHA", "BUILD_TIME"}
             continue
         if name == "ui":
             assert Path(build["context"]).name == "ui"

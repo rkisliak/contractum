@@ -17,9 +17,9 @@ for arg in "$@"; do
 done
 
 # The images carry the commit they were built from (GET /api/v1/<module>/version, the UI's
-# "Versions" dialog); BUILD_TIME stays "dev" unless the caller sets it, so containers are not
-# recreated on every run.
-export GIT_SHA="${GIT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo dev)}"
+# "Versions" dialog) in the release format, 12 characters; VERSION and BUILD_TIME stay "dev"
+# unless the caller sets them, so containers are not recreated on every run.
+export GIT_SHA="${GIT_SHA:-$(git rev-parse --short=12 HEAD 2>/dev/null || echo dev)}"
 
 # Created by the caller, so the binds belong to the user the runner runs as (not to root).
 mkdir -p .dev ui/test-results

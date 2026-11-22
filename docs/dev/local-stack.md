@@ -110,6 +110,20 @@ The UI end-to-end suite (`bash scripts/e2e-ui.sh`) creates non-admin users in th
 Other switches: `CI_INTEGRATION=0` skips the integration tests, and `CI_UI=0` skips the UI step and
 the UI end-to-end tests.
 
+`CI_PART` runs one part of the gate, so a CI system can run the parts as parallel jobs (the nightly
+end-to-end workflow does). It works with `CI_FULL=1` too:
+
+| `CI_PART` | What it runs |
+|---|---|
+| `all` (default) | The whole gate, in order |
+| `checks` | Lock check, lint, format, types, import rules, unit and integration tests (with coverage and the coverage floors under the full gate) |
+| `ui` | The UI step |
+| `ui-e2e` | A cold stack, then the UI end-to-end tests. `CI_UI_E2E_ARGS` goes to `scripts/e2e-ui.sh`, for example `--project=volume` or `--project=chromium --shard=1/4` |
+| `py-e2e` | A cold stack, then the whole `tests/e2e` suite |
+| `operation-coverage` | The operation coverage gate (full gate only), over the coverage data and test results the other parts wrote |
+
+`tests/repo/test_ci_parts.py` checks that the parts together run every step of the gate.
+
 The full gate runs everything above plus line and branch coverage with a floor per package, the
 timing-sensitive tests on their own, Vitest coverage with thresholds, every Playwright spec and
 project, Schemathesis, and the operation coverage gate

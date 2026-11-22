@@ -27,7 +27,7 @@ changed).
 |----------|---------|------|-----------------------------|
 | Continuous Integration (`ci.yml`) | pull request, push to `main` | `python-lint`, `python-unit`, `python-integration`, `ui`, `docker-build (<image>)`, `ci-ok` | The job-level mirror of `scripts/ci.sh` without the end-to-end step: lock check, ruff, mypy and import rules; unit tests; integration tests against the runner's Docker; the UI static checks (`pnpm ci:static`); every image builds (identity, contracts, validation, audit, mail, api-docs, ui), never pushed. `ci-ok` is one aggregate result |
 | Security (`security.yml`) | pull request, push to `main`, daily 04:23 UTC, manual | `trivy-fs-report`, `trivy-fs-gate`, `trivy-image (<image>)`, `dependency-review`, `codeql (<language>)`, `gitleaks`, `pip-audit`, `pnpm-audit`, `sonarqube` | The scanners in [Security scanners](#security-scanners). `dependency-review` runs on pull requests only. `sonarqube` is inactive until `SONAR_ENABLED` is `true` |
-| E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`) | `gate`, `e2e` | The cold-start end-to-end run of `scripts/ci.sh`, or the full gate when `full` is ticked |
+| E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`) | `gate`, `checks`, `ui-static`, `ui-e2e (<part>)`, `py-e2e`, `operation-coverage` | `CI_E2E=1 bash scripts/ci.sh`, or the full gate when `full` is ticked, as parallel jobs, one per part of the script (`CI_PART`): the checks, the UI static checks, the Playwright UI tests on one cold stack per shard or volume project, and the Python end-to-end tests on their own cold stack. `operation-coverage` runs under the full gate only |
 | DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
 | SDK (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor. `sdk-ok` is one aggregate result |
 | SDK Release (`sdk-release.yml`) | pull request that touches `clients/python/**` or the workflow; push of an `contractum-v*` tag; manual | `build-and-smoke`, `github-release`, `image` | Every run builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files, writes `SHA256SUMS`, builds the CLI image and runs an offline smoke on it. Only an `contractum-v*` tag runs `github-release` and `image`, which publish |
@@ -79,10 +79,23 @@ settings, and check that it is linked to this repository.
 
 - Run it by hand from Actions, e2e-nightly, Run workflow, on `main`. Tick `full` for the full gate,
   or use `gh workflow run e2e-nightly.yml -f full=true`.
-- It needs no secrets. It needs Docker on `ubuntu-latest`, a free port 8443, the disk space its
-  first step frees, and up to 150 minutes (default run) or 340 minutes (full gate).
-- On failure, the `e2e-failure-<run id>` artifact holds the compose logs, the Playwright traces and
-  reports and `.coverage-data`. It is kept for 7 days. `.dev` is never uploaded.
+- It needs no secrets. Each stack job needs Docker on `ubuntu-latest`, a free port 8443 and the
+  disk space its first step frees.
+- The jobs run in parallel after `gate`:
+  - `checks`: lock check, lint, format, types, import rules, unit and integration tests (with
+    coverage and the coverage floors under the full gate).
+  - `ui-static`: the UI static checks (`pnpm ci:static`, or `pnpm ci:full` under the full gate).
+  - `ui-e2e (<part>)`: one cold stack each. `chromium-1` to `chromium-4` run the `chromium` and
+    `chromium-dark` Playwright projects in four shards. `volume` and `volume-dark` each run their
+    project after the `volume-setup` seed.
+  - `py-e2e`: the whole `tests/e2e` suite on its own cold stack.
+  - `operation-coverage` (full gate only): the operation coverage gate, over the coverage data of
+    `checks`, the API calls of `ui-e2e` and the end-to-end operation report of `py-e2e`.
+- `tests/repo/test_ci_parts.py` checks that the jobs together run every step of `scripts/ci.sh`
+  and every Playwright project and shard.
+- On failure, each stack job uploads its own `e2e-failure-<run id>-<job>` artifact with the compose
+  logs and, for `ui-e2e`, the Playwright traces and reports. It is kept for 7 days. `.dev` is never
+  uploaded.
 - Artifacts of a public repository can be downloaded by any signed-in GitHub user. This one holds
   only throwaway values of a stack that has been destroyed.
 

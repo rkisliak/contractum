@@ -28,6 +28,19 @@
 #   CI_INTEGRATION=0   skip step 7 even when Docker is available
 #   CI_E2E=1           run step 9 (needs Docker and free port 8443)
 #   CI_UI=0            skip the ui step (8) and the UI e2e inside step 9
+#   CI_PART=<part>     run one part of the gate, so a CI system can run the parts as parallel jobs
+#                      (.github/workflows/e2e-nightly.yml); default `all`, the whole gate in order:
+#                        checks              steps 1-7 (7b under the full gate)
+#                        ui                  step 8
+#                        ui-e2e              cold start, then the UI e2e; CI_UI_E2E_ARGS is passed
+#                                            to scripts/e2e-ui.sh, for example "--project=volume"
+#                                            or "--project=chromium --shard=1/4"
+#                        py-e2e              cold start, then the whole tests/e2e suite
+#                        operation-coverage  step 10 (full gate only) over the .coverage-data,
+#                                            .dev/phase7-operation-coverage.json and
+#                                            ui/test-results of the other parts
+#                      A part runs regardless of CI_E2E and CI_UI. tests/repo/test_ci_parts.py
+#                      checks that the parts together run every step.
 #
 # THE FULL GATE: `CI_FULL=1 bash scripts/ci.sh` or `bash scripts/ci.sh --full`. The most
 # comprehensive run, about an hour on a cold stack; run it once per phase or before a release, not
@@ -60,6 +73,13 @@ for arg in "$@"; do
 done
 docker_available() { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
 CI_FULL="${CI_FULL:-0}"
+CI_PART="${CI_PART:-all}"
+case "$CI_PART" in
+  all | checks | ui | ui-e2e | py-e2e | operation-coverage) ;;
+  *) echo "unknown CI_PART: $CI_PART (all, checks, ui, ui-e2e, py-e2e or operation-coverage)" >&2; exit 2 ;;
+esac
+# True when the run includes part $1: the whole gate (all) includes every part.
+part() { [ "$CI_PART" = "all" ] || [ "$CI_PART" = "$1" ]; }
 if [ "$CI_FULL" = "1" ]; then
   for toggle in CI_INTEGRATION CI_E2E CI_UI; do
     if [ "${!toggle:-1}" = "0" ]; then
@@ -69,7 +89,10 @@ if [ "$CI_FULL" = "1" ]; then
   done
   docker_available || { echo "CI_FULL=1 needs a running Docker daemon" >&2; exit 1; }
   CI_E2E=1
-  rm -rf .coverage-data
+  # The operation-coverage part reads the coverage data the checks part wrote.
+  if part checks; then
+    rm -rf .coverage-data
+  fi
   mkdir -p .coverage-data
   export DC_OP_TRACE="$PWD/.coverage-data/optrace.jsonl"
   # More Hypothesis examples where a suite reads it (the SQL-vs-oracle RBAC proof: 150, not 40).
@@ -79,64 +102,68 @@ fi
 step() { printf '\n==> %s\n' "$*"; }
 
 
-step "uv lock --check"
-uv lock --check
+if part checks || part operation-coverage; then
+  step "uv lock --check"
+  uv lock --check
 
-step "uv sync --frozen"
-uv sync --frozen
+  step "uv sync --frozen"
+  uv sync --frozen
+fi
 
-step "ruff check"
-uv run ruff check .
+if part checks; then
+  step "ruff check"
+  uv run ruff check .
 
-step "ruff format --check"
-uv run ruff format --check .
+  step "ruff format --check"
+  uv run ruff format --check .
 
-step "mypy"
-uv run mypy \
-  shared/dc-core/src shared/dc-auth/src shared/dc-odcs/src shared/dc-rules/src \
-  identity/src contracts/src validation/src audit/src mail/src \
-  gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
-  scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
-  scripts/gen_http_reference.py
+  step "mypy"
+  uv run mypy \
+    shared/dc-core/src shared/dc-auth/src shared/dc-odcs/src shared/dc-rules/src \
+    identity/src contracts/src validation/src audit/src mail/src \
+    gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
+    scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
+    scripts/gen_http_reference.py
 
-step "lint-imports"
-uv run lint-imports
+  step "lint-imports"
+  uv run lint-imports
 
-# Tests marked `performance` (throughput and scale budgets) are left out unless DC_PERFORMANCE=1:
-# Docker on development hardware cannot hold them. scripts/e2e.sh does the same.
-perf=" and not performance"
-if [ "${DC_PERFORMANCE:-0}" = "1" ]; then perf=""; fi
+  # Tests marked `performance` (throughput and scale budgets) are left out unless DC_PERFORMANCE=1:
+  # Docker on development hardware cannot hold them. scripts/e2e.sh does the same.
+  perf=" and not performance"
+  if [ "${DC_PERFORMANCE:-0}" = "1" ]; then perf=""; fi
 
-if [ "$CI_FULL" = "1" ]; then
-  step "unit tests with line+branch coverage and the operation tracer (full gate)"
-  uv run pytest -m "unit and not timing$perf" -q --cov --cov-report=
-  step "timing-sensitive unit tests, without coverage tracing (full gate)"
-  DC_OP_TRACE= uv run pytest -m "unit and timing$perf" -q
-  step "integration tests with coverage (full gate)"
-  uv run pytest -m "integration and not timing$perf" -q --cov --cov-append --cov-report=
-  step "timing-sensitive integration tests, without coverage tracing (full gate)"
-  DC_OP_TRACE= uv run pytest -m "integration and timing$perf" -q
-  step "python coverage floors (scripts/coverage_gate.py)"
-  uv run python scripts/coverage_gate.py
-else
-  step "unit tests (pytest -m unit)"
-  uv run pytest -m "unit$perf" -q
-
-  if [ "${CI_INTEGRATION:-1}" != "0" ]; then
-    if docker_available; then
-      step "integration tests (pytest -m integration)"
-      uv run pytest -m "integration$perf" -q
-    else
-      echo "==> integration tests skipped: Docker is not available"
-    fi
+  if [ "$CI_FULL" = "1" ]; then
+    step "unit tests with line+branch coverage and the operation tracer (full gate)"
+    uv run pytest -m "unit and not timing$perf" -q --cov --cov-report=
+    step "timing-sensitive unit tests, without coverage tracing (full gate)"
+    DC_OP_TRACE= uv run pytest -m "unit and timing$perf" -q
+    step "integration tests with coverage (full gate)"
+    uv run pytest -m "integration and not timing$perf" -q --cov --cov-append --cov-report=
+    step "timing-sensitive integration tests, without coverage tracing (full gate)"
+    DC_OP_TRACE= uv run pytest -m "integration and timing$perf" -q
+    step "python coverage floors (scripts/coverage_gate.py)"
+    uv run python scripts/coverage_gate.py
   else
-    echo "==> integration tests skipped: CI_INTEGRATION=0"
+    step "unit tests (pytest -m unit)"
+    uv run pytest -m "unit$perf" -q
+
+    if [ "${CI_INTEGRATION:-1}" != "0" ]; then
+      if docker_available; then
+        step "integration tests (pytest -m integration)"
+        uv run pytest -m "integration$perf" -q
+      else
+        echo "==> integration tests skipped: Docker is not available"
+      fi
+    else
+      echo "==> integration tests skipped: CI_INTEGRATION=0"
+    fi
   fi
 fi
 
-if [ "${CI_UI:-1}" = "0" ]; then
+if [ "$CI_PART" = "all" ] && [ "${CI_UI:-1}" = "0" ]; then
   echo "==> ui (generated client drift, lint, types, unit tests, build) skipped: CI_UI=0"
-else
+elif part ui; then
   step "ui (generated client drift, lint, types, unit tests, build)"
   ui_node_want="v$(tr -d '[:space:]' <ui/.nvmrc)"
   ui_script=ci:static
@@ -157,24 +184,28 @@ else
   fi
 fi
 
-if [ "${CI_E2E:-0}" = "1" ]; then
-  docker_available || { echo "CI_E2E=1 needs a running Docker daemon" >&2; exit 1; }
+if { [ "$CI_PART" = "all" ] && [ "${CI_E2E:-0}" = "1" ]; } \
+  || [ "$CI_PART" = "ui-e2e" ] || [ "$CI_PART" = "py-e2e" ]; then
+  docker_available || { echo "the cold-start e2e needs a running Docker daemon" >&2; exit 1; }
   step "cold start (compose down -v, rebuild, up)"
   docker compose down -v --remove-orphans
   docker compose up -d --build --wait --wait-timeout 300
-  if [ "${CI_UI:-1}" != "0" ]; then
-    step "ui e2e tests (cold stack, before the Python e2e)"
-    bash scripts/e2e-ui.sh
-  else
+  if [ "$CI_PART" = "all" ] && [ "${CI_UI:-1}" = "0" ]; then
     echo "==> ui e2e tests skipped: CI_UI=0"
+  elif part ui-e2e; then
+    read -r -a ui_e2e_args <<<"${CI_UI_E2E_ARGS:-}"
+    step "ui e2e tests (cold stack, before the Python e2e) ${CI_UI_E2E_ARGS:-}"
+    bash scripts/e2e-ui.sh ${ui_e2e_args[@]+"${ui_e2e_args[@]}"}
   fi
-  step "e2e tests (cold stack)"
-  bash scripts/e2e.sh tests/e2e
+  if part py-e2e; then
+    step "e2e tests (cold stack)"
+    bash scripts/e2e.sh tests/e2e
+  fi
 fi
 
-if [ "$CI_FULL" = "1" ]; then
+if [ "$CI_FULL" = "1" ] && part operation-coverage; then
   step "operation coverage gate (scripts/operation_coverage.py --gate)"
   uv run python scripts/operation_coverage.py --gate
 fi
 
-printf '\nci: all steps passed\n'
+printf '\nci: all steps of part %s passed\n' "$CI_PART"

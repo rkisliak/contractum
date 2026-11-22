@@ -1,8 +1,6 @@
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg"><img src="docs/images/logo-light.svg" alt="Contractum" width="360"></picture></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-header-dark.svg"><img src="docs/images/readme-header-light.svg" alt="Contractum: data contract governance. Author, version and publish data contracts that pass every governance rule." width="480"></picture></p>
 
 <!-- markdownlint-disable-file MD041 -->
-
-# Contractum: data contract governance
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-evaluation%20%26%20noncommercial-lightgrey" alt="License: evaluation and noncommercial"></a>

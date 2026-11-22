@@ -193,7 +193,8 @@ def test_readme_logo_badges_and_no_repository_url() -> None:
     text = README.read_text(encoding="utf-8")
     first = text.splitlines()[0]
     assert first.startswith('<p align="center"><picture>')
-    assert "docs/images/logo-dark.svg" in first and "docs/images/logo-light.svg" in first
+    assert "docs/images/readme-header-dark.svg" in first
+    assert "docs/images/readme-header-light.svg" in first
     assert len(re.findall(r"https://img\.shields\.io/", text)) <= 2
     # The only repository links are the workflow status badges of this repository, each for a
     # workflow file that exists, and every scheduled or push workflow on main has one.

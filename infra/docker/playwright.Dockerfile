@@ -23,6 +23,12 @@ COPY tsconfig.json playwright.config.ts ./
 COPY e2e ./e2e
 # The router's generated route tree: e2e/axe-routes.spec.ts derives the route list from it.
 COPY src/routeTree.gen.ts ./src/routeTree.gen.ts
+# Playwright clears its outputDir (/app/test-results, a bind mount in compose.test.yaml) by removing
+# the directory first. rmdir needs write access to the parent, so a non-root runner without it gets
+# EACCES and the run stops; with it the kernel answers EBUSY for the mount point and Playwright
+# empties the directory instead. The runner always has the group 10001 (compose.test.yaml
+# group_add), whatever host uid it runs as, so /app is writable by that group.
+RUN chgrp 10001 /app && chmod 0775 /app
 USER pwuser
 # The runner is healthy while it can reach the gateway it drives (DC_UI_E2E_SETUP_URL).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \

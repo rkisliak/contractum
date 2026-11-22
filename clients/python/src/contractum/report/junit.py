@@ -66,4 +66,4 @@ def report_to_junit(report: Report) -> bytes:
         _add_case(suite, check)
     ET.indent(suites)
     document: bytes = ET.tostring(suites, encoding="utf-8", xml_declaration=True)
-    return document
+    return document + b"\n"  # LF on every OS, like every text file contractum writes

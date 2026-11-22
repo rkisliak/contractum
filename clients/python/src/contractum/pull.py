@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from contractum._atomic import write_atomic
+from contractum._gitattributes import protect
 from contractum.cache import Cache, normalise_url
 from contractum.contracts import (
     ContractDeprecationWarning,
@@ -344,6 +345,7 @@ def pull(
     offline: bool = False,
     policy: LifecyclePolicy | None = None,
     cache: Cache | None = None,
+    gitattributes: bool = True,
 ) -> PullResult:
     """Pin contracts into ``directory`` and ``lock_path``, or verify and restore a pinned set.
 
@@ -351,6 +353,10 @@ def pull(
     the files and then the lock. ``frozen`` and ``offline`` read the lock instead and never
     resolve ``latest`` or ``preview``; ``offline`` also needs no client. A lifecycle policy hit
     is reported in the result, after the files and the lock are written.
+
+    Normal mode also appends ``-text`` lines to a ``.gitattributes`` in ``directory`` and next to
+    the lock, so Git never rewrites the line endings of the pinned bytes; ``gitattributes=False``
+    turns that off. Existing lines are kept as they are.
     """
     target_dir = Path(directory)
     lock_file = Path(lock_path)
@@ -367,4 +373,6 @@ def pull(
     else:
         lock, found = _resolve_all(client, lock_file, target_dir, refs, store)
         save_lock(lock_file, lock, cache_dir=store.root)
+        if gitattributes:
+            protect(target_dir, lock_file, (path for _, _, path in found))
     return _finish(lock_file, lock, found, chosen)

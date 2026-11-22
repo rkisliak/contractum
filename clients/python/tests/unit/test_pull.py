@@ -124,7 +124,12 @@ def test_the_lock_artefact_stays_out_of_the_repository(
     seen = record_guards_during_writes(monkeypatch, lock_module, lambda _: locks)
     with _server(), _client(canary_token) as client:
         client.pull(["payments.orders"], directory=repo / "c", lock_path=repo / "contractum.lock")
-    assert sorted(path.name for path in repo.iterdir()) == ["c", "contractum.lock"]
+    # Only the lock and its .gitattributes line land next to the lock; the guard stays out.
+    assert sorted(path.name for path in repo.iterdir()) == [
+        ".gitattributes",
+        "c",
+        "contractum.lock",
+    ]
     assert len(seen) == 1
     assert len(seen[0]) == 1
     # filelock keeps the guard after release on POSIX and deletes it on Windows.
@@ -361,8 +366,13 @@ def _frozen(
     )
 
 
+def _documents(tmp_path: Path) -> list[Path]:
+    """The pulled contract files, without the folder's .gitattributes."""
+    return [p for p in (tmp_path / "contracts").iterdir() if p.name != ".gitattributes"]
+
+
 def _document(tmp_path: Path) -> Path:
-    (path,) = (tmp_path / "contracts").iterdir()
+    (path,) = _documents(tmp_path)
     return path
 
 
@@ -688,7 +698,7 @@ def test_fail_on_deprecated_exits_1_after_writing_files_and_lock(
     assert outcome.code == 1
     assert "deprecated is refused" in outcome.stderr
     assert (tmp_path / "contractum.lock").exists()
-    (document,) = (tmp_path / "contracts").iterdir()
+    document = _document(tmp_path)
     assert document.read_bytes() == DOC
     summary = json.loads(outcome.stdout)
     assert summary["contracts"][0]["lifecycle"]["status"] == "failed"
@@ -703,7 +713,7 @@ def test_sunset_within_exits_1_when_the_sunset_is_near(
     assert outcome.code == 1
     assert "sunsets" in outcome.stderr
     assert (tmp_path / "contractum.lock").exists()
-    assert len(list((tmp_path / "contracts").iterdir())) == 1
+    assert len(_documents(tmp_path)) == 1
 
 
 def test_sunset_within_passes_when_the_sunset_is_far(

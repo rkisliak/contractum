@@ -202,6 +202,7 @@ contractum pull [OPTIONS] [REFS]...
 | `--lock` | FILE | `contractum.lock` | The lock file that pins versions and hashes. |
 | `--frozen` | flag |  | Use only the pinned versions: never resolve latest or preview; fail on any drift. |
 | `--offline` | flag |  | Use only the lock, the pulled files and the cache; no URL and no network needed. |
+| `--gitattributes`, `--no-gitattributes` | flag |  | Add -text lines to .gitattributes so Git keeps the pulled bytes exact. |
 | `--fail-on-deprecated` | flag |  | Fail when the contract version is deprecated. |
 | `--sunset-within` | DAYS |  | Fail when the contract is scheduled to sunset within DAYS days. |
 | `--json` | flag |  | Print a JSON summary. |

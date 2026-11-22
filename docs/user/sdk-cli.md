@@ -190,12 +190,16 @@ contractum pull --fail-on-deprecated --sunset-within 30 payments.orders
 - A deprecated version warns. `--fail-on-deprecated` and `--sunset-within DAYS` turn that into exit code 1, after the files and the lock were written.
 - `--json` prints a JSON summary.
 
-**Line endings (Windows).** The lock hashes the exact bytes of each pulled file. If Git rewrites line endings on checkout (`core.autocrlf=true`, the Git for Windows default), the files no longer match the lock and `--frozen` or `--offline` stops with `does not match the lock`. Tell Git to keep the bytes, in a `.gitattributes` file in your repository, and commit it with the contracts:
+**Line endings (Windows).** The lock hashes the exact bytes of each pulled file. If Git rewrote line endings on checkout (`core.autocrlf=true`, the Git for Windows default), the files would no longer match the lock and `--frozen` or `--offline` would stop with `does not match the lock`. So `pull` also writes `.gitattributes` lines that turn Git's line-ending conversion off for those files. Commit them with the contracts:
 
-```text
-contracts/** -text
-contractum.lock -text
-```
+- `contracts/.gitattributes` gets `* -text`, which covers every file in the contracts folder. When the folder is not a subfolder of the lock's folder, or is a repository root, it gets one line per pulled file instead (`/<file> -text`).
+- The `.gitattributes` next to the lock gets `/contractum.lock -text` (the lock's own name). A lock name with spaces or other special characters gets a warning instead, and you add the line yourself.
+
+`pull` only adds missing lines: your own lines stay as they are, in their order. It writes `-text` and not `eol=lf`, because `eol=lf` would let Git change a CRLF that the server's own bytes hold. `--frozen` and `--offline` never touch `.gitattributes`.
+
+To opt out, pass `--no-gitattributes`, set `CONTRACTUM_GITATTRIBUTES=0`, or call `pull(..., gitattributes=False)` from Python. Then keep the bytes exact yourself, with the same lines.
+
+**Line endings of other files.** Every text file `contractum` writes (the lock, `.gitattributes`, JSON, JUnit and Markdown reports, `show -o` output in `yaml` or `json`, the profiles file) uses LF on every operating system. Pulled contract files and `show -o` in the `original` format are the server's exact bytes.
 
 **Cache.** Every fetched document is cached, so repeated runs and `--offline` runs need no network. The cache lives in the user cache directory (`contractum`), or in `CONTRACTUM_CACHE_DIR`. It is safe to delete.
 

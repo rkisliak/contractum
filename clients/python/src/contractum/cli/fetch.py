@@ -368,6 +368,14 @@ def _pull_summary(result: PullResult) -> dict[str, Any]:
     default=False,
     help="Use only the lock, the pulled files and the cache; no URL and no network needed.",
 )
+@click.option(
+    "--gitattributes/--no-gitattributes",
+    "gitattributes",
+    default=True,
+    show_default=True,
+    envvar="CONTRACTUM_GITATTRIBUTES",
+    help="Add -text lines to .gitattributes so Git keeps the pulled bytes exact.",
+)
 @lifecycle_options
 @click.option("--json", "as_json", is_flag=True, default=False, help="Print a JSON summary.")
 @click.pass_context
@@ -378,6 +386,7 @@ def pull(
     lock_path: Path,
     frozen: bool,
     offline: bool,
+    gitattributes: bool,
     fail_on_deprecated: bool,
     sunset_within_days: int | None,
     as_json: bool,
@@ -414,6 +423,7 @@ def pull(
                 lock_path=lock_path,
                 frozen=frozen,
                 policy=policy,
+                gitattributes=gitattributes,
             )
 
     with warnings.catch_warnings(record=True) as caught:

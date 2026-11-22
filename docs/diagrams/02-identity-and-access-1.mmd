@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor Admin
+    participant GW as Gateway
+    participant ID as identity
+    participant DB as identity DB
+    Admin->>GW: POST /api/v1/identity/auth/login - user admin, bootstrap secret
+    GW->>ID: forward
+    ID->>DB: throttle check, load user admin - no password hash yet
+    ID->>ID: compare SHA-256 of the secret file in constant time
+    ID-->>Admin: 200 restricted JWT - scope password:rotate, 10 min, no refresh token
+    Admin->>ID: GET any other route with the restricted JWT
+    ID-->>Admin: 403 password-rotation-required
+    Admin->>ID: POST /api/v1/identity/auth/password - new_password
+    ID->>ID: password policy - length and deny-list, never the bootstrap secret
+    ID->>DB: store Argon2id hash, mark bootstrap consumed, revoke all sessions
+    ID->>DB: audit event user.password_rotated in the same transaction
+    ID-->>Admin: 204 No Content
+    Admin->>ID: POST /api/v1/identity/auth/login - user admin, new password
+    ID-->>Admin: 200 access JWT - scope api, 15 min - plus refresh token
+    Admin->>ID: POST /api/v1/identity/auth/refresh - refresh token
+    ID->>DB: revoke the old refresh token, store the next one
+    ID-->>Admin: 200 new access JWT plus new refresh token

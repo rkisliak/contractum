@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    actor O as Contract owner
+    participant C as contracts API
+    participant DB as contracts DB
+    participant R as outbox relay
+    participant N as NATS stream AUDIT
+    participant K as notice consumer contracts-notices
+    participant W as delivery worker CardNotifier
+    participant H as card webhook receiver
+    participant M as mail service
+    O->>C: POST .../versions/{ref}/deprecate
+    C->>DB: lock, update version, outbox event with notify_card_ids, commit
+    C-->>O: 200 version metadata
+    R->>DB: claim unsent outbox rows
+    R->>N: publish audit.contracts.contract.contract.version_deprecated
+    N->>K: deliver event, filter audit.contracts.>
+    K->>DB: one card_notice per card plus pending card_notice_delivery per channel
+    K->>N: ack
+    W->>DB: claim due deliveries, FOR UPDATE SKIP LOCKED, lease
+    alt webhook channel
+        W->>W: resolve host again, refuse non-global address
+        W->>H: signed POST, webhook-id, webhook-timestamp, webhook-signature
+        H-->>W: 2xx
+    else email channel
+        W->>M: POST /internal/v1/mail/send with mail_api_key
+        M-->>W: accepted, mail goes out by SMTP
+    end
+    W->>DB: record delivered, or schedule a retry

@@ -73,23 +73,7 @@ the template routes, the starter and copies. The pure part lives in the shared l
 (`dc_odcs.gate.parse_contract`). The service runs it in a worker thread (`asyncio.to_thread`)
 so that parsing never blocks the event loop.
 
-```mermaid
-flowchart LR
-    A["1 Authenticate and authorise"] --> B["2 Read body with size cap"]
-    B --> C["3 Media type check"]
-    C --> D["4 Empty, size, strict UTF-8"]
-    D --> E["5 Strict parse YAML or JSON"]
-    E --> F["6 Root must be a mapping"]
-    F --> G["7 JSON-native walk: no NUL, no exotic types"]
-    G --> H["8 apiVersion, kind, id gate"]
-    H --> I["9 Structural report against vendored schema"]
-    I --> J["10 Store raw bytes plus JSONB plus search fields"]
-    C -.->|415| X(("refused"))
-    D -.->|400 or 413| X
-    E -.->|400| X
-    G -.->|400| X
-    H -.->|422| X
-```
+![Diagram: 2. The ingest pipeline (dc-odcs)](../../images/diagrams/03-contracts-and-lifecycle-1.png)
 
 Step by step:
 
@@ -174,31 +158,7 @@ The labels consumers see are **derived** from those states, not stored
 In the diagram, the paths are short forms of the routes under `/contracts/{contract_id}/`. `ID` is
 a draft id and `REF` is a SemVer string.
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> Draft: create, upload, from-template, starter or from-version
-    Draft --> Draft: PUT drafts/ID saves, revision plus 1
-    Draft --> [*]: DELETE drafts/ID
-    Draft --> Latest: POST drafts/ID/publish, first publish
-    Draft --> Preview: POST drafts/ID/publish, later publishes
-    Latest --> Older: a higher version is promoted
-    Latest --> Preview: a lower version is promoted
-    Preview --> Latest: POST versions/REF/promote
-    Older --> Latest: POST versions/REF/promote
-    Preview --> Older: a higher version is promoted
-    Preview --> Unpublished: POST versions/REF/unpublish
-    Older --> Unpublished: POST versions/REF/unpublish
-    Unpublished --> Preview: POST versions/REF/republish, higher than Latest
-    Unpublished --> Older: POST versions/REF/republish, lower than Latest
-    Latest --> Draft: POST drafts, copy of a version
-    note right of Latest
-        Latest, Preview and Older are the published states.
-        POST versions/REF/deprecate sets the Deprecated flag
-        and a sunset date on any of them, including the Latest.
-        Promote clears it. The bytes never change.
-    end note
-```
+![Diagram: 3. The version lifecycle](../../images/diagrams/03-contracts-and-lifecycle-2.png)
 
 The rules, one by one:
 
@@ -364,37 +324,7 @@ the page.
    version breaks a pinned one, "a breaking version was published". The publish itself never
    calls a webhook or the mail service (section 7).
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor A as Author or pipeline
-    participant C as contracts API
-    participant DB as contracts DB
-    participant V as validation
-    participant N as NATS AUDIT stream
-    A->>C: POST .../drafts/{draft_id}/publish with If-Match
-    C->>C: policy contract:publish, folder writable, If-Match present
-    C->>DB: unlocked read of bytes, attachments, baseline, floor, link facts
-    C->>V: POST /internal/v1/validation/folders/{folder_id}/runs, publish mode, caller bearer
-    alt validation down, slow, 5xx or hash mismatch
-        V-->>C: no clean answer
-        C-->>A: 503 validation-unavailable, nothing published
-    else a mandatory rule or the schema fails
-        V-->>C: report with publishable false
-        C->>DB: record contract.version.publish_refused in outbox
-        C-->>A: 422 contract-validation-failed with report and run_id
-    else publishable
-        V-->>C: report, run_id, pins, engine_version, schema_sha
-        C->>DB: lock contract, then draft
-        alt state changed during the gate
-            C-->>A: 412 precondition-failed, or 409 rules-changed, semver-conflict, baseline-changed
-        else all re-checks pass
-            C->>DB: draft becomes published with pins, plus outbox event, one commit
-            C-->>A: 201 version_id, semver, status, ETag, Location
-            DB--)N: outbox relay publishes contract.version_published
-        end
-    end
-```
+![Diagram: 4. Publishing](../../images/diagrams/03-contracts-and-lifecycle-3.png)
 
 *Where in the code:* `contracts/src/dc_contracts/api/drafts.py` (`publish_contract_draft`),
 `versions.py` (`publish_draft`), `validation_client.py`, `compat.py`, `link_facts.py`,
@@ -622,37 +552,7 @@ server-side request forgery (SSRF): using the service to reach internal hosts.
   (`DC_WEBHOOK_ALLOWED_PRIVATE_HOSTS`) and plain HTTP (`DC_WEBHOOK_REQUIRE_HTTPS=false`).
   Production leaves the allow-list empty and requires HTTPS.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor O as Contract owner
-    participant C as contracts API
-    participant DB as contracts DB
-    participant R as outbox relay
-    participant N as NATS stream AUDIT
-    participant K as notice consumer contracts-notices
-    participant W as delivery worker CardNotifier
-    participant H as card webhook receiver
-    participant M as mail service
-    O->>C: POST .../versions/{ref}/deprecate
-    C->>DB: lock, update version, outbox event with notify_card_ids, commit
-    C-->>O: 200 version metadata
-    R->>DB: claim unsent outbox rows
-    R->>N: publish audit.contracts.contract.contract.version_deprecated
-    N->>K: deliver event, filter audit.contracts.>
-    K->>DB: one card_notice per card plus pending card_notice_delivery per channel
-    K->>N: ack
-    W->>DB: claim due deliveries, FOR UPDATE SKIP LOCKED, lease
-    alt webhook channel
-        W->>W: resolve host again, refuse non-global address
-        W->>H: signed POST, webhook-id, webhook-timestamp, webhook-signature
-        H-->>W: 2xx
-    else email channel
-        W->>M: POST /internal/v1/mail/send with mail_api_key
-        M-->>W: accepted, mail goes out by SMTP
-    end
-    W->>DB: record delivered, or schedule a retry
-```
+![Diagram: SSRF protections for webhooks](../../images/diagrams/03-contracts-and-lifecycle-4.png)
 
 *Where in the code:* `contracts/src/dc_contracts/cards.py`, `api/cards.py`, `subscriptions.py`,
 `pins.py`, `notices.py`, `notice_consumer.py`, `delivery.py`, `webhooks.py`, `mailer.py`,

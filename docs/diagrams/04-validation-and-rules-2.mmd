@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Data engineer
+    participant G as Gateway
+    participant C as contracts
+    participant V as validation
+    participant I as identity PDP
+    participant S as Sandbox workers
+    participant DB as validation DB
+    U->>G: POST /api/v1/contracts/contracts/{id}/drafts/{draft_id}/publish
+    G->>C: forward with the user's bearer
+    C->>C: check contract:publish, local ODCS check
+    C->>V: POST /internal/v1/validation/folders/{folder_id}/runs
+    Note over C,V: mode publish, document bytes, attachments, baseline, ref facts, same bearer
+    V->>I: check contract:validate at folder_id
+    I-->>V: allow plus folder facts and ancestor_ids
+    V->>V: re-parse bytes, ODCS JSON Schema
+    V->>DB: read now, mandatory sets, attachments
+    V->>V: resolve rule sets, diff against baseline
+    V->>S: evaluate units, no session held
+    S-->>V: pass, fail or error per rule
+    V->>DB: insert validation_run, immutable
+    V-->>C: run_id, pins, report
+    alt publishable
+        C-->>U: 201 new version, pins recorded
+    else not publishable
+        C-->>U: 422 contract-validation-failed with the report
+    end

@@ -52,34 +52,7 @@ and it must never record a change that was rolled back. Writing to the database 
 are two separate systems, so they cannot share one transaction. The outbox makes the event part
 of the database transaction, and moves it to the broker afterwards.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client
-    participant Svc as contracts service
-    participant DB as contracts database
-    participant Relay as outbox relay in contracts
-    participant JS as NATS JetStream AUDIT
-    participant Audit as audit service
-    participant ADB as audit database
-
-    Client->>Svc: POST publish a contract version
-    Svc->>DB: BEGIN
-    Svc->>DB: insert or update domain rows
-    Svc->>DB: insert outbox row with a new event_id
-    Svc->>DB: COMMIT, both rows or neither
-    Svc-->>Client: 201 Created
-    loop every 0.5 s while it holds the advisory lock
-        Relay->>DB: SELECT unpublished rows FOR UPDATE SKIP LOCKED
-        Relay->>JS: publish with header Nats-Msg-Id = event_id
-        JS-->>Relay: ack, or duplicate ack
-        Relay->>DB: set published_at = now
-    end
-    Audit->>JS: fetch a batch from consumer audit-writer
-    JS-->>Audit: message
-    Audit->>ADB: INSERT ... ON CONFLICT event_id DO NOTHING
-    Audit->>JS: ack
-```
+![Diagram: 1. The transactional outbox](../../images/diagrams/05-audit-and-events-1.png)
 
 ### How a handler writes an event
 
@@ -301,26 +274,7 @@ A **denial event** records a refused permission check. Services ask identity for
 decision (see [02-identity-and-access.md](02-identity-and-access.md)). Identity writes the denial
 **before** it returns the answer.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Caller
-    participant Svc as contracts service
-    participant Id as identity PDP
-    participant IDB as identity database
-
-    Caller->>Svc: GET a contract document they may not read
-    Svc->>Id: POST /internal/v1/authz/check with service and route template
-    Id->>IDB: decide: outcome not_found
-    Id->>IDB: BEGIN, insert outbox row authz check.denied, COMMIT
-    alt the row was committed
-        Id-->>Svc: decision not_found
-        Svc-->>Caller: 404 not-found
-    else the row could not be written
-        Id-->>Svc: 503 service-unavailable
-        Svc-->>Caller: 503, still a refusal
-    end
-```
+![Diagram: 5. Denial events: guaranteed](../../images/diagrams/05-audit-and-events-2.png)
 
 1. Every outcome that is not "allow" is recorded: `not_found`, `forbidden`, `gate_refused` (an
    inactive or unregistered principal) and `interactive_required` (a token or key tried an action
@@ -410,30 +364,7 @@ the same fields with `before`, `after` and a non-empty `changes`, and no `detail
 
 ## 7. Querying the audit trail
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Reader
-    participant GW as Traefik gateway
-    participant Audit as audit service
-    participant Id as identity
-    participant ADB as audit database
-
-    Reader->>GW: GET /api/v1/audit/events?category=change&limit=50
-    GW->>Audit: forward, no auth logic in the gateway
-    Audit->>Audit: verify the token, check filters, 422 if bad
-    Audit->>Id: check audit:list for this principal
-    Id-->>Audit: allow
-    Audit->>Id: accessible folders for audit:query
-    alt identity answers
-        Id-->>Audit: folder scope
-        Audit->>ADB: one SELECT with the scope as a WHERE clause, newest first
-        ADB-->>Audit: up to limit + 1 rows
-        Audit-->>Reader: 200 items and next_cursor
-    else identity is down
-        Audit-->>Reader: 503 service-unavailable, never an unfiltered page
-    end
-```
+![Diagram: 7. Querying the audit trail](../../images/diagrams/05-audit-and-events-3.png)
 
 ### Routes
 

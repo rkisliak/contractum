@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Svc as contracts service
+    participant DB as contracts database
+    participant Relay as outbox relay in contracts
+    participant JS as NATS JetStream AUDIT
+    participant Audit as audit service
+    participant ADB as audit database
+
+    Client->>Svc: POST publish a contract version
+    Svc->>DB: BEGIN
+    Svc->>DB: insert or update domain rows
+    Svc->>DB: insert outbox row with a new event_id
+    Svc->>DB: COMMIT, both rows or neither
+    Svc-->>Client: 201 Created
+    loop every 0.5 s while it holds the advisory lock
+        Relay->>DB: SELECT unpublished rows FOR UPDATE SKIP LOCKED
+        Relay->>JS: publish with header Nats-Msg-Id = event_id
+        JS-->>Relay: ack, or duplicate ack
+        Relay->>DB: set published_at = now
+    end
+    Audit->>JS: fetch a batch from consumer audit-writer
+    JS-->>Audit: message
+    Audit->>ADB: INSERT ... ON CONFLICT event_id DO NOTHING
+    Audit->>JS: ack

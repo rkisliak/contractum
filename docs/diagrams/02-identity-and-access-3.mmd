@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    participant P as Pipeline
+    participant V as validation
+    participant ID as identity
+    participant DB as identity DB
+    P->>V: request with Bearer dcp_ token
+    V->>V: token starts with dcp_ so it is not a JWT
+    V->>ID: POST /internal/v1/authz/principal - Bearer dcp_ token, empty body
+    ID->>DB: find credential by public_id, compare SHA-256 of the secret
+    ID->>ID: PrincipalGate - credential not revoked or expired, owner or account still active
+    ID-->>V: 200 principal id, type, via pat or api_key
+    V->>ID: POST /internal/v1/authz/check - same dcp_ token, permission, folder id
+    ID->>DB: load and gate the credential again, then compute roles
+    alt allowed
+        ID-->>V: 200 allow
+        V-->>P: 2xx
+    else not allowed
+        ID->>DB: commit one check.denied outbox row
+        ID-->>V: 200 not_found or forbidden
+        V-->>P: 404 or 403 problem
+    end

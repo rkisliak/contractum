@@ -1,0 +1,33 @@
+flowchart TD
+    A["Check: principal, permission, folder"] --> G{"PrincipalGate: live and admitted?"}
+    G -- "no: 401 or 403 principal-not-registered" --> RG["Record denial: gate_refused"]
+    G -- "Graph down" --> U["503: nothing recorded"]
+    G -- yes --> P1{"password:rotate?"}
+    P1 -- yes --> P2{"local user signed in with a JWT?"}
+    P2 -- yes --> ALLOW
+    P2 -- no --> FORB
+    P1 -- no --> R{"restricted bootstrap session?"}
+    R -- yes --> FORB
+    R -- no --> AC{"authz:check?"}
+    AC -- yes --> ALLOW
+    AC -- no --> K{"known permission?"}
+    K -- no --> FORB
+    K -- yes --> T{"permission target"}
+    T -- principal --> PL{"read-only PAT asking for a write?"}
+    PL -- yes --> FORB
+    PL -- no --> ALLOW
+    T -- root --> RT{"held at ROOT?"}
+    RT -- yes --> IO
+    RT -- no --> FORB
+    T -- folder --> F{"folder exists?"}
+    F -- no --> NF
+    F -- yes --> E["Effective roles: grants on folder and ancestors, own, local groups, Entra groups, minus block cut"]
+    E --> H{"permission held? read-only PAT keeps reads only"}
+    H -- yes --> IO{"interactive-only and not a JWT?"}
+    IO -- yes --> RI["Record denial: interactive_required, then 403 interactive-session-required"]
+    IO -- no --> ALLOW["ALLOW"]
+    H -- no --> VV{"visible_via permission held here?"}
+    VV -- yes --> FORB["FORBIDDEN"]
+    VV -- no --> NF["NOT_FOUND"]
+    FORB --> RD["Record denial, commit, then answer 403"]
+    NF --> RN["Record denial, commit, then answer 404"]

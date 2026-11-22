@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor Reader
+    participant GW as Traefik gateway
+    participant Audit as audit service
+    participant Id as identity
+    participant ADB as audit database
+
+    Reader->>GW: GET /api/v1/audit/events?category=change&limit=50
+    GW->>Audit: forward, no auth logic in the gateway
+    Audit->>Audit: verify the token, check filters, 422 if bad
+    Audit->>Id: check audit:list for this principal
+    Id-->>Audit: allow
+    Audit->>Id: accessible folders for audit:query
+    alt identity answers
+        Id-->>Audit: folder scope
+        Audit->>ADB: one SELECT with the scope as a WHERE clause, newest first
+        ADB-->>Audit: up to limit + 1 rows
+        Audit-->>Reader: 200 items and next_cursor
+    else identity is down
+        Audit-->>Reader: 503 service-unavailable, never an unfiltered page
+    end

@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor P as Policy Manager
+    participant C as contracts
+    participant V as validation
+    participant I as identity PDP
+    participant S as Sandbox batch pool
+    P->>C: POST /api/v1/contracts/governance/rule-set-dry-runs
+    C->>V: GET /api/v1/validation/rule-sets/{rule_set_id} with the caller's bearer
+    V-->>C: rule set and its folder, or 404
+    C->>I: check ruleset:dry-run and the caller's scope
+    C->>C: next keyset page of contracts with a Latest, at most 25
+    C->>V: POST /internal/v1/validation/rule-sets/{rule_set_id}/dry-run
+    V->>I: check ruleset:dry-run at each distinct item folder
+    V->>S: take a batch slot, then one run slot per document
+    loop each document, page clock checked first
+        S-->>V: pass, fail or error per rule
+    end
+    V-->>C: per-contract verdicts, rule keys, at most 20 pointers per rule
+    C->>I: which contracts may the caller read
+    C->>C: hide names without contract:read-metadata, drop pointers without contract:read
+    C->>C: write one counts-only audit event governance.rule_set_dry_run
+    C-->>P: items, summary, next_cursor, total_in_scope

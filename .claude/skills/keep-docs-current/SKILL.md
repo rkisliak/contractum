@@ -69,7 +69,7 @@ Each generator has a `--check` mode that CI runs; a stale page fails the build.
 - No personal data: no names, email addresses, home paths, real tenant or client ids.
 - Product name: **Contractum**. Use the UI's exact labels in bold (**Subscriptions**, **Access**).
 - Claims must be true in the code. When unsure, read the code; do not guess.
-- GitHub-compatible syntax only: GitHub alerts (`> [!NOTE]`), plain fenced blocks, Mermaid; no
+- GitHub-compatible syntax only: GitHub alerts (`> [!NOTE]`), plain fenced blocks, diagrams as PNG images (source in `docs/diagrams/<name>.mmd`, rendered with `scripts/render-diagrams.sh` into `docs/images/diagrams/<name>.png`; never a live ```mermaid block, which clipped labels in some browsers); no
   snippets, tabs or site-only macros.
 - Links are relative (`../admin/first-run.md#grant-access`); headings give GitHub-style anchors.
 

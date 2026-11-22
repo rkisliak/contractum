@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    actor Caller
+    participant Svc as contracts service
+    participant Id as identity PDP
+    participant IDB as identity database
+
+    Caller->>Svc: GET a contract document they may not read
+    Svc->>Id: POST /internal/v1/authz/check with service and route template
+    Id->>IDB: decide: outcome not_found
+    Id->>IDB: BEGIN, insert outbox row authz check.denied, COMMIT
+    alt the row was committed
+        Id-->>Svc: decision not_found
+        Svc-->>Caller: 404 not-found
+    else the row could not be written
+        Id-->>Svc: 503 service-unavailable
+        Svc-->>Caller: 503, still a refusal
+    end

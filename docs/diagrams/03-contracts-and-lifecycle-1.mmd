@@ -1,0 +1,15 @@
+flowchart LR
+    A["1 Authenticate and authorise"] --> B["2 Read body with size cap"]
+    B --> C["3 Media type check"]
+    C --> D["4 Empty, size, strict UTF-8"]
+    D --> E["5 Strict parse YAML or JSON"]
+    E --> F["6 Root must be a mapping"]
+    F --> G["7 JSON-native walk: no NUL, no exotic types"]
+    G --> H["8 apiVersion, kind, id gate"]
+    H --> I["9 Structural report against vendored schema"]
+    I --> J["10 Store raw bytes plus JSONB plus search fields"]
+    C -.->|415| X(("refused"))
+    D -.->|400 or 413| X
+    E -.->|400| X
+    G -.->|400| X
+    H -.->|422| X

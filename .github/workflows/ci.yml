@@ -38,7 +38,7 @@ jobs:
       - name: ruff check
         run: uv run ruff check .
       - name: ruff format --check
-        run: uv run ruff format --check --extend-exclude .planning .
+        run: uv run ruff format --check .
       - name: mypy
         run: |
           uv run mypy \
@@ -46,7 +46,7 @@ jobs:
             identity/src contracts/src validation/src audit/src mail/src \
             gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
             scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
-            scripts/gen_http_reference.py scripts/publish/leak_check.py
+            scripts/gen_http_reference.py
       - name: lint-imports
         run: uv run lint-imports
 

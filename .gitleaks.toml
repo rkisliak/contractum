@@ -115,27 +115,6 @@ paths = ['''^identity/pyproject\.toml$''']
 regexTarget = "match"
 regexes = ['''(?s)dc-auth",\s+"argon2-cffi==''']
 
-# reason: planning documents describe the design in prose. The match is a dependency list or a
-# field name (a credential kind), not a value.
-[[allowlists]]
-description = "Documentation sample: Phase 1 plan 01 dependency lists"
-targetRules = ["generic-api-key"]
-paths = ['''^\.planning/phases/01-walking-skeleton/01-01-PLAN\.md$''']
-
-# reason: planning documents describe the design in prose. The match is an env var or field name
-# of a test secret, not a value.
-[[allowlists]]
-description = "Documentation sample: Phase 1 plan 12 secret-scan test description"
-targetRules = ["generic-api-key"]
-paths = ['''^\.planning/phases/01-walking-skeleton/01-12-PLAN\.md$''']
-
-# reason: the architecture research note names credential kinds (API keys, PATs) in a roadmap
-# table. No value is present.
-[[allowlists]]
-description = "Documentation sample: architecture research roadmap table"
-targetRules = ["generic-api-key"]
-paths = ['''^\.planning/research/ARCHITECTURE\.md$''']
-
 # reason: the string is a made-up PAT-shaped value (all-hex public id, literal "secret" suffix) that
 # the SDK local-store unit test saves and reads back; it is not a credential of any system.
 [[allowlists]]
@@ -166,27 +145,3 @@ targetRules = ["generic-api-key"]
 paths = ['''^clients/python/tests/unit/cli/test_auth_cli\.py$''']
 regexTarget = "line"
 regexes = ['''\bPASSWORD\s*=\s*"''']
-
-# reason: planning documents describe the design in prose. The match is the name of a credential
-# kind (a SonarQube token kept as a GitHub repo secret), not a value.
-[[allowlists]]
-description = "Documentation sample: security toolset quick-task plan (user setup list)"
-targetRules = ["generic-api-key"]
-paths = ['''^\.planning/quick/261120-pn7-security-toolset-ci-scanners-local-audit/261120-pn7-PLAN\.md$''']
-
-# reason: planning documents describe the design in prose. The research note quotes the shape of
-# the fake SDK test tokens above (an all-hex public id and a literal suffix), not a value.
-[[allowlists]]
-description = "Documentation sample: Phase 15 research note on the fake SDK token fixtures"
-targetRules = ["generic-api-key"]
-paths = ['''^\.planning/(phases|milestones/[^/]+)/15-documentation-overhaul-docs-site-and-repo-cleanup/15-RESEARCH\.md$''']
-
-# reason: the plan's verify command reads a local SonarQube token from a file with command
-# substitution; the matched user part is the expression, not a value.
-[[allowlists]]
-description = "Documentation sample: Phase 15 plan 08 verify command reading a token file"
-condition = "AND"
-targetRules = ["curl-auth-user"]
-paths = ['''^\.planning/(phases|milestones/[^/]+)/15-documentation-overhaul-docs-site-and-repo-cleanup/15-08-PLAN\.md$''']
-regexTarget = "line"
-regexes = ['''curl\s.*-u\s+"\$\(cat\s''']

@@ -57,4 +57,5 @@ jobs:
             --max-retries 2 \
             --retry-wait-time 5 \
             --timeout 20 \
-            './**/*.md'
+            --extensions md \
+            .

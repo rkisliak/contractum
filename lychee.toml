@@ -1,19 +1,18 @@
 # lychee configuration for local link and anchor checks over every Markdown file.
 # The pull request job and local runs pass --offline on the command line; the weekly job reuses
 # this file online for external links, so `offline` is deliberately not set here.
+# The input is the repository root with `--extensions md`, so files that git ignores are skipped.
 # Local run from the repository root:
-#   docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml './**/*.md'
+#   docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml --extensions md .
 
 # Check #fragments against the target's headings too (0.24 takes a string; `true` is an error).
 include_fragments = "full"
 # Include .claude/ and .github/ Markdown.
 hidden = true
 no_progress = true
-# Planning and tool state, dependencies, vendored design skills and build output.
+# Local development secrets, dependencies, vendored design skills and build output.
 exclude_path = [
   '(^|/)\.git/',
-  '(^|/)\.planning/',
-  '(^|/)\.gsd/',
   '(^|/)\.dev/',
   '(^|/)node_modules/',
   '(^|/)\.venv[^/]*/',

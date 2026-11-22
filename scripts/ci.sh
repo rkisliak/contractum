@@ -4,7 +4,7 @@
 # Steps, in order, each fatal:
 #   1. uv lock --check           the lock matches every pyproject.toml (never re-resolves, T-01-SC)
 #   2. uv sync --frozen          install exactly what the lock says
-#   3. ruff check / ruff format  lint and formatting (planning notes are not code: excluded)
+#   3. ruff check / ruff format  lint and formatting
 #   4. mypy                      strict typing of every library, service and the gateway's Python
 #                                (problem responder, api-docs merge and server)
 #   5. lint-imports              services import only dc_* libraries; dc_* never import services
@@ -89,7 +89,7 @@ step "ruff check"
 uv run ruff check .
 
 step "ruff format --check"
-uv run ruff format --check --extend-exclude .planning .
+uv run ruff format --check .
 
 step "mypy"
 uv run mypy \
@@ -97,7 +97,7 @@ uv run mypy \
   identity/src contracts/src validation/src audit/src mail/src \
   gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
   scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
-  scripts/gen_http_reference.py scripts/publish/leak_check.py
+  scripts/gen_http_reference.py
 
 step "lint-imports"
 uv run lint-imports

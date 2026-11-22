@@ -77,4 +77,3 @@ nav:
           - 05 Audit and events: dev/architecture/05-audit-and-events.md
           - 06 Platform and operations: dev/architecture/06-platform-and-operations.md
       - API design decisions: dev/api-design-decisions.md
-      - Publishing: dev/publishing.md

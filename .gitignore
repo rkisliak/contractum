@@ -9,9 +9,6 @@ __pycache__/
 dist/
 build/
 
-# GSD tool runtime state (regenerated)
-.planning/state.json
-
 # UI (Phase 8): installed packages and Playwright output never reach git or ruff
 node_modules/
 ui/test-results/
@@ -50,9 +47,5 @@ clients/python/.venv-*/
 .vscode/
 *.swp
 
-# GSD runtime state (local tool state, never shared)
-.gsd/
-# GSD milestone lock file (runtime lock, regenerated)
-.planning/milestone.lock
 # Docs site build output (written by `zensical build`)
 /site/

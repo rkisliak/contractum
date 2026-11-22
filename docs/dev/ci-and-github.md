@@ -46,10 +46,8 @@ example `contractum-v0.1.0` for version 0.1.0). The run fails on a mismatch. On 
 1. `build-and-smoke` builds and tests the files, as on a pull request.
 2. `github-release` creates the GitHub Release of the tag with the GitHub CLI. It carries the
    wheel, the sdist and `SHA256SUMS`, checked against the files `build-and-smoke` tested. It adds
-   GitHub artifact attestations (build provenance) on a public repository, or on a private one when
-   the repository variable `SDK_ATTESTATIONS` is `true` (attestations on a private repository need
-   GitHub Enterprise Cloud). A version with `a`, `b`, `rc` or `dev` in it is marked as a
-   pre-release.
+   GitHub artifact attestations (build provenance) to every release. A version with `a`, `b`,
+   `rc` or `dev` in it is marked as a pre-release.
 3. `image` builds the CLI image and pushes it to `ghcr.io/<owner>/contractum-cli`, tagged with the
    version and `latest`. This job is the only one that holds `packages: write`.
 
@@ -105,7 +103,6 @@ settings, and check that it is linked to this repository.
 | `SONAR_ORGANIZATION`, `SONAR_PROJECT_KEY` | variables | `security.yml` `sonarqube` | The SonarQube Cloud organization and project keys |
 | `SONAR_TOKEN` | secret | `security.yml` `sonarqube` | The SonarQube Cloud token. The only repository secret any workflow reads |
 | `DOCS_PAGES_ENABLED` | variable | `docs.yml` `pages-deploy` | `true` deploys the docs site to GitHub Pages on every push to `main` |
-| `SDK_ATTESTATIONS` | variable | `sdk-release.yml` `github-release` | `true` adds build attestations on a private repository. A public repository always gets them |
 
 ### Docs site and GitHub Pages
 
@@ -162,10 +159,8 @@ Settings, Advanced Security (Code security):
 - Private vulnerability reporting: on.
 - Copilot Autofix may stay on.
 
-A public repository needs no paid GitHub Advanced Security: code scanning, CodeQL, secret scanning,
-push protection and dependency review are free there. On a private repository, code scanning,
-CodeQL, dependency review and Copilot Autofix need GitHub Code Security, and secret scanning, push
-protection and validity checks need GitHub Secret Protection. Both are billed per active committer.
+The repository is public, so it needs no paid GitHub Advanced Security: code scanning, CodeQL,
+secret scanning, push protection and dependency review are free.
 
 ## Actions settings
 
@@ -244,8 +239,8 @@ exploitable here, never for "fix later". Prefer fixing over ignoring.
 
 `scripts/zap_gate.py` is the authoritative decision: ZAP's JSON report keeps every alert, so the
 gate re-applies the rows per instance (plugin, URL and parameter), and one instance outside them
-fails the run. A real finding stays visible, and is fixed or recorded as a decision in the dated
-audit report in the maintainers' private notes.
+fails the run. A real finding stays visible until it is fixed, or the maintainer agrees on a
+decision for it and the [ASVS review](../admin/security/asvs-l2.md) records the gap.
 
 ### Upgrading the pins
 
@@ -295,7 +290,7 @@ The same checks as `docs.yml`, from the repository root:
 |-------|---------|
 | markdownlint | `docker run --rm -v "$PWD:/workdir:ro" davidanson/markdownlint-cli2:v0.24.2@sha256:c768e94d8bb161c449bde28f60656929ca1f02c3010a405f65c9cac71563a889` (config `.markdownlint-cli2.jsonc`) |
 | typos | `uv run --group docs typos` (config `_typos.toml`) |
-| lychee (offline) | `docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml './**/*.md'` |
+| lychee (offline) | `docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml --extensions md .` |
 | HTTP API reference | `uv run --group docs python scripts/gen_http_reference.py --check` |
 | CLI and SDK reference | `cd clients/python && uv run python scripts/gen_reference.py --check` |
 | Site build | `uv run --group docs zensical build --strict`, or `uv run --group docs zensical serve` to preview |
@@ -356,13 +351,11 @@ first. None of them is committed.
   the checkout (`pnpm install --store-dir <path inside the node_modules volume>`), or pnpm creates
   `.pnpm-store/` at the repository root.
 
-The project's quality gate "Contractum release" fails below 98 percent overall coverage. The
-measured numbers are in the dated SonarQube report in the maintainers' private notes.
+The project's quality gate "Contractum release" fails below 98 percent overall coverage.
 
 ## Security standard and reports
 
 - The [OWASP ASVS 5.0 Level 2 review](../admin/security/asvs-l2.md) lists every level 1 and 2
   requirement with a status and evidence.
-- The dated audit and SonarQube reports are kept in the maintainers' private notes, not in this
-  repository. The raw scan outputs of a run stay in the git-ignored `.security-reports/` and are
-  never committed.
+- The raw scan outputs of a run stay in the git-ignored `.security-reports/` and are never
+  committed.

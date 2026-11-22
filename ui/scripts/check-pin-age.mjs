@@ -5,7 +5,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const MIN_AGE_DAYS = 14;
+// Temporarily 5 since 2026-11-22 (see ui/pnpm-workspace.yaml); back to 14 on 2026-11-30.
+const MIN_AGE_DAYS = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EXACT = /^\d+\.\d+\.\d+$/;
 

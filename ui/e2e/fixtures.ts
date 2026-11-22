@@ -77,11 +77,13 @@ export const test = base.extend<{ cspViolations: string[]; apiCalls: null }>({
 
 export { expect };
 
-/** Fails on any serious or critical axe violation (WCAG 2.2 AA tag set). */
-export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
-  // Let finite animations (dialog fade-in, drawer slide) finish first: mid-fade text is partly
-  // transparent and axe measures it as low contrast, which is not what the user reads. Infinite
-  // animations (spinners, a blinking cursor) never finish and are left running.
+/**
+ * Waits for every finite animation on the page (dialog fade-in, drawer slide) to finish. Run it
+ * before an axe scan: mid-fade text is partly transparent and axe measures it as low contrast,
+ * which is not what the user reads. Infinite animations (spinners, a blinking cursor) never finish
+ * and are left running.
+ */
+export async function finishFiniteAnimations(page: Page): Promise<void> {
   await page.evaluate(() =>
     Promise.all(
       document
@@ -92,6 +94,11 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
         .map((animation) => animation.finished.catch(() => undefined)),
     ),
   );
+}
+
+/** Fails on any serious or critical axe violation (WCAG 2.2 AA tag set). */
+export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
+  await finishFiniteAnimations(page);
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const blocking = results.violations.filter(
     (violation) =>

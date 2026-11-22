@@ -589,33 +589,33 @@ Runtime dependencies (`dependencies`):
 
 Tooling (`devDependencies`):
 
-| Package                       | Version  |
-| ----------------------------- | -------- |
-| `@axe-core/playwright`        | 4.14.0   |
-| `@eslint/js`                  | 10.0.1   |
-| `@playwright/test`            | 1.65.1   |
-| `@tanstack/router-plugin`     | 1.168.48 |
-| `@testing-library/dom`        | 10.4.2   |
-| `@testing-library/jest-dom`   | 7.0.1    |
-| `@testing-library/react`      | 16.3.3   |
-| `@testing-library/user-event` | 14.6.8   |
-| `@types/node`                 | 26.6.6   |
-| `@types/react`                | 19.3.0   |
-| `@types/react-dom`            | 19.3.0   |
-| `@vitejs/plugin-react`        | 6.2.1    |
-| `eslint`                      | 10.15.0  |
-| `eslint-plugin-jsx-a11y`      | 6.10.2   |
-| `eslint-plugin-react-hooks`   | 7.1.1    |
-| `globals`                     | 17.14.0  |
-| `jsdom`                       | 31.0.1   |
-| `msw`                         | 3.0.4    |
-| `openapi-typescript`          | 7.13.0   |
-| `prettier`                    | 3.9.10   |
-| `stylelint`                   | 18.0.0   |
-| `typescript`                  | 6.0.3    |
-| `typescript-eslint`           | 8.73.0   |
-| `vite`                        | 8.3.6    |
-| `vitest`                      | 5.1.0    |
+| Package                       | Version |
+| ----------------------------- | ------- |
+| `@axe-core/playwright`        | 4.14.0  |
+| `@eslint/js`                  | 10.0.1  |
+| `@playwright/test`            | 1.65.1  |
+| `@tanstack/router-plugin`     | 1.169.0 |
+| `@testing-library/dom`        | 10.4.2  |
+| `@testing-library/jest-dom`   | 7.0.1   |
+| `@testing-library/react`      | 16.3.3  |
+| `@testing-library/user-event` | 14.6.8  |
+| `@types/node`                 | 26.6.6  |
+| `@types/react`                | 19.3.0  |
+| `@types/react-dom`            | 19.3.0  |
+| `@vitejs/plugin-react`        | 6.2.1   |
+| `eslint`                      | 10.15.0 |
+| `eslint-plugin-jsx-a11y`      | 6.10.2  |
+| `eslint-plugin-react-hooks`   | 7.1.1   |
+| `globals`                     | 17.14.0 |
+| `jsdom`                       | 31.0.1  |
+| `msw`                         | 3.0.4   |
+| `openapi-typescript`          | 7.13.0  |
+| `prettier`                    | 3.9.10  |
+| `stylelint`                   | 18.0.0  |
+| `typescript`                  | 6.0.3   |
+| `typescript-eslint`           | 8.73.0  |
+| `vite`                        | 8.3.6   |
+| `vitest`                      | 5.1.0   |
 
 ## Known exceptions
 

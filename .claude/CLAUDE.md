@@ -152,7 +152,7 @@ A central data-contract service for a large company with many data-engineering t
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| **Traefik** | **v3.7** (v3.7.18) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
+| **Traefik** | **v3.7** (v3.7.19) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
 - Option chosen (MEDIUM): a ~100-line Python script, run at image build or container start, fetches each service's `/openapi.json`, prefixes paths under `/api/v1/<module>`, merges `components` (fail loudly on schema-name collisions), and writes one `openapi.json`. A static-file container serves it with Swagger UI or Scalar at `/api/v1/docs`, routed by Traefik.
 - To avoid component-name collisions, give Pydantic models module-unique names (`IdentityUserOut`, `ContractVersionOut`) and keep `separate_input_output_schemas` consistent across services.
 - `root_path` as a `FastAPI()` argument is **deprecated** (0.146). Mount each service's routes under their real prefix (`/api/v1/<module>`) in the app, or use `fastapi run --root-path`. Do not depend on a stripPrefix plus `root_path` combination. Keep real routes prefixed so the services stay gateway-independent.
@@ -162,7 +162,7 @@ A central data-contract service for a large company with many data-engineering t
 | Tool | Version | Purpose | Notes | Confidence |
 |------|---------|---------|-------|------------|
 | pytest | 9.2.0 | Test runner | | HIGH |
-| pytest-asyncio | 1.4.1.post1 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
+| pytest-asyncio | 1.5.0 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
 | testcontainers | 4.15.0 | Real Postgres 18, NATS, mock IdP in tests | Prefer **real Postgres** over SQLite (ltree, JSONB, `SKIP LOCKED` are Postgres-specific). Use one container per session and a template DB or transaction rollback per test. | HIGH |
 | **navikt/mock-oauth2-server** | **7.0.1** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
 | In-process fake issuer | (own, about 60 lines) | Unit tests | Generate an RSA key, serve a JWKS through `respx`, mint tokens with PyJWT. Fast, no container, and covers expired, wrong-aud, wrong-iss and overage cases deterministically. | HIGH |

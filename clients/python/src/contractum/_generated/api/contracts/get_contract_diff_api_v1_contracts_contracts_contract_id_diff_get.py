@@ -147,7 +147,7 @@ def sync_detailed(
 ) -> Response[Any | ContractDiffOut | Problem]:
     """ Get Contract Diff
 
-     The classified changelog from ``from`` to ``to`` (either order), paged (D-156).
+     The classified changelog from ``from`` to ``to`` (either order), paged.
 
     Args:
         contract_id (UUID):
@@ -192,7 +192,7 @@ def sync(
 ) -> Any | ContractDiffOut | Problem | None:
     """ Get Contract Diff
 
-     The classified changelog from ``from`` to ``to`` (either order), paged (D-156).
+     The classified changelog from ``from`` to ``to`` (either order), paged.
 
     Args:
         contract_id (UUID):
@@ -232,7 +232,7 @@ async def asyncio_detailed(
 ) -> Response[Any | ContractDiffOut | Problem]:
     """ Get Contract Diff
 
-     The classified changelog from ``from`` to ``to`` (either order), paged (D-156).
+     The classified changelog from ``from`` to ``to`` (either order), paged.
 
     Args:
         contract_id (UUID):
@@ -277,7 +277,7 @@ async def asyncio(
 ) -> Any | ContractDiffOut | Problem | None:
     """ Get Contract Diff
 
-     The classified changelog from ``from`` to ``to`` (either order), paged (D-156).
+     The classified changelog from ``from`` to ``to`` (either order), paged.
 
     Args:
         contract_id (UUID):

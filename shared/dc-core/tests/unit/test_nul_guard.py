@@ -1,4 +1,4 @@
-"""NUL (U+0000) or a lone surrogate in request input is a 422, never a 500 (dc_core.nul)."""
+"""NUL (U+0000) or a lone surrogate in request input is a 422, never a 500 (dc_core.nul_guard)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from dc_core.app import create_app
-from dc_core.nul import (
+from dc_core.nul_guard import (
     SURROGATE_DETAIL,
     NoNulStr,
     NulGuardRoute,
@@ -234,7 +234,7 @@ async def test_percent_encoded_surrogate_bytes_in_a_query_decode_to_u_fffd(
 
 
 def test_query_values_are_checked_after_decoding() -> None:
-    from dc_core.nul import _query_problem
+    from dc_core.nul_guard import _query_problem
 
     class _Fake:
         def __init__(self, items: list[tuple[str, str]]) -> None:

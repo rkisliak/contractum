@@ -4,8 +4,9 @@ The repository is one folder per module (identity, contracts, validation, audit,
 shared, ui). Each owns its documentation: a non-empty ``CLAUDE.md`` and at least one
 ``.claude/skills/<name>/SKILL.md`` with a non-empty ``name`` and ``description``, all regular
 files inside that module (nothing symlinked or shared between modules). The repository root
-carries the cross-cutting skills (run-stack, add-route, add-migration, keep-docs-current, security-first). Every service that
-declares routes also has its route-policy walker test (PLAT-04).
+carries the cross-cutting skills (run-stack, add-route, add-migration, keep-docs-current,
+security-first). Every service that declares routes also has its route-policy walker test
+(PLAT-04).
 
 Nested skill auto-discovery is unverified (research A16), so each module's CLAUDE.md must list the
 path of every skill the module owns.

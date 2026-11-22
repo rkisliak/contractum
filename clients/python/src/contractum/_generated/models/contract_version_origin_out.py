@@ -21,7 +21,7 @@ T = TypeVar("T", bound="ContractVersionOriginOut")
 
 @_attrs_define
 class ContractVersionOriginOut:
-    """ The contract version or draft a contract was copied from (D-44b); the content is not linked.
+    """ The contract version or draft a contract was copied from; the content is not linked.
 
     ``version_id`` is provenance only: it names a version or draft of the source contract at the
     time of the copy.

@@ -24,7 +24,7 @@ T = TypeVar("T", bound="IdentityAuthPolicyOut")
 
 @_attrs_define
 class IdentityAuthPolicyOut:
-    """ What a sign-in screen may know before anyone is signed in (quick 261120-0ye, D-37).
+    """ What a sign-in screen may know before anyone is signed in.
 
         Attributes:
             methods (IdentitySignInMethodsOut):

@@ -1,5 +1,8 @@
 # Supply-chain policy (T-8-SC). Must exist before the first install.
-minimumReleaseAge: 20160 # 14 days; applies to transitive packages too
+# Temporarily 5 days (7200) since 2026-11-22 so eslint 10.15.0 and typescript-eslint 8.73.0 can fix
+# GHSA-g3hv-75wg-m249 (minimatch); back to 14 days (20160) on 2026-11-30, when both are 14 days old.
+# tests/repo/test_release_age_policy.py fails from that day until it is restored.
+minimumReleaseAge: 7200 # applies to transitive packages too
 blockExoticSubdeps: true
 strictDepBuilds: true # install fails if any dependency has an unapproved build script
 

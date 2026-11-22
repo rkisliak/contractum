@@ -150,11 +150,12 @@ def test_a_comprehension_over_10000_elements_is_budget_exceeded() -> None:
 def test_a_map_over_10000_elements_is_bounded_by_the_budget_or_the_deadline() -> None:
     # `map` over 10,000 elements takes about 2 s before the iteration budget trips (measured with
     # cel-expr-python 0.1.4), so the parent's 500 ms deadline is what stops it; either way it is
-    # bounded and never answers pass.
+    # bounded and never answers pass. On a smaller machine (GitHub's runners) the worker's memory
+    # cap can trip first; memory_exceeded is the same fail-closed rule error.
     run = run_rule(make_rule("this.l.map(x, x).size() > 0"), {"l": list(range(10_000))})
     assert run.elapsed_s < RULE_TIMEOUT_S + 1
     if not run.timed_out:
-        assert run.error_codes == {"budget_exceeded"}
+        assert run.error_codes in ({"budget_exceeded"}, {"memory_exceeded"})
 
 
 def test_a_quadratic_comprehension_is_budget_exceeded() -> None:

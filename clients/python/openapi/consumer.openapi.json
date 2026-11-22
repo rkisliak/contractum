@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "ContractDiffOut": {
-        "description": "The classified changes between two refs, computed on the fly and never stored (D-156).\n\n``changes`` items have the stored-report change shape (D-148): ``code``, ``class``,\n``element_kind``, ``path``, ``pointer_before``, ``pointer_after``, ``attribute``, ``before``,\n``after`` (values only for allow-listed attributes).",
+        "description": "The classified changes between two refs, computed on the fly and never stored.\n\n``changes`` items have the stored-report change shape: ``code``, ``class``,\n``element_kind``, ``path``, ``pointer_before``, ``pointer_after``, ``attribute``, ``before``,\n``after`` (values only for allow-listed attributes).",
         "properties": {
           "changes": {
             "items": {
@@ -375,7 +375,7 @@
         "type": "object"
       },
       "ContractTemplateOriginOut": {
-        "description": "The template version a contract was copied from (CONT-02); the content is not linked.",
+        "description": "The template version a contract was copied from; the content is not linked.",
         "properties": {
           "template_id": {
             "format": "uuid",
@@ -395,7 +395,7 @@
         "type": "object"
       },
       "ContractValidationReportOut": {
-        "description": "The stored validation report a version was published with (D-155, VAL-09).\n\n``report`` is validation's D-128 report, passed through as JSON with its ``compatibility`` and\n``ref_facts`` sections; ``pins`` are the rule-set versions it was validated against.",
+        "description": "The stored validation report a version was published with.\n\n``report`` is validation's report, passed through as JSON with its ``compatibility`` and\n``ref_facts`` sections; ``pins`` are the rule-set versions it was validated against.",
         "properties": {
           "content_sha256": {
             "title": "Content Sha256",
@@ -468,7 +468,7 @@
         "type": "object"
       },
       "ContractVersionListOut": {
-        "description": "Every visible version, highest SemVer precedence first (unpaginated, A13).",
+        "description": "Every visible version, highest SemVer precedence first (unpaginated).",
         "properties": {
           "items": {
             "items": {
@@ -485,7 +485,7 @@
         "type": "object"
       },
       "ContractVersionMetadataOut": {
-        "description": "One visible version of a contract, without its document (API-02, D-48).",
+        "description": "One visible version of a contract, without its document.",
         "properties": {
           "content_sha256": {
             "title": "Content Sha256",
@@ -669,7 +669,7 @@
         "type": "object"
       },
       "ContractVersionOriginOut": {
-        "description": "The contract version or draft a contract was copied from (D-44b); the content is not linked.\n\n``version_id`` is provenance only: it names a version or draft of the source contract at the\ntime of the copy.",
+        "description": "The contract version or draft a contract was copied from; the content is not linked.\n\n``version_id`` is provenance only: it names a version or draft of the source contract at the\ntime of the copy.",
         "properties": {
           "contract_id": {
             "format": "uuid",
@@ -708,7 +708,7 @@
         "type": "object"
       },
       "IdentityAuthPolicyOut": {
-        "description": "What a sign-in screen may know before anyone is signed in (quick 261120-0ye, D-37).",
+        "description": "What a sign-in screen may know before anyone is signed in.",
         "properties": {
           "methods": {
             "$ref": "#/components/schemas/IdentitySignInMethodsOut"
@@ -1137,7 +1137,7 @@
   "paths": {
     "/api/v1/contracts/contracts": {
       "get": {
-        "description": "List and search contracts (D-12): filters, ``q`` text match, keyset pagination.\n\n``require(\"contract:list\")`` admits every authenticated caller; the identity scopes below trim\nthe SQL, so a caller without access gets an empty page (D-35). A row appears when the caller\nholds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a\nLatest. Every row is the contract's head: the Latest once one exists (for every caller), else\nthe newest draft. Its content-derived fields are filled only where the caller holds\n``contract:read`` (D-36) or ``contract:read-published``, and content filters match only those\nrows, so a published-only caller can never match a draft's values.",
+        "description": "List and search contracts: filters, ``q`` text match, keyset pagination.\n\n``require(\"contract:list\")`` admits every authenticated caller; the identity scopes below trim\nthe SQL, so a caller without access gets an empty page. A row appears when the caller\nholds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a\nLatest. Every row is the contract's head: the Latest once one exists (for every caller), else\nthe newest draft. Its content-derived fields are filled only where the caller holds\n``contract:read`` or ``contract:read-published``, and content filters match only those\nrows, so a published-only caller can never match a draft's values.",
         "operationId": "list_contracts_api_v1_contracts_contracts_get",
         "parameters": [
           {
@@ -1382,7 +1382,7 @@
     },
     "/api/v1/contracts/contracts/{contract_id}": {
       "get": {
-        "description": "Contract metadata of the head row; content-derived fields are null without ``contract:read``.\n\nThe head row is the Latest once the contract has one, else the newest draft (D-36).\n``contract:view`` admits every role that can see contracts; a caller who holds\n``contract:read-published`` only gets the Latest (published content they may fetch anyway),\nand the unknown-contract 404 for a contract without one (RBAC-07, RBAC-09).",
+        "description": "Contract metadata of the head row; content-derived fields are null without ``contract:read``.\n\nThe head row is the Latest once the contract has one, else the newest draft.\n``contract:view`` admits every role that can see contracts; a caller who holds\n``contract:read-published`` only gets the Latest (published content they may fetch anyway),\nand the unknown-contract 404 for a contract without one.",
         "operationId": "get_contract_api_v1_contracts_contracts__contract_id__get",
         "parameters": [
           {
@@ -1491,7 +1491,7 @@
     },
     "/api/v1/contracts/contracts/{contract_id}/diff": {
       "get": {
-        "description": "The classified changelog from ``from`` to ``to`` (either order), paged (D-156).",
+        "description": "The classified changelog from ``from`` to ``to`` (either order), paged.",
         "operationId": "get_contract_diff_api_v1_contracts_contracts__contract_id__diff_get",
         "parameters": [
           {
@@ -2015,7 +2015,7 @@
     },
     "/api/v1/contracts/contracts/{contract_id}/versions/{ref}/validation-report": {
       "get": {
-        "description": "The stored report a visible version was published with, by ``latest`` or SemVer (D-155).",
+        "description": "The stored report a visible version was published with, by ``latest`` or SemVer.",
         "operationId": "get_contract_version_validation_report_api_v1_contracts_contracts__contract_id__versions__ref__validation_report_get",
         "parameters": [
           {

@@ -26,9 +26,9 @@ T = TypeVar("T", bound="ContractValidationReportOut")
 
 @_attrs_define
 class ContractValidationReportOut:
-    """ The stored validation report a version was published with (D-155, VAL-09).
+    """ The stored validation report a version was published with.
 
-    ``report`` is validation's D-128 report, passed through as JSON with its ``compatibility`` and
+    ``report`` is validation's report, passed through as JSON with its ``compatibility`` and
     ``ref_facts`` sections; ``pins`` are the rule-set versions it was validated against.
 
         Attributes:

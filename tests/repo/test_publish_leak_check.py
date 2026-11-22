@@ -251,15 +251,25 @@ def test_strip_fails_loudly_when_a_marker_is_missing(
 
 
 def test_strip_on_the_real_claude_md(lc: ModuleType, tmp_path: Path) -> None:
-    original = CLAUDE_MD.read_text(encoding="utf-8")
-    target = write(tmp_path, "CLAUDE.md", original)
+    # The committed CLAUDE.md is the public one; the GSD workflow and profile blocks live only in a
+    # local CLAUDE.local.md. Re-add them as the GSD tool writes them and check the strip removes
+    # exactly those blocks and leaves the committed file byte for byte.
+    public = CLAUDE_MD.read_text(encoding="utf-8")
+    assert "GSD:workflow" not in public
+    assert "GSD:profile" not in public
+    local_blocks = (
+        "\n<!-- GSD:workflow-start source:GSD defaults -->\n\n## GSD Workflow Enforcement\n\n"
+        "Start work through a GSD command.\n<!-- GSD:workflow-end -->\n\n"
+        "<!-- GSD:profile-start -->\n\n## Developer Profile\n\n> Not configured.\n"
+        "<!-- GSD:profile-end -->\n"
+    )
+    target = write(tmp_path, "CLAUDE.md", public.rstrip("\n") + "\n" + local_blocks)
     assert lc.main(["strip-claude-md", str(target)]) == 0
     stripped = target.read_text(encoding="utf-8")
     assert "Technology Stack" in stripped
     for gone in ("GSD:workflow", "GSD:profile", "GSD Workflow Enforcement", "Developer Profile"):
         assert gone not in stripped
-    head = original[: original.index("<!-- GSD:workflow-start")]
-    assert stripped == head.rstrip("\n") + "\n"
+    assert stripped == public.rstrip("\n") + "\n"
 
 
 def fake_gitleaks(tmp_path: Path, exit_code: int) -> tuple[Path, Path]:

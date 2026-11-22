@@ -23,7 +23,7 @@ from dc_auth.principal import Principal, principal_to_actor
 from dc_core.app import read_session
 from dc_core.body import read_body_capped
 from dc_core.names import NameRule
-from dc_core.nul import find_unstorable, nul_problem
+from dc_core.nul_guard import find_unstorable, nul_problem
 from dc_core.policy import PolicyRouter
 from dc_core.problems import ProblemError
 from dc_odcs import ALLOWED_MEDIA_TYPES, load_json, load_yaml

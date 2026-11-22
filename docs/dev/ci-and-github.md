@@ -56,7 +56,7 @@ equals the head of the last green run. A manual run always runs.
   succeeded. A code job may be skipped only on a docs-only change and `docs-repo-tests` only on any
   other change. A failed, cancelled or unexpectedly skipped job, or a failed `changes` job, fails
   `ci-ok`, so it stays a safe required check.
-- The Documentation and Security workflows always run.
+- The Documentation and Security workflows always run, docs-only or not.
 - `tests/repo/test_ci_changes.py` checks the filter list, the classification, the `ci-ok` rules
   and the workflow wiring.
 

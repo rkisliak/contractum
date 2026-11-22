@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 import os
+import stat
 import tempfile
 from pathlib import Path
+
+
+def _owner_only(mode: int) -> int:
+    """The owner read and write bits of ``mode``: all a platform without ``fchmod`` honours."""
+    owner = stat.S_IREAD
+    if mode & stat.S_IWRITE:
+        owner |= stat.S_IWRITE
+    return owner
 
 
 def write_atomic(path: str | os.PathLike[str], data: bytes, *, mode: int = 0o644) -> None:
@@ -25,7 +34,10 @@ def write_atomic(path: str | os.PathLike[str], data: bytes, *, mode: int = 0o644
             if hasattr(os, "fchmod"):
                 os.fchmod(handle.fileno(), mode)
             else:
-                os.chmod(temp, mode)
+                # Windows has no fchmod, and its chmod maps only the owner write bit (the
+                # read-only attribute); group and other bits mean nothing there, so only the
+                # owner bits are passed on.
+                os.chmod(temp, _owner_only(mode))
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())

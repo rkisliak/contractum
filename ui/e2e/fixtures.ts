@@ -79,6 +79,17 @@ export { expect };
 
 /** Fails on any serious or critical axe violation (WCAG 2.2 AA tag set). */
 export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
+  // Let finite animations (dialog fade-in, drawer slide) finish first: mid-fade text is partly
+  // transparent and axe measures it as low contrast, which is not what the user reads. Infinite
+  // animations (spinners, a blinking cursor) never finish and are left running.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  );
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const blocking = results.violations.filter(
     (violation) =>

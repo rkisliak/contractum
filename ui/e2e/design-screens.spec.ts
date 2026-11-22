@@ -5,6 +5,11 @@
 import { expect, test } from "./fixtures";
 import { adminApi, signIn } from "./journey-helpers";
 
+// The clipboard permission must exist when the browser context is created: granting it later on
+// the running context no longer reaches the page in the Chromium of Playwright 1.65, so Monaco
+// never received the pasted text.
+test.use({ permissions: ["clipboard-read", "clipboard-write"] });
+
 type Page_<T> = { items: T[] };
 type Folder = { id: string; path: string; kind: string };
 
@@ -124,10 +129,7 @@ const SAMPLE_JSON = {
   ],
 };
 
-test("design screenshots of contract authoring", async ({
-  page,
-  context,
-}, info) => {
+test("design screenshots of contract authoring", async ({ page }, info) => {
   test.setTimeout(180_000);
   const api = await adminApi();
   let ledger: Folder | undefined;
@@ -156,7 +158,6 @@ test("design screenshots of contract authoring", async ({
     "demo folder acme/payments/ledger is missing",
   );
 
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.setViewportSize({ width: 1440, height: 960 });
   await signIn(page);
   const shot = (name: string) =>
@@ -180,7 +181,8 @@ test("design screenshots of contract authoring", async ({
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.press("ControlOrMeta+V");
   await page.keyboard.press("ControlOrMeta+Home");
-  await expect(editor).toContainText("apiVersion");
+  // Text only the pasted sample has: the blank template also contains "apiVersion".
+  await expect(editor).toContainText("urn:acme:payments:ledger:settlements");
   await page.mouse.click(5, 5);
   await shot("new-contract-yaml");
 

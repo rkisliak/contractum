@@ -182,10 +182,34 @@ def test_relative_md_links_stay_inside_docs() -> None:
     assert hits == []
 
 
+WORKFLOW_BADGE = re.compile(
+    r"\[!\[[^\]]+\]\(https://github\.com/rkisliak/contractum/actions/workflows/([a-z0-9-]+\.yml)"
+    r"/badge\.svg\?branch=main\)\]\(https://github\.com/rkisliak/contractum/actions/workflows/\1"
+    r"\?query=branch%3Amain\)"
+)
+
+
 def test_readme_logo_badges_and_no_repository_url() -> None:
     text = README.read_text(encoding="utf-8")
     first = text.splitlines()[0]
     assert first.startswith('<p align="center"><picture>')
     assert "docs/images/logo-dark.svg" in first and "docs/images/logo-light.svg" in first
     assert len(re.findall(r"https://img\.shields\.io/", text)) <= 2
-    assert not re.search(r"github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", text)
+    # The only repository links are the workflow status badges of this repository, each for a
+    # workflow file that exists, and every scheduled or push workflow on main has one.
+    badges = WORKFLOW_BADGE.findall(text)
+    assert badges, "README must show the workflow status badges"
+    for workflow in badges:
+        assert (ROOT / ".github" / "workflows" / workflow).is_file(), workflow
+    expected = {
+        "ci.yml",
+        "security.yml",
+        "sdk.yml",
+        "docs.yml",
+        "e2e-nightly.yml",
+        "dast-nightly.yml",
+        "docs-links-weekly.yml",
+    }
+    assert expected <= set(badges)
+    rest = WORKFLOW_BADGE.sub("", text)
+    assert not re.search(r"github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", rest)

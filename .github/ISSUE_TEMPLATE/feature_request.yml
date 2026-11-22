@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest a new capability or an improvement to Contractum.
+title: "Feature: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then the change you would like. A clear problem statement
+        helps more than a detailed solution.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Web UI
+        - HTTP API
+        - Python SDK or CLI
+        - Rules and validation
+        - Sign-in and access (local or Entra ID)
+        - Audit
+        - Subscriptions, notices, webhooks or email
+        - Kubernetes deployment (Helm chart)
+        - Local stack (Docker Compose, run.sh)
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what stops you today? Who is affected (data engineers, Policy Managers, administrators)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should Contractum do? Include the screen, API route or CLI command if you have one in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and workarounds
+      description: Other ways to solve the problem, and anything you do today instead.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Examples, links to the docs, or a sample contract (without confidential data).

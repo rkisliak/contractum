@@ -70,6 +70,9 @@ and actions their roles allow.
 - [Architecture guide](docs/dev/architecture/README.md): how the system works, with diagrams.
 - [CI and GitHub](docs/dev/ci-and-github.md): the workflows and the repository settings.
 - [API design decisions](docs/dev/api-design-decisions.md)
+- [Contributing](CONTRIBUTING.md): how changes are made and checked. Everyone follows the
+  [Code of Conduct](CODE_OF_CONDUCT.md).
+- [Accessibility](ACCESSIBILITY.md): what the UI is tested for and how to report a barrier.
 
 ## Try it locally
 

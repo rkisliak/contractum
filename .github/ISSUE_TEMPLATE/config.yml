@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/rkisliak/contractum/security/advisories/new
+    about: Report vulnerabilities privately through a security advisory, never in a public issue.
+  - name: Documentation
+    url: https://rkisliak.github.io/contractum/
+    about: User, administrator and developer guides for Contractum.

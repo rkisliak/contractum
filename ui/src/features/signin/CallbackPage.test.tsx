@@ -160,6 +160,23 @@ describe("the Entra callback failures and retries", () => {
 
   it("fails at once without a request when Entra is off, and goes back to sign in", async () => {
     const user = userEvent.setup();
+    // The sign-in page probes for a refresh cookie; there is none, so identity answers 401.
+    server.use(
+      http.post("*/api/v1/identity/auth/refresh", () =>
+        HttpResponse.json(
+          {
+            type: "urn:dc:problem:invalid-credentials",
+            title: "Unauthorized",
+            status: 401,
+            detail: "Invalid or expired refresh token.",
+          },
+          {
+            status: 401,
+            headers: { "Content-Type": "application/problem+json" },
+          },
+        ),
+      ),
+    );
     const { router } = mount("/auth/callback", { entraEnabled: false });
     expect(await failed()).toBeInTheDocument();
     expect(msal.completeEntraSignIn).not.toHaveBeenCalled();
@@ -210,6 +227,10 @@ describe("the Entra callback failures and retries", () => {
       http.get(
         "*/api/v1/identity/me",
         () => new HttpResponse(null, { status: 204 }),
+      ),
+      // Where the sign-in lands, the shell lists the folders it can see: none here.
+      http.get("*/api/v1/identity/folders", () =>
+        HttpResponse.json({ items: [], next_cursor: null }),
       ),
     );
     const { session, router } = mount("/auth/callback");

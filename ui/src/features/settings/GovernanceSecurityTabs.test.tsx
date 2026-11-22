@@ -8,7 +8,11 @@ import type { SettingsOut } from "@/api/types";
 import { tokenStore } from "@/auth/tokenStore";
 import { http, HttpResponse } from "@/test/msw";
 import { makeMe, renderApp, rootFolder } from "@/test/renderApp";
-import { problem, settingsSequence } from "@/test/settings-fixtures";
+import {
+  overviewBody,
+  problem,
+  settingsSequence,
+} from "@/test/settings-fixtures";
 
 afterEach(() => {
   tokenStore.clear();
@@ -100,6 +104,10 @@ function stack(
   return [
     http.get(SETTINGS, () => HttpResponse.json(list)),
     http.get(`${SETTINGS}/about`, () => HttpResponse.json({ services: [] })),
+    // The Entra tab (the default tab) reads the overview.
+    http.get(`${SETTINGS}/entra/overview`, () =>
+      HttpResponse.json(overviewBody),
+    ),
     http.put(`${SETTINGS}/:section`, async ({ request, params }) =>
       onPut({
         etag: request.headers.get("if-match"),

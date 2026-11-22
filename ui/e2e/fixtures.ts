@@ -114,15 +114,83 @@ export async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 }
 
 /**
- * Replaces the whole content of the first Monaco editor on the page with `text`: select all, then
- * insert the text in one input event, as a paste does (no per-key auto-indent or auto-closing). It
- * does not go through the browser-wide system clipboard, which headless Chromium shares between
- * tests and which stopped delivering pastes after earlier specs ran.
+ * Replaces the whole content of the first Monaco editor on the page with `text` the way a paste
+ * does, and waits until the editor holds exactly `text`. It selects all and sends the editor's
+ * focused input a paste event that carries `text` as its clipboard data: Monaco takes its paste
+ * path and inserts the text verbatim. Typed input (`keyboard.insertText`) would get Monaco's
+ * type-time auto-indent and auto-closing brackets, which corrupt a multi-line document. The
+ * browser-wide system clipboard, which headless Chromium shares between tests, is not used.
+ *
+ * Monaco applies a paste asynchronously and drops it when the selection or the text changes
+ * first, so nothing may touch the editor (not even Ctrl+Home) until the text has landed: the
+ * helper only returns once every rendered line equals its line of `text`.
  */
 export async function pasteIntoEditor(page: Page, text: string): Promise<void> {
-  await page.locator(".monaco-editor").first().click();
+  const editor = page.locator(".monaco-editor").first();
+  await editor.click();
   await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.insertText(text);
+  await page.evaluate((value) => {
+    const input = document.activeElement;
+    if (!input?.closest(".monaco-editor")) {
+      throw new Error("pasteIntoEditor: the Monaco editor does not have focus");
+    }
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", value);
+    input.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, text);
+  // Monaco renders the lines in view. The line-number gutter tells which line each rendered row
+  // is; with word wrap a line spans several rows, only the first one numbered, and a continuation
+  // row starts with the wrap indent, which is not part of the text.
+  const expected = text.split("\n");
+  await expect
+    .poll(async () => {
+      const rendered = await editor.evaluate((root) => {
+        const top = (node: Element | null) =>
+          Number.parseFloat((node as HTMLElement | null)?.style.top ?? "");
+        const numbers = new Map(
+          [...root.querySelectorAll(".margin-view-overlays .line-numbers")]
+            .filter((node) => node.textContent.trim() !== "")
+            .map((node): [number, number] => [
+              top(node.parentElement),
+              Number(node.textContent),
+            ]),
+        );
+        const rows = [...root.querySelectorAll(".view-lines .view-line")]
+          .map((node) => ({
+            top: top(node),
+            text: node.textContent.replaceAll("\u00a0", " "),
+          }))
+          .sort((a, b) => a.top - b.top);
+        const lines: { number: number; text: string }[] = [];
+        for (const row of rows) {
+          const number = numbers.get(row.top);
+          // A wrapped line cut off at the top of the view is skipped.
+          if (number === undefined && lines.length === 0) continue;
+          const previous = number === undefined ? lines.pop() : undefined;
+          lines.push(
+            previous === undefined
+              ? { number: number ?? 0, text: row.text }
+              : { ...previous, text: previous.text + row.text.trimStart() },
+          );
+        }
+        return lines;
+      });
+      if (rendered.length === 0) return ["no line is rendered"];
+      return rendered.flatMap(({ number, text: line }) =>
+        line === expected[number - 1]
+          ? []
+          : [
+              `line ${String(number)}: ${JSON.stringify(line)} is not ${JSON.stringify(expected[number - 1])}`,
+            ],
+      );
+    }, "the editor holds exactly the pasted text")
+    .toEqual([]);
 }
 
 /** Fails when the page scrolls horizontally at the page's current viewport width. */

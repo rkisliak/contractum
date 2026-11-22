@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import pytest
@@ -23,8 +22,11 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 pytestmark = pytest.mark.unit
 
-NUL = "bad\x00text"
-SURROGATE = "bad\ud800text"
+# Submitted inside every refused value and searched for in the whole answer. x, q, h, o, p and r
+# are not hex digits, so the marker never turns up by chance in the random request id.
+ECHO_MARKER = "xq-echo-probe"
+NUL = f"{ECHO_MARKER}\x00text"
+SURROGATE = f"{ECHO_MARKER}\ud800text"
 
 
 class Item(BaseModel):
@@ -66,10 +68,7 @@ def _assert_nul_422(
     body = response.json()
     assert body["type"] == "urn:dc:problem:validation-error"
     assert body["errors"] == [{"pointer": pointer, "detail": detail}]
-    # The submitted value is never echoed. The request id fields are random hex, and b, a and d
-    # are hex digits, so they are left out of the search.
-    echo_surface = {k: v for k, v in body.items() if k not in ("instance", "request_id")}
-    assert "bad" not in json.dumps(echo_surface)
+    assert ECHO_MARKER not in response.text  # the submitted value is never echoed
 
 
 def test_policy_router_routes_are_nul_guarded() -> None:
@@ -127,7 +126,7 @@ async def test_nul_in_a_query_parameter_is_a_422(asgi_client: Any) -> None:
     calls: list[str] = []
     async with asgi_client(_app(calls)) as client:
         _assert_nul_422(await client.get("/api/v1/probe/items", params={"q": NUL}), "/query/q")
-        _assert_nul_422(await client.get("/api/v1/probe/items?bad%00name=1"), "/query")
+        _assert_nul_422(await client.get("/api/v1/probe/items?xq-echo-probe%00name=1"), "/query")
         ok = await client.get("/api/v1/probe/items", params={"q": "fine"})
         assert ok.json() == {"q": "fine"}
     assert calls == ["handler"]
@@ -178,15 +177,15 @@ def _post_raw(client: Any, raw: bytes, content_type: str = "application/json") -
 @pytest.mark.parametrize(
     ("raw", "pointer"),
     [
-        (b'{"name": "bad\\ud800text"}', "/body/name"),
-        (b'{"name": "bad\\uDFFFtext"}', "/body/name"),  # hex digits in either case
-        (b'{"name": "ok", "tags": ["fine", "bad\\udc00"]}', "/body/tags/1"),
-        (b'{"name": "ok", "labels": {"k": "bad\\uDbFf"}}', "/body/labels/k"),
-        (b'{"name": "ok", "labels": {"bad\\ud800": "v"}}', "/body/labels"),
+        (b'{"name": "xq-echo-probe\\ud800text"}', "/body/name"),
+        (b'{"name": "xq-echo-probe\\uDFFFtext"}', "/body/name"),  # hex digits in either case
+        (b'{"name": "ok", "tags": ["fine", "xq-echo-probe\\udc00"]}', "/body/tags/1"),
+        (b'{"name": "ok", "labels": {"k": "xq-echo-probe\\uDbFf"}}', "/body/labels/k"),
+        (b'{"name": "ok", "labels": {"xq-echo-probe\\ud800": "v"}}', "/body/labels"),
         # Raw UTF-8-style bytes for U+D800: json.loads decodes bytes with surrogatepass.
-        (b'{"name": "bad\xed\xa0\x80text"}', "/body/name"),
+        (b'{"name": "xq-echo-probe\xed\xa0\x80text"}', "/body/name"),
         # UTF-16 JSON is parsed too; it is always walked.
-        ('{"name": "bad\\ud800text"}'.encode("utf-16-le"), "/body/name"),
+        ('{"name": "xq-echo-probe\\ud800text"}'.encode("utf-16-le"), "/body/name"),
     ],
 )
 async def test_a_lone_surrogate_in_a_json_body_is_a_422_before_the_handler(
@@ -200,7 +199,7 @@ async def test_a_lone_surrogate_in_a_json_body_is_a_422_before_the_handler(
 
 async def test_a_nul_in_a_utf16_body_is_a_422(asgi_client: Any) -> None:
     calls: list[str] = []
-    raw = '{"name": "bad\\u0000text"}'.encode("utf-16-be")
+    raw = '{"name": "xq-echo-probe\\u0000text"}'.encode("utf-16-be")
     async with asgi_client(_app(calls)) as client:
         _assert_nul_422(await _post_raw(client, raw), "/body/name")
     assert calls == []

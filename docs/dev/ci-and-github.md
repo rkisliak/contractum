@@ -334,9 +334,13 @@ first. None of them is committed.
 
   This is the release coverage. The unit run alone leaves routes, units of work and repositories
   (exercised by the integration tests) uncovered. `timing` tests assert CPU or wall-clock budgets
-  and run untraced, as in the full gate. `[tool.coverage.run]` in `pyproject.toml` names the
-  packages and sets `relative_files = true`, so the XML holds paths such as
-  `identity/src/dc_identity/app.py` that resolve from the scanner's base directory.
+  and run untraced, as in the full gate. Each one also starts with the session's leftover heap
+  collected and frozen out of the garbage collector (`_timing_test_gc_isolation` in the root
+  `conftest.py`): late in a full run the pytest process holds millions of objects that earlier
+  tests left behind, and a full collection of them inside a measured window took 3.2 s on a
+  GitHub runner. `[tool.coverage.run]` in `pyproject.toml` names the packages and sets
+  `relative_files = true`, so the XML holds paths such as `identity/src/dc_identity/app.py` that
+  resolve from the scanner's base directory.
 - **SDK (Python):** with the compose test stack up and smoke-tested,
   `bash clients/python/scripts/combined_coverage.sh --require-integration` writes
   `clients/python/coverage.xml` (unit plus integration, combined).

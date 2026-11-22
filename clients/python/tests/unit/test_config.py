@@ -307,10 +307,11 @@ def test_invalid_profile_files_are_rejected(file: Path, body: str) -> None:
 
 
 def test_a_credential_key_is_refused_with_a_pointer_to_the_right_place(file: Path) -> None:
-    _profile_file(file, '[profiles.x]\ntoken = "abc"\n')
+    # x, q, h, o, p and r are not hex digits, so the marker is never part of a generated value.
+    _profile_file(file, '[profiles.x]\ntoken = "xq-token-probe"\n')
     with pytest.raises(ConfigError) as raised:
         load_config(file)
-    assert "abc" not in str(raised.value)
+    assert "xq-token-probe" not in str(raised.value)
     assert "CONTRACTUM_TOKEN" in (raised.value.hint or "")
 
 

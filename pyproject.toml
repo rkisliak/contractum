@@ -65,7 +65,7 @@ markers = [
   "unit: fast tests, no Docker daemon required",
   "integration: needs a running Docker daemon (testcontainers)",
   "e2e: needs the docker compose stack",
-  "timing: CPU or wall-clock budget sensitive; the full gate runs these without coverage tracing",
+  "timing: CPU or wall-clock budget sensitive; the full gate runs these without coverage tracing, and each runs with the session's earlier heap collected and frozen out of the GC (root conftest.py)",
   "oracle: dev-only datacontract-cli agreement check (network, never in CI)",
   "performance: load, throughput or scale budget; skipped by scripts/ci.sh and scripts/e2e.sh unless DC_PERFORMANCE=1 (the dev hardware cannot hold it)",
 ]

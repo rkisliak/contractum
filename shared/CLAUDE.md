@@ -108,7 +108,7 @@ only these libraries.
     1000th drop. `access_log_hook(settings)` runs it only when `nats_url` is set (otherwise
     `app.state.access_log` is None and producers do nothing) and flushes for 2 s on shutdown.
   - `dc-core/src/dc_core/openapi.py`: see `build_openapi` above.
-  - `dc-core/src/dc_core/nul.py`: `NulGuardRoute` (the default route class of `PolicyRouter`)
+  - `dc-core/src/dc_core/nul_guard.py`: `NulGuardRoute` (the default route class of `PolicyRouter`)
     refuses a NUL or a lone UTF-16 surrogate (U+D800 to U+DFFF) in query parameters and parsed
     JSON bodies with a 422 before authentication; `find_unstorable` (pointer and detail),
     `find_nul` (pointer only), `nul_problem(..., detail=)` and `NoNulStr` for raw-body routes and

@@ -1,7 +1,7 @@
 """A NUL (U+0000) or lone surrogate in rule-set input is a 422, never a 500 (Phase 7 post-fix).
 
 Schemathesis found ``POST /folders/{folder_id}/rule-sets`` with ``name`` holding ``\\x00`` answered
-500 (psycopg ``DataError``). The shared ``dc_core.nul`` route guard now refuses it before the
+500 (psycopg ``DataError``). The shared ``dc_core.nul_guard`` route guard now refuses it before the
 database, and the raw-body draft routes refuse it after parsing (the draft is jsonb).
 """
 

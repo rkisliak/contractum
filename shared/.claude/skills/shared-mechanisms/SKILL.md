@@ -24,7 +24,7 @@ Use before changing anything under `shared/`.
      gateway merge de-duplicates them (D-177): any change to them is a change to every service
      document and to the merged one. `tests/repo/test_openapi_completeness.py` (fixture
      `service_apps` in `tests/repo/conftest.py`) checks every service document.
-   - `dc_core.nul` (Phase 7 post-fix): `PolicyRouter`'s default route class is `NulGuardRoute`,
+   - `dc_core.nul_guard` (Phase 7 post-fix): `PolicyRouter`'s default route class is `NulGuardRoute`,
      which answers 422 `validation-error` (`errors[{pointer, detail}]`, never the value) for a NUL
      (U+0000) or a lone UTF-16 surrogate (U+D800 to U+DFFF, e.g. JSON `"\ud800"`) in any query
      parameter or in a JSON body FastAPI parses, before authentication and the database

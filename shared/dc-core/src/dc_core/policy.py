@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, FastAPI, params
 from fastapi.routing import APIRoute, iter_route_contexts
 
-from dc_core.nul import NulGuardRoute
+from dc_core.nul_guard import NulGuardRoute
 
 POLICY_ATTR = "_dc_policy"
 
@@ -100,7 +100,7 @@ class PolicyRouter(APIRouter):
     """APIRouter that refuses routes with no declared policy.
 
     Its routes are ``NulGuardRoute`` by default, so a NUL or lone surrogate in a query parameter or
-    a parsed JSON body is a 422 on every service route (``dc_core.nul``).
+    a parsed JSON body is a 422 on every service route (``dc_core.nul_guard``).
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

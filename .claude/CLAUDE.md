@@ -28,7 +28,7 @@ A central data-contract service for a large company with many data-engineering t
 | # | Decision | Confidence |
 |---|----------|------------|
 | 1 | One **uv workspace** (single `uv.lock`) with the four service folders plus `shared/*` libs as members. One pinned FastAPI, Pydantic and SQLAlchemy for the whole platform. | HIGH |
-| 2 | **Pin FastAPI exactly** (`0.162.2`). FastAPI shipped about 12 breaking changes between 0.143 and 0.162 (Oct 2026), mostly request-parameter and body semantics. Upgrade deliberately, never by range. | HIGH |
+| 2 | **Pin FastAPI exactly** (`0.165.0`). FastAPI shipped about 12 breaking changes between 0.143 and 0.162 (Oct 2026), mostly request-parameter and body semantics. Upgrade deliberately, never by range. | HIGH |
 | 3 | **SQLAlchemy 2.1 (async) + psycopg 3 + Alembic**. SQLModel is rejected. | MEDIUM-HIGH (2.1 is only about 6 weeks old; fallback is 2.0.57) |
 | 4 | Store each contract version as **JSONB**. Validate against the **vendored official ODCS v3.2.0 JSON Schema** (draft 2019-09) with **`jsonschema-rs`**. Pure-Python `jsonschema` took 1.4 s on a 1000-property contract; `jsonschema-rs` took 5 ms (tested). | HIGH |
 | 5 | Rule conditions use **CEL via `cel-expr-python`** (official CEL org, C++ runtime). Rule targets use **`python-jsonpath`** (RFC 9535). JSON-Logic is rejected. | MEDIUM-HIGH (library is 0.1.x; wrap it behind a port) |
@@ -55,7 +55,7 @@ A central data-contract service for a large company with many data-engineering t
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| FastAPI | **0.162.2** (pin `==`) | HTTP API, OpenAPI | Project constraint. Pin exactly: 0.145-0.162 contained breaking changes to request-parameter semantics (see Pitfalls). FastAPI also now has native OpenTelemetry support (0.142, opt-in auto-configure since 0.143). | HIGH |
+| FastAPI | **0.165.0** (pin `==`) | HTTP API, OpenAPI | Project constraint. Pin exactly: 0.145-0.162 contained breaking changes to request-parameter semantics (see Pitfalls). FastAPI also now has native OpenTelemetry support (0.142, opt-in auto-configure since 0.143). | HIGH |
 | Starlette | 1.10.0 (transitive) | ASGI toolkit | Starlette is past 1.0. Do not pin separately; let the lock resolve it through FastAPI. | HIGH |
 | Pydantic | **2.14.3** | Validation, DTOs, JSON | v2 only. Never use the `pydantic.v1` shim. API DTOs, DB models and the ODCS document stay separate types. | HIGH |
 | pydantic-settings | 2.16.2 | Env/secret config | One `Settings` class per service. Supports `/run/secrets` files for Docker secrets. | HIGH |
@@ -226,7 +226,7 @@ A central data-contract service for a large company with many data-engineering t
 | Any Python-expression evaluator (`simpleeval`, `asteval`, `eval`) | Code-execution attack surface. This contradicts the "declarative only" security constraint. | CEL |
 | Oso library | Last release Jan 2024, vendor moved to a hosted product (MEDIUM). | Hand-rolled RBAC, or OpenFGA if an engine is needed |
 | Alpine base images | `cel-expr-python` and `jsonschema-rs` wheels target manylinux (glibc). Building on musl means compiling C++ or Rust from source. | `python:3.13-slim-trixie` |
-| Floating FastAPI version (`fastapi>=`, `fastapi[standard]` unpinned) | 0.143-0.162 shipped breaking changes in about 3 weeks. | `fastapi==0.162.2` with a deliberate upgrade phase |
+| Floating FastAPI version (`fastapi>=`, `fastapi[standard]` unpinned) | 0.143-0.162 shipped breaking changes in about 3 weeks. | `fastapi==0.165.0` with a deliberate upgrade phase |
 | `FastAPI(root_path=...)` | Deprecated in 0.146. | Real route prefix, or `fastapi run --root-path` |
 | `ORJSONResponse`/`UJSONResponse` | Unneeded: Pydantic v2 serialises in Rust. | Default responses |
 | Celery or Redis for background work | Extra infra for a small job set. | Outbox relay and `asyncio` tasks with advisory locks |
@@ -273,7 +273,7 @@ A central data-contract service for a large company with many data-engineering t
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| fastapi 0.162.2 | starlette >=0.46 (resolves to 1.10.0), pydantic >=2.9 | Pin FastAPI exactly. FastAPI now depends on `opentelemetry-api`. |
+| fastapi 0.165.0 | starlette >=0.46 (resolves to 1.10.0), pydantic >=2.9 | Pin FastAPI exactly. FastAPI now depends on `opentelemetry-api`. |
 | sqlalchemy 2.1.x | Python >=3.11, alembic 1.20.1 (needs SA >=2.0), psycopg 3.3.x | `greenlet` is only installed by `sqlalchemy[asyncio]`. |
 | sqlmodel 0.0.48 | `sqlalchemy<2.2` | Not used; listed because it constrains SA if ever added. |
 | open-data-contract-standard 3.2.0 | pydantic >=2.8, pyyaml >=6 | Maps to ODCS 3.2.0 only. `extra=forbid`. |

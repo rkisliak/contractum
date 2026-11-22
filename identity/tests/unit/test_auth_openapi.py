@@ -75,6 +75,18 @@ def test_every_cookie_aware_operation_declares_the_delivery_header(
     assert _enum_values(param["schema"]) == {"cookie"}
 
 
+@pytest.mark.parametrize("name", ["login", "refresh", "logout"])
+def test_the_delivery_header_carries_its_only_value_as_the_example(
+    document: dict[str, Any], name: str
+) -> None:
+    # Scanners (OWASP ZAP) and generated clients fill a header from its parameter example; the
+    # `anyOf` schema alone gives them no type, so without it they send an empty value (a 422).
+    param = _param(_op(document, name), "X-Token-Delivery", "header")
+    assert param is not None
+    examples = param["examples"]
+    assert [example["value"] for example in examples.values()] == ["cookie"]
+
+
 @pytest.mark.parametrize("name", ["refresh", "logout"])
 def test_refresh_and_logout_declare_the_cookie_parameter(
     document: dict[str, Any], name: str
@@ -117,3 +129,14 @@ def test_a_failed_refresh_declares_the_clearing_set_cookie_header(
     document: dict[str, Any],
 ) -> None:
     assert "Set-Cookie" in _op(document, "refresh")["responses"]["401"]["headers"]
+
+
+def test_the_refresh_body_carries_a_well_formed_example(document: dict[str, Any]) -> None:
+    # The optional body is `anyOf[model, null]`; OWASP ZAP builds a request from the example, and
+    # without one it sends a body identity refuses with 422 before the refresh logic runs.
+    content = _op(document, "refresh")["requestBody"]["content"]["application/json"]
+    values = [example["value"] for example in content["examples"].values()]
+    assert len(values) == 1
+    assert set(values[0]) == {"refresh_token"}
+    assert isinstance(values[0]["refresh_token"], str)
+    assert values[0]["refresh_token"]

@@ -18053,6 +18053,13 @@
         "parameters": [
           {
             "description": "Send `cookie` to receive the refresh token as an HttpOnly cookie instead of in the response body, and to authorise the cookie as the refresh credential.",
+            "examples": {
+              "cookie": {
+                "description": "Deliver the refresh token as an HttpOnly cookie.",
+                "summary": "Cookie delivery",
+                "value": "cookie"
+              }
+            },
             "in": "header",
             "name": "X-Token-Delivery",
             "required": false,
@@ -18185,6 +18192,13 @@
         "parameters": [
           {
             "description": "Send `cookie` to receive the refresh token as an HttpOnly cookie instead of in the response body, and to authorise the cookie as the refresh credential.",
+            "examples": {
+              "cookie": {
+                "description": "Deliver the refresh token as an HttpOnly cookie.",
+                "summary": "Cookie delivery",
+                "value": "cookie"
+              }
+            },
             "in": "header",
             "name": "X-Token-Delivery",
             "required": false,
@@ -18469,6 +18483,13 @@
         "parameters": [
           {
             "description": "Send `cookie` to receive the refresh token as an HttpOnly cookie instead of in the response body, and to authorise the cookie as the refresh credential.",
+            "examples": {
+              "cookie": {
+                "description": "Deliver the refresh token as an HttpOnly cookie.",
+                "summary": "Cookie delivery",
+                "value": "cookie"
+              }
+            },
             "in": "header",
             "name": "X-Token-Delivery",
             "required": false,
@@ -18510,6 +18531,15 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "body-token": {
+                  "description": "Every client that did not opt into cookie delivery.",
+                  "summary": "Refresh token in the body",
+                  "value": {
+                    "refresh_token": "the-refresh-token-from-login"
+                  }
+                }
+              },
               "schema": {
                 "anyOf": [
                   {

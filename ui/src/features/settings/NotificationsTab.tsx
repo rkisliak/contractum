@@ -463,308 +463,315 @@ function NotificationsForm({
     .filter((h) => h !== "");
   const isStoredTemplate = isRecord(storedTemplates[form.event]);
 
+  // The test-email dialog stays outside this form: React bubbles a portal's submit event through
+  // the component tree, so pressing Enter in the dialog would also save these settings.
   return (
-    <form className={styles.wide} noValidate onSubmit={onSubmit}>
-      {problem ? (
-        <SaveProblem
-          problem={problem}
-          onReload={onReload}
-          fieldLabels={{
-            "/sender/name": "Sender name",
-            "/sender/address": "Sender address",
-            "/retry_schedule_s": "Retry delays",
-            "/max_attempts": "Maximum attempts",
-            "/sunset_lead_days": "Sunset reminders",
-            "/webhook_allowed_hosts": "Allowed webhook hosts",
-          }}
-        />
-      ) : null}
-      {saved ? (
-        <Alert intent="success" title="Saved">
-          {saved}
-        </Alert>
-      ) : null}
+    <>
+      <form className={styles.wide} noValidate onSubmit={onSubmit}>
+        {problem ? (
+          <SaveProblem
+            problem={problem}
+            onReload={onReload}
+            fieldLabels={{
+              "/sender/name": "Sender name",
+              "/sender/address": "Sender address",
+              "/retry_schedule_s": "Retry delays",
+              "/max_attempts": "Maximum attempts",
+              "/sunset_lead_days": "Sunset reminders",
+              "/webhook_allowed_hosts": "Allowed webhook hosts",
+            }}
+          />
+        ) : null}
+        {saved ? (
+          <Alert intent="success" title="Saved">
+            {saved}
+          </Alert>
+        ) : null}
 
-      <Card title="Email templates">
-        <div className={styles.measure}>
-          <SelectField
-            id="settings-notify-event"
-            label="Notice"
-            helper="Each notice type has its own subject and body."
-            value={form.event}
-            options={EVENT_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-            }))}
-            onChange={(event) => {
-              setErrors({});
-              change({ event: event.target.value });
-            }}
-          />
-          <TextField
-            id="settings-notify-subject"
-            label="Subject"
-            autoComplete="off"
-            value={draft.subject}
-            error={errors.subject}
-            onChange={(event) => {
-              setDraft({ subject: event.target.value });
-            }}
-          />
-          <PlaceholderList names={SUBJECT_PLACEHOLDERS} />
-          <TextareaField
-            id="settings-notify-body"
-            label="Body"
-            helper="Plain text. Use {{ and }} for a literal brace."
-            rows={10}
-            value={draft.body}
-            error={errors.body}
-            onChange={(event) => {
-              setDraft({ body: event.target.value });
-            }}
-          />
-          <PlaceholderList names={BODY_PLACEHOLDERS} />
-          <div className={styles.actions}>
-            <Button
-              variant="outline-neutral"
-              size="small"
-              busy={preview.isPending}
-              busyLabel="Rendering…"
-              onClick={runPreview}
-            >
-              Preview
-            </Button>
-            <Button
-              variant="ghost"
-              size="small"
-              disabled={!isStoredTemplate}
-              aria-label="Reset to default for this template"
-              onClick={resetTemplate}
-            >
-              Reset to default
-            </Button>
-          </div>
-          {previewProblem ? (
-            <Alert intent="warning" title="The preview could not run">
-              Try again shortly.
-            </Alert>
-          ) : null}
-          {preview.data ? (
-            <div className={styles.previewBox} data-testid="template-preview">
-              <p className={styles.subhead}>Preview with sample values</p>
-              <p className={styles.previewText}>
-                <strong>{preview.data.subject}</strong>
-              </p>
-              <p className={styles.previewText}>{preview.data.body}</p>
-            </div>
-          ) : null}
-        </div>
-      </Card>
-
-      <Card title="Sender">
-        <div className={styles.measure}>
-          <div className={styles.form}>
-            <TextField
-              id="settings-notify-sender-name"
-              label="Sender name"
-              optional
-              autoComplete="off"
-              value={form.senderName}
-              error={errors.senderName ?? nameRuleError(form.senderName)}
+        <Card title="Email templates">
+          <div className={styles.measure}>
+            <SelectField
+              id="settings-notify-event"
+              label="Notice"
+              helper="Each notice type has its own subject and body."
+              value={form.event}
+              options={EVENT_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
               onChange={(event) => {
-                change({ senderName: event.target.value });
+                setErrors({});
+                change({ event: event.target.value });
               }}
             />
             <TextField
-              id="settings-notify-sender-address"
-              label="Sender address"
-              type="email"
-              optional
+              id="settings-notify-subject"
+              label="Subject"
               autoComplete="off"
-              value={form.senderAddress}
-              error={errors.senderAddress}
+              value={draft.subject}
+              error={errors.subject}
               onChange={(event) => {
-                change({ senderAddress: event.target.value });
+                setDraft({ subject: event.target.value });
+              }}
+            />
+            <PlaceholderList names={SUBJECT_PLACEHOLDERS} />
+            <TextareaField
+              id="settings-notify-body"
+              label="Body"
+              helper="Plain text. Use {{ and }} for a literal brace."
+              rows={10}
+              value={draft.body}
+              error={errors.body}
+              onChange={(event) => {
+                setDraft({ body: event.target.value });
+              }}
+            />
+            <PlaceholderList names={BODY_PLACEHOLDERS} />
+            <div className={styles.actions}>
+              <Button
+                variant="outline-neutral"
+                size="small"
+                busy={preview.isPending}
+                busyLabel="Rendering…"
+                onClick={runPreview}
+              >
+                Preview
+              </Button>
+              <Button
+                variant="ghost"
+                size="small"
+                disabled={!isStoredTemplate}
+                aria-label="Reset to default for this template"
+                onClick={resetTemplate}
+              >
+                Reset to default
+              </Button>
+            </div>
+            {previewProblem ? (
+              <Alert intent="warning" title="The preview could not run">
+                Try again shortly.
+              </Alert>
+            ) : null}
+            {preview.data ? (
+              <div className={styles.previewBox} data-testid="template-preview">
+                <p className={styles.subhead}>Preview with sample values</p>
+                <p className={styles.previewText}>
+                  <strong>{preview.data.subject}</strong>
+                </p>
+                <p className={styles.previewText}>{preview.data.body}</p>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+
+        <Card title="Sender">
+          <div className={styles.measure}>
+            <div className={styles.form}>
+              <TextField
+                id="settings-notify-sender-name"
+                label="Sender name"
+                optional
+                autoComplete="off"
+                value={form.senderName}
+                error={errors.senderName ?? nameRuleError(form.senderName)}
+                onChange={(event) => {
+                  change({ senderName: event.target.value });
+                }}
+              />
+              <TextField
+                id="settings-notify-sender-address"
+                label="Sender address"
+                type="email"
+                optional
+                autoComplete="off"
+                value={form.senderAddress}
+                error={errors.senderAddress}
+                onChange={(event) => {
+                  change({ senderAddress: event.target.value });
+                }}
+              />
+              <div className={styles.fieldMeta}>
+                <span>
+                  Default:{" "}
+                  <span className={styles.ident}>
+                    {defaultAddress ?? "the mail server's address"}
+                  </span>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="small"
+                  disabled={!storedFor("sender")}
+                  aria-label="Reset to default for sender"
+                  onClick={() => {
+                    resetField(["sender"], "Sender reset to default.");
+                  }}
+                >
+                  Reset to default
+                </Button>
+              </div>
+            </div>
+            <div className={styles.actions}>
+              <Button
+                variant="outline-neutral"
+                size="small"
+                onClick={() => {
+                  setTestOpen(true);
+                }}
+              >
+                Send test email
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Delivery retries">
+          <div className={styles.form}>
+            <TextField
+              id="settings-notify-delays"
+              label="Retry delays (seconds)"
+              helper={
+                delaysParsed
+                  ? `Wait after each failed attempt: ${echo(delaysParsed)}. The last delay repeats.`
+                  : "Seconds, separated by commas."
+              }
+              autoComplete="off"
+              value={form.delays}
+              error={errors.delays}
+              onChange={(event) => {
+                change({ delays: event.target.value });
+              }}
+            />
+            <TextField
+              id="settings-notify-attempts"
+              label="Maximum attempts"
+              inputMode="numeric"
+              autoComplete="off"
+              value={form.attempts}
+              error={errors.attempts}
+              onChange={(event) => {
+                change({ attempts: event.target.value });
               }}
             />
             <div className={styles.fieldMeta}>
               <span>
-                Default:{" "}
-                <span className={styles.ident}>
-                  {defaultAddress ?? "the mail server's address"}
-                </span>
+                Default: {echo(defaultDelays)}, up to {String(defaultAttempts)}{" "}
+                attempts
               </span>
               <Button
                 variant="ghost"
                 size="small"
-                disabled={!storedFor("sender")}
-                aria-label="Reset to default for sender"
+                disabled={
+                  !storedFor("retry_schedule_s") && !storedFor("max_attempts")
+                }
+                aria-label="Reset to default for retries"
                 onClick={() => {
-                  resetField(["sender"], "Sender reset to default.");
+                  resetField(
+                    ["retry_schedule_s", "max_attempts"],
+                    "Retries reset to default.",
+                  );
                 }}
               >
                 Reset to default
               </Button>
             </div>
           </div>
-          <div className={styles.actions}>
-            <Button
-              variant="outline-neutral"
-              size="small"
-              onClick={() => {
-                setTestOpen(true);
-              }}
-            >
-              Send test email
-            </Button>
-          </div>
-        </div>
-      </Card>
+        </Card>
 
-      <Card title="Delivery retries">
-        <div className={styles.form}>
-          <TextField
-            id="settings-notify-delays"
-            label="Retry delays (seconds)"
-            helper={
-              delaysParsed
-                ? `Wait after each failed attempt: ${echo(delaysParsed)}. The last delay repeats.`
-                : "Seconds, separated by commas."
-            }
-            autoComplete="off"
-            value={form.delays}
-            error={errors.delays}
-            onChange={(event) => {
-              change({ delays: event.target.value });
-            }}
-          />
-          <TextField
-            id="settings-notify-attempts"
-            label="Maximum attempts"
-            inputMode="numeric"
-            autoComplete="off"
-            value={form.attempts}
-            error={errors.attempts}
-            onChange={(event) => {
-              change({ attempts: event.target.value });
-            }}
-          />
-          <div className={styles.fieldMeta}>
-            <span>
-              Default: {echo(defaultDelays)}, up to {String(defaultAttempts)}{" "}
-              attempts
-            </span>
-            <Button
-              variant="ghost"
-              size="small"
-              disabled={
-                !storedFor("retry_schedule_s") && !storedFor("max_attempts")
-              }
-              aria-label="Reset to default for retries"
-              onClick={() => {
-                resetField(
-                  ["retry_schedule_s", "max_attempts"],
-                  "Retries reset to default.",
-                );
+        <Card title="Sunset reminders">
+          <div className={styles.form}>
+            <TextField
+              id="settings-notify-leads"
+              label="Reminder lead times (days before sunset)"
+              helper="Each pinned card is reminded once per lead time, for example 30, 7."
+              autoComplete="off"
+              value={form.leads}
+              error={errors.leads}
+              onChange={(event) => {
+                change({ leads: event.target.value });
               }}
-            >
-              Reset to default
-            </Button>
+            />
+            <div className={styles.fieldMeta}>
+              <span>Default: {defaultLeads.join(", ")} days</span>
+              <Button
+                variant="ghost"
+                size="small"
+                disabled={!storedFor("sunset_lead_days")}
+                aria-label="Reset to default for sunset reminders"
+                onClick={() => {
+                  resetField(
+                    ["sunset_lead_days"],
+                    "Reminders reset to default.",
+                  );
+                }}
+              >
+                Reset to default
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      <Card title="Sunset reminders">
-        <div className={styles.form}>
-          <TextField
-            id="settings-notify-leads"
-            label="Reminder lead times (days before sunset)"
-            helper="Each pinned card is reminded once per lead time, for example 30, 7."
-            autoComplete="off"
-            value={form.leads}
-            error={errors.leads}
-            onChange={(event) => {
-              change({ leads: event.target.value });
-            }}
-          />
-          <div className={styles.fieldMeta}>
-            <span>Default: {defaultLeads.join(", ")} days</span>
-            <Button
-              variant="ghost"
-              size="small"
-              disabled={!storedFor("sunset_lead_days")}
-              aria-label="Reset to default for sunset reminders"
-              onClick={() => {
-                resetField(["sunset_lead_days"], "Reminders reset to default.");
+        <Card title="Webhook security">
+          <div className={styles.form}>
+            <div className={styles.fieldMeta}>
+              <span>HTTPS only</span>
+              <Badge intent="success">Enforced</Badge>
+            </div>
+            {hostsList.length === 0 ? (
+              <Alert intent="warning" title="No webhook host is allowed">
+                No webhook host is allowed, so card owners cannot add webhooks
+                and none are sent.
+              </Alert>
+            ) : null}
+            <TextareaField
+              id="settings-notify-hosts"
+              label="Allowed webhook hosts"
+              helper="Webhooks are sent only to these hosts, one per line (hooks.example.com or *.example.com)."
+              rows={4}
+              value={form.hosts}
+              error={errors.hosts}
+              placeholder={"hooks.example.com\n*.example.org"}
+              onChange={(event) => {
+                change({ hosts: event.target.value });
               }}
-            >
-              Reset to default
-            </Button>
+            />
+            <div className={styles.fieldMeta}>
+              <span>
+                {hostsList.length === 0
+                  ? "Default: no host is allowed"
+                  : `${String(hostsList.length)} ${hostsList.length === 1 ? "host" : "hosts"} listed. One per line; *. matches every subdomain.`}
+              </span>
+              <Button
+                variant="ghost"
+                size="small"
+                disabled={!storedFor("webhook_allowed_hosts")}
+                aria-label="Reset to default for allowed hosts"
+                onClick={() => {
+                  resetField(
+                    ["webhook_allowed_hosts"],
+                    "Allowed hosts reset to default.",
+                  );
+                }}
+              >
+                Reset to default
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      <Card title="Webhook security">
-        <div className={styles.form}>
-          <div className={styles.fieldMeta}>
-            <span>HTTPS only</span>
-            <Badge intent="success">Enforced</Badge>
-          </div>
-          {hostsList.length === 0 ? (
-            <Alert intent="warning" title="No webhook host is allowed">
-              No webhook host is allowed, so card owners cannot add webhooks and
-              none are sent.
-            </Alert>
-          ) : null}
-          <TextareaField
-            id="settings-notify-hosts"
-            label="Allowed webhook hosts"
-            helper="Webhooks are sent only to these hosts, one per line (hooks.example.com or *.example.com)."
-            rows={4}
-            value={form.hosts}
-            error={errors.hosts}
-            placeholder={"hooks.example.com\n*.example.org"}
-            onChange={(event) => {
-              change({ hosts: event.target.value });
-            }}
-          />
-          <div className={styles.fieldMeta}>
-            <span>
-              {hostsList.length === 0
-                ? "Default: no host is allowed"
-                : `${String(hostsList.length)} ${hostsList.length === 1 ? "host" : "hosts"} listed. One per line; *. matches every subdomain.`}
-            </span>
-            <Button
-              variant="ghost"
-              size="small"
-              disabled={!storedFor("webhook_allowed_hosts")}
-              aria-label="Reset to default for allowed hosts"
-              onClick={() => {
-                resetField(
-                  ["webhook_allowed_hosts"],
-                  "Allowed hosts reset to default.",
-                );
-              }}
-            >
-              Reset to default
-            </Button>
-          </div>
+        <div className={styles.actions}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="small"
+            busy={save.isPending}
+            busyLabel="Saving…"
+          >
+            Save notification settings
+          </Button>
         </div>
-      </Card>
-
-      <div className={styles.actions}>
-        <Button
-          type="submit"
-          variant="primary"
-          size="small"
-          busy={save.isPending}
-          busyLabel="Saving…"
-        >
-          Save notification settings
-        </Button>
-      </div>
+      </form>
       <SendTestEmailDialog open={testOpen} onOpenChange={setTestOpen} />
-    </form>
+    </>
   );
 }
 

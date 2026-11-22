@@ -123,7 +123,8 @@ if part checks; then
     identity/src contracts/src validation/src audit/src mail/src \
     gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
     scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
-    scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py
+    scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py \
+    scripts/ci_changes.py
 
   step "lint-imports"
   uv run lint-imports

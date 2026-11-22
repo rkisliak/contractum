@@ -32,7 +32,7 @@ changed).
 | `sdk` (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor. `sdk-ok` is one aggregate result |
 | `sdk-release` (`sdk-release.yml`) | pull request that touches `clients/python/**` or the workflow; push of an `contractum-v*` tag; manual | `build-and-smoke`, `github-release`, `image` | Every run builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files, writes `SHA256SUMS`, builds the CLI image and runs an offline smoke on it. Only an `contractum-v*` tag runs `github-release` and `image`, which publish |
 | `release` (`release.yml`) | push of a `v*` tag; manual on such a tag | `version`, `image (<image>)` | Checks that the tag equals `appVersion` in `deploy/helm/contractum/Chart.yaml`, then builds the seven server images without cache and pushes them to `ghcr.io/<owner>/contractum/<image>:<version>` with SBOM and provenance attestations |
-| `docs` (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only on a push to `main` with `DOCS_PAGES_ENABLED` set to `true` |
+| `docs` (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only from `main` (a push, or a manual run on `main`) with `DOCS_PAGES_ENABLED` set to `true` |
 | `docs-links-weekly` (`docs-links-weekly.yml`) | Mondays 05:17 UTC, manual | `external-links` | lychee over the external links of every Markdown file. It never runs on pull requests, so a remote site that is down never blocks a merge |
 
 The nightly `e2e-nightly` and `dast-nightly` runs skip a scheduled run when the head of `main`
@@ -102,7 +102,7 @@ settings, and check that it is linked to this repository.
 | `SONAR_ENABLED` | variable | `security.yml` `sonarqube` | `true` turns the SonarQube Cloud job on. Unset: the job is skipped |
 | `SONAR_ORGANIZATION`, `SONAR_PROJECT_KEY` | variables | `security.yml` `sonarqube` | The SonarQube Cloud organization and project keys |
 | `SONAR_TOKEN` | secret | `security.yml` `sonarqube` | The SonarQube Cloud token. The only repository secret any workflow reads |
-| `DOCS_PAGES_ENABLED` | variable | `docs.yml` `pages-deploy` | `true` deploys the docs site to GitHub Pages on every push to `main` |
+| `DOCS_PAGES_ENABLED` | variable | `docs.yml` `pages-deploy` | `true` deploys the docs site to GitHub Pages on every push to `main` and on a manual run of `docs` on `main` |
 
 ### Docs site and GitHub Pages
 

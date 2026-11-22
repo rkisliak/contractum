@@ -148,7 +148,26 @@ def _reject_constant(name: str) -> Any:
 
 
 _JSON_TOKEN = re.compile(r'["\[\]{}]')
-_JSON_STRING_END = re.compile(r'[^"\\]*(?:\\.[^"\\]*)*"', re.DOTALL)
+
+
+def _string_end(text: str, start: int) -> int | None:
+    """The index just past the closing quote of the JSON string whose body starts at ``start``.
+
+    A plain ``str.find`` walk with no regular expression. The backslash search only moves forward
+    and the quote search runs again only once an escape has stepped past the quote it found, so
+    every character is looked at a bounded number of times and the scan is linear whatever the
+    input. A backslash escapes exactly the next character. None when the string is not terminated.
+    """
+    position = start
+    quote = text.find('"', position)
+    while quote != -1:
+        backslash = text.find("\\", position, quote)
+        if backslash == -1:
+            return quote + 1
+        position = backslash + 2
+        if position > quote:
+            quote = text.find('"', position)
+    return None
 
 
 def _check_json_depth(text: str) -> None:
@@ -161,10 +180,10 @@ def _check_json_depth(text: str) -> None:
     while (match := _JSON_TOKEN.search(text, position)) is not None:
         char = match.group()
         if char == '"':
-            end = _JSON_STRING_END.match(text, match.end())
+            end = _string_end(text, match.end())
             if end is None:
                 return
-            position = end.end()
+            position = end
             continue
         if char in "[{":
             depth += 1

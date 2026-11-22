@@ -6,11 +6,10 @@ happened.
 
 What the workflows publish:
 
-- `release.yml` publishes the seven server images and the Helm chart to GitHub Container
-  Registry and creates the platform's tag and GitHub Release, but only when run by hand on `main`
-  (see [Releasing](#releasing)).
-- `sdk-release.yml` publishes the SDK and CLI, but only on an `contractum-v*` tag (see
-  [The SDK release](#the-sdk-release)).
+- `release.yml` publishes the seven server images, the Helm chart and the CLI image to GitHub
+  Container Registry and creates the platform's tag and GitHub Release with the Python SDK wheel
+  and sdist attached, but only when run by hand on `main` (see [Releasing](#releasing)). It is
+  the only workflow that releases anything.
 - `docs.yml` deploys the docs site to GitHub Pages, but only on a push to `main` when the
   repository variable `DOCS_PAGES_ENABLED` is `true`.
 - Every other workflow only builds, tests and scans. Pull requests and pushes to `main` build the
@@ -18,8 +17,7 @@ What the workflows publish:
 
 The only repository secret any workflow reads is `SONAR_TOKEN`, in the inactive `sonarqube` job.
 A few jobs use the automatic `GITHUB_TOKEN`: the server release (to read the gate's workflow
-runs, push the images, the chart and their attestations, and create the tag and release), the SDK
-release (to create the release and push the CLI image), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
+runs, push the images, the chart and their attestations, and create the tag and release), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
 `e2e-nightly` and `dast-nightly` (to find the last green run and skip a nightly run when nothing
 changed).
 
@@ -31,9 +29,8 @@ changed).
 | Security (`security.yml`) | pull request, push to `main`, daily 04:23 UTC, manual | `trivy-fs-report`, `trivy-fs-gate`, `trivy-image (<image>)`, `dependency-review`, `codeql (<language>)`, `gitleaks`, `pip-audit`, `pnpm-audit`, `sonarqube` | The scanners in [Security scanners](#security-scanners). `dependency-review` runs on pull requests only. `sonarqube` is inactive until `SONAR_ENABLED` is `true` |
 | E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`) | `gate`, `checks`, `ui-static`, `ui-e2e (<part>)`, `py-e2e`, `operation-coverage` | `CI_E2E=1 bash scripts/ci.sh`, or the full gate when `full` is ticked, as parallel jobs, one per part of the script (`CI_PART`): the checks, the UI static checks, the Playwright UI tests on one cold stack per shard or volume project, and the Python end-to-end tests on their own cold stack. `operation-coverage` runs under the full gate only |
 | DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
-| SDK (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor. `sdk-ok` is one aggregate result |
-| SDK Release (`sdk-release.yml`) | pull request that touches `clients/python/**` or the workflow; push of an `contractum-v*` tag; manual | `build-and-smoke`, `github-release`, `image` | Every run builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files, writes `SHA256SUMS`, builds the CLI image and runs an offline smoke on it. Only an `contractum-v*` tag runs `github-release` and `image`, which publish |
-| Release (`release.yml`) | manual on `main` only (input `mode`: `pre-release` or `promote`) | `plan`, `image (<image>)`, `chart`, `release` | Computes the next platform version from the commits, checks that the commit passed CI, E2E Nightly and DAST Nightly, builds the seven server images without cache, packages the Helm chart, pushes both to `ghcr.io/<owner>` with attestations, then creates the tag and the GitHub Release. See [Releasing](#releasing) |
+| SDK (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-package`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor; `sdk-package`, the dry run of the SDK release: `clients/python/scripts/build_release.sh 0.0.0rc1` builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files and writes `SHA256SUMS`, then the CLI image is built and runs an offline smoke. Nothing is published. `sdk-ok` is one aggregate result |
+| Release (`release.yml`) | manual on `main` only (input `mode`: `pre-release` or `promote`) | `plan`, `image (<image>)`, `sdk`, `cli-image`, `chart`, `release` | Computes the next platform version from the commits, checks that the commit passed CI, E2E Nightly and DAST Nightly, builds the seven server images without cache, the SDK wheel and sdist and the CLI image with the same version, packages the Helm chart, pushes the images and the chart to `ghcr.io/<owner>` with attestations, then creates the tag and the GitHub Release with the chart and the SDK files attached. See [Releasing](#releasing) |
 | Documentation (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only from `main` (a push, or a manual run on `main`) with `DOCS_PAGES_ENABLED` set to `true` |
 | Docs Links Weekly (`docs-links-weekly.yml`) | Mondays 05:17 UTC, manual | `external-links` | lychee over the external links of every Markdown file. It never runs on pull requests, so a remote site that is down never blocks a merge |
 
@@ -62,29 +59,15 @@ equals the head of the last green run. A manual run always runs.
 - `tests/repo/test_ci_changes.py` checks the filter list, the classification, the `ci-ok` rules
   and the workflow wiring.
 
-### The SDK release
-
-Push a tag `contractum-vX.Y.Z` that equals the project version in `clients/python/pyproject.toml` (for
-example `contractum-v0.1.0` for version 0.1.0). The run fails on a mismatch. On the tag:
-
-1. `build-and-smoke` builds and tests the files, as on a pull request.
-2. `github-release` creates the GitHub Release of the tag with the GitHub CLI. It carries the
-   wheel, the sdist and `SHA256SUMS`, checked against the files `build-and-smoke` tested. It adds
-   GitHub artifact attestations (build provenance) to every release. A version with `a`, `b`,
-   `rc` or `dev` in it is marked as a pre-release. An SDK release is never marked Latest: that
-   marker belongs to the server platform release.
-3. `image` builds the CLI image and pushes it to `ghcr.io/<owner>/contractum-cli`, tagged with the
-   version and `latest`. This job is the only one that holds `packages: write`.
-
-Nothing goes to a package index. Users install the wheel from its release URL; see the
-[SDK and CLI guide](../user/sdk-cli.md).
-
 ### Releasing
 
-The server platform has one version for all seven images (identity, contracts, validation, audit,
-mail, api-docs, ui) and the Helm chart. The SDK and CLI keep their own `contractum-vX.Y.Z`
-releases (see [The SDK release](#the-sdk-release)). Nobody types a version and no commit bumps
-one: the Release workflow computes it and injects it at build and package time.
+The platform has one version for all seven server images (identity, contracts, validation,
+audit, mail, api-docs, ui), the Helm chart and the Python SDK and CLI (`clients/python`, package
+`contractum`: the wheel, the sdist and the CLI image). Nobody types a version and no commit bumps
+one: the Release workflow computes it and injects it at build and package time. The committed
+versions are placeholders (`0.0.0.dev0` in `clients/python/pyproject.toml`, like the chart's). The
+SDK takes the PEP 440 form of the version: `1.1.0rc1` for `v1.1.0-rc.1`, `1.1.0` for `v1.1.0`.
+There is no other release path: no tag push, no separate SDK release.
 
 **Run a release.** Open Actions, **Release**, **Run workflow**, keep the branch `main` and pick a
 mode:
@@ -130,13 +113,26 @@ is published:
 3. `chart` installs a pinned Helm release (checked against its sha256), runs
    `helm package --version <version> --app-version <version>` and pushes the chart to
    `oci://ghcr.io/<owner>/charts/contractum`. The chart archive gets an attestation too.
-4. `release` creates the tag `v<version>` on the released commit and its GitHub Release with
-   the GitHub CLI: the notes, the chart archive, marked as a pre-release for `-rc.N` and as
-   Latest for a stable version.
+4. `sdk` (in parallel with `image`) runs `clients/python/scripts/build_release.sh <python-version>`
+   on the released commit: it sets the version with `uv version` (never committed), checks that
+   the lock changed only the project's own version line, builds the wheel and the sdist, installs
+   each on Python 3.11 and 3.14 and checks that `contractum --version` prints
+   `contractum <python-version>`, checks the Apache-2.0 licence files and writes `SHA256SUMS`.
+   `actions/attest` attests both files. No Actions cache is used.
+5. `cli-image` sets the same version, builds the CLI image (`clients/python/Dockerfile`, build
+   argument `VERSION`) without cache, checks `contractum --version` and the offline fixture smoke
+   in it, then pushes `ghcr.io/<owner>/contractum-cli:<version>` with an SBOM, SLSA provenance and
+   an attestation. A stable release also tags it `latest`; a release candidate never does.
+6. `release` creates the tag `v<version>` on the released commit and its GitHub Release with
+   the GitHub CLI: the notes, the chart archive, the wheel, the sdist and `SHA256SUMS` of those
+   files, marked as a pre-release for `-rc.N` and as Latest for a stable version. The notes say
+   how to install the CLI from the wheel's release URL (`uv tool install`, `pip install`) and name
+   the CLI image.
 
-Permissions are per job: `plan` reads the repository and the workflow runs, `image` and `chart`
-hold `packages: write`, `id-token: write` and `attestations: write`, and only `release` holds
-`contents: write`. The tag the workflow creates triggers no other workflow.
+Permissions are per job: `plan` reads the repository and the workflow runs, `image`, `chart` and
+`cli-image` hold `packages: write`, `id-token: write` and `attestations: write`, `sdk` holds only
+`id-token: write` and `attestations: write`, and only `release` holds `contents: write`. The tag
+the workflow creates triggers no other workflow.
 
 **Verify a release.**
 
@@ -144,10 +140,13 @@ hold `packages: write`, `id-token: write` and `attestations: write`, and only `r
 gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum
 gh release download v<version> --repo <owner>/contractum --pattern 'contractum-*.tgz'
 gh attestation verify contractum-<version>.tgz --repo <owner>/contractum
+gh release download v<version> --repo <owner>/contractum --pattern '*.whl'
+gh attestation verify contractum-<python-version>-py3-none-any.whl --repo <owner>/contractum
+gh attestation verify oci://ghcr.io/<owner>/contractum-cli:<version> --repo <owner>/contractum
 ```
 
 A container package that GitHub creates on the first push is private. Make each
-`contractum/<image>` package and the `charts/contractum` package public (or give the cluster a
+`contractum/<image>` package, the `contractum-cli` package and the `charts/contractum` package public (or give the cluster a
 pull Secret) under the package's settings, and check that it is linked to this repository.
 
 ### The nightly end-to-end run
@@ -256,7 +255,7 @@ secret scanning, push protection and dependency review are free.
 Settings, Actions, General:
 
 - Workflow permissions: read repository contents. Do not allow Actions to create or approve pull
-  requests. Jobs that need more (the server and SDK releases, the Pages deploy) ask for it in
+  requests. Jobs that need more (the release jobs, the Pages deploy) ask for it in
   their own `permissions:` block.
 - Fork pull requests: require approval for first-time contributors.
 - Allowed actions: GitHub-owned actions, plus exactly `astral-sh/setup-uv`, `pnpm/action-setup`,

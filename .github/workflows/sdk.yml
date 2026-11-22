@@ -264,11 +264,70 @@ jobs:
         working-directory: .
         run: docker compose -f compose.yaml -f compose.test.yaml --profile test down -v --remove-orphans
 
+  # Dry run of the SDK half of the platform release (release.yml, jobs sdk and cli-image): build
+  # the wheel and sdist with a release-shaped version through the same script, install each on
+  # Python 3.11 and 3.14, check the Apache-2.0 licence files, write SHA256SUMS, build the CLI image
+  # and run the frozen offline fixture smoke on it. Nothing is published from this workflow.
+  sdk-package:
+    name: sdk-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: clients/python/uv.lock
+      - name: Build and check the release files (version 0.0.0rc1)
+        run: bash scripts/build_release.sh 0.0.0rc1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the CLI image (not pushed)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: clients/python
+          file: clients/python/Dockerfile
+          push: false
+          load: true
+          build-args: VERSION=0.0.0-rc.1
+          tags: contractum-cli:test
+          cache-from: type=gha,scope=img-contractum-cli
+          cache-to: type=gha,mode=max,scope=img-contractum-cli
+      - name: Image reports the release version
+        run: |
+          out=$(docker run --rm contractum-cli:test --version)
+          echo "$out"
+          [ "$out" = "contractum 0.0.0rc1" ]
+      # The fixtures carry a lock whose hash covers the pulled contract, so --frozen --offline
+      # needs no server and no credential: conforming data exits 0, the bad file exits 1.
+      - name: Image smoke, conforming data exits 0
+        run: |
+          docker run --rm -v "$PWD/tests/fixtures/image:/work:ro" contractum-cli:test \
+            test orders.csv --contract payments.orders --lock contractum.lock --frozen --offline
+      - name: Image smoke, non-conforming data exits 1
+        run: |
+          set +e
+          docker run --rm -v "$PWD/tests/fixtures/image:/work:ro" contractum-cli:test \
+            test orders_bad.csv --contract payments.orders --lock contractum.lock --frozen --offline
+          code=$?
+          echo "exit code: $code"
+          [ "$code" -eq 1 ]
+
   sdk-ok:
     name: sdk-ok
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [sdk-lint, sdk-unit, sdk-os, sdk-lowest, sdk-latest, sdk-unit-coverage, sdk-integration]
+    needs:
+      - sdk-lint
+      - sdk-unit
+      - sdk-os
+      - sdk-lowest
+      - sdk-latest
+      - sdk-unit-coverage
+      - sdk-integration
+      - sdk-package
     if: always()
     # No checkout here, so clients/python (the workflow default) does not exist.
     defaults:

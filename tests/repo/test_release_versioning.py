@@ -157,6 +157,20 @@ def test_a_release_candidate_sorts_below_its_stable_version() -> None:
     assert nv.latest_stable([ver("1.0.0-rc.1")]) is None
 
 
+@pytest.mark.parametrize(
+    ("text", "python"),
+    [("1.2.0", "1.2.0"), ("1.2.0-rc.1", "1.2.0rc1"), ("10.0.3-rc.12", "10.0.3rc12")],
+)
+def test_the_sdk_takes_the_pep_440_form_of_the_version(text: str, python: str) -> None:
+    assert ver(text).python == python
+    assert cl.python_version(text) == python
+
+
+def test_the_notes_refuse_a_version_that_is_not_a_release_version() -> None:
+    with pytest.raises(ValueError, match="not a release version"):
+        cl.python_version("1.2")
+
+
 def test_the_candidate_number_is_one_above_the_highest_of_that_version() -> None:
     tags = [ver("1.3.0-rc.1"), ver("1.3.0-rc.3"), ver("1.4.0-rc.7"), ver("1.2.0")]
     assert nv.next_candidate(ver("1.3.0"), tags).text == "1.3.0-rc.4"
@@ -168,6 +182,7 @@ def test_pre_release_plans_the_next_candidate_of_the_head() -> None:
     plan = nv.plan_pre_release(tags, "h" * 40, [commit("feat: a")])
     assert plan.outputs() == {
         "version": "1.3.0-rc.2",
+        "python-version": "1.3.0rc2",
         "tag": "v1.3.0-rc.2",
         "sha": "h" * 40,
         "previous": "v1.2.0",
@@ -196,6 +211,7 @@ def test_promote_releases_the_commit_of_the_newest_candidate() -> None:
     plan = nv.plan_promote(tags)
     assert plan.outputs() == {
         "version": "1.3.0",
+        "python-version": "1.3.0",
         "tag": "v1.3.0",
         "sha": "2" * 40,
         "previous": "v1.2.0",
@@ -266,6 +282,22 @@ def test_the_notes_name_every_image_the_chart_and_the_verification() -> None:
     assert "oci://ghcr.io/acme/charts/contractum --version 1.3.0" in text
     assert "gh attestation verify oci://ghcr.io/acme/contractum/identity:1.3.0" in text
     assert "https://github.com/Acme/contractum/pull/1" in text
+    wheel = "https://github.com/Acme/contractum/releases/download/v1.3.0/contractum-1.3.0-py3-none-any.whl"
+    assert f"uv tool install {wheel}" in text
+    assert f"pip install {wheel}" in text
+    assert "`ghcr.io/acme/contractum-cli:1.3.0`" in text
+    assert "gh attestation verify contractum-1.3.0-py3-none-any.whl" in text
+    assert "sha256sum -c SHA256SUMS --ignore-missing" in text
+
+
+def test_the_notes_of_a_candidate_name_its_pep_440_wheel_and_its_cli_image() -> None:
+    text = cl.notes("1.3.0-rc.2", [], "acme/contractum", "https://github.example", None)
+    assert (
+        "https://github.example/acme/contractum/releases/download/v1.3.0-rc.2/"
+        "contractum-1.3.0rc2-py3-none-any.whl"
+    ) in text
+    assert "`contractum-1.3.0rc2.tar.gz`" in text
+    assert "`ghcr.io/acme/contractum-cli:1.3.0-rc.2`" in text
 
 
 # --- end to end against a git repository ----------------------------------------------------------
@@ -332,12 +364,13 @@ def test_the_scripts_walk_a_release_from_candidate_to_stable(repo: Path, tmp_pat
     )
     assert promoted == {
         "version": "1.0.0",
+        "python-version": "1.0.0",
         "tag": "v1.0.0",
         "sha": first["sha"],
         "previous": "",
         "prerelease": "false",
     }
-    assert output.read_text(encoding="utf-8").splitlines()[1] == "tag=v1.0.0"
+    assert "tag=v1.0.0" in output.read_text(encoding="utf-8").splitlines()
     _git(repo, "tag", "v1.0.0", promoted["sha"])  # lightweight, as gh release create makes it
     assert "already promoted" in _run("next_version.py", repo, "--mode", "promote").stderr
 
@@ -367,3 +400,4 @@ def test_the_scripts_walk_a_release_from_candidate_to_stable(repo: Path, tmp_pat
     assert "**api:** A fix ([#2](https://github.com/acme/contractum/pull/2))" in text
     assert "First feature" not in text  # released in v1.0.0
     assert "ghcr.io/acme/contractum/ui:1.0.1-rc.1" in text
+    assert "/releases/download/v1.0.1-rc.1/contractum-1.0.1rc1-py3-none-any.whl" in text

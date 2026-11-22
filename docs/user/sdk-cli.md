@@ -2,7 +2,7 @@
 
 For data engineers and pipeline owners who fetch published Contractum contracts and test their own data against them, from the command line, from Python, from pytest or from CI. The client is read-only: it never writes to Contractum.
 
-The package is `contractum` (source in `clients/python`, licensed under the Apache License 2.0, see `clients/python/LICENSE`; the Contractum server keeps its own licence). It is published on the **GitHub Releases page of the Contractum repository** (tags `contractum-vX.Y.Z`), not on a package index. **No `contractum-v*` release has been published yet**: until the first tag is pushed, install from a checkout (`uv tool install ./clients/python`) or build the image yourself (see "Install"). The repository is `rkisliak/contractum`. In the commands below, `0.1.0` stands for the release you pin.
+The package is `contractum` (source in `clients/python`, licensed under the Apache License 2.0, see `clients/python/LICENSE`; the Contractum server keeps its own licence). It ships with every **platform release** on the GitHub Releases page of the Contractum repository (tag `vX.Y.Z`, or `vX.Y.Z-rc.N` for a release candidate), with the same version as the server, not on a package index. **No platform release has been published yet**: until the first one, install from a checkout (`uv tool install ./clients/python`, which reports the placeholder version `0.0.0.dev0`) or build the image yourself (see "Install"). The repository is `rkisliak/contractum`. In the commands below, `1.0.0` stands for the release you pin.
 
 For every command and option, see the generated [CLI reference](reference/cli.md). For every public Python name, see the [SDK API reference](reference/sdk-api.md).
 
@@ -12,34 +12,36 @@ Contents: [Install](#install) | [Sign in](#sign-in) | [Configure](#configure) | 
 
 Python 3.11 or newer.
 
-Each release carries three files: the wheel `contractum-0.1.0-py3-none-any.whl`, the source archive `contractum-0.1.0.tar.gz` and `SHA256SUMS`. Install the wheel straight from its release URL, always naming the version (the URL is the pin):
+Each platform release `vX.Y.Z` carries, next to the Helm chart, the wheel `contractum-1.0.0-py3-none-any.whl`, the source archive `contractum-1.0.0.tar.gz` and `SHA256SUMS`. The package version is the platform version in PEP 440 form: release `v1.1.0` carries `contractum-1.1.0-py3-none-any.whl` and the release candidate `v1.1.0-rc.1` carries `contractum-1.1.0rc1-py3-none-any.whl`. Install the wheel straight from its release URL, always naming the version (the URL is the pin):
 
 ```bash
-WHEEL=https://github.com/rkisliak/contractum/releases/download/contractum-v0.1.0/contractum-0.1.0-py3-none-any.whl
+WHEEL=https://github.com/rkisliak/contractum/releases/download/v1.0.0/contractum-1.0.0-py3-none-any.whl
 uv tool install "$WHEEL"                  # a global command
-pipx install "$WHEEL"                     # the same, with pipx
+pip install "$WHEEL"                      # into the active environment
+pipx install "$WHEEL"                     # a global command, with pipx
 uvx --from "$WHEEL" contractum --help     # run once, nothing installed
 uv add "contractum @ $WHEEL"              # as a library in a project
 contractum --version
 ```
 
-`contractum --version` prints the client version on its first line (`contractum 0.1.0`). When a
+`contractum --version` prints the client version on its first line (`contractum 1.0.0`). When a
 server is configured (a profile, `--url` or `CONTRACTUM_URL`), a second line names the server's
 platform version (`server: 1.4.0`), read from the public `GET /api/v1/identity/version` with a
 3-second timeout. A server that does not answer reads `server: unavailable`; the command still
-exits 0. The SDK and CLI have their own version and releases (`contractum-vX.Y.Z`); the server
-platform has its own (`vX.Y.Z`).
+exits 0. The client and the server are released together with one version, so a client from
+release `v1.0.0` matches a server running `1.0.0`.
 
-**Check the download.** To verify the files before installing, download the wheel and `SHA256SUMS` from the same release and compare (on macOS use `shasum -a 256 -c`):
+**Check the download.** To verify the files before installing, download the wheel and `SHA256SUMS` from the same release and compare (on macOS use `shasum -a 256 -c`). With the GitHub CLI:
 
 ```bash
-curl -fsSLO "$WHEEL"
-curl -fsSLO https://github.com/rkisliak/contractum/releases/download/contractum-v0.1.0/SHA256SUMS
+gh release download v1.0.0 --pattern '*.whl' --pattern SHA256SUMS --repo rkisliak/contractum
 sha256sum -c SHA256SUMS --ignore-missing
-uv tool install ./contractum-0.1.0-py3-none-any.whl
+uv tool install ./contractum-1.0.0-py3-none-any.whl
 ```
 
-Every release also carries GitHub artifact attestations: `gh attestation verify contractum-0.1.0-py3-none-any.whl -R rkisliak/contractum` proves the file was built by the repository's release workflow.
+Without it, `curl -fsSLO "$WHEEL"` and `curl -fsSLO https://github.com/rkisliak/contractum/releases/download/v1.0.0/SHA256SUMS` fetch the same two files.
+
+Every release also carries GitHub artifact attestations: `gh attestation verify contractum-1.0.0-py3-none-any.whl -R rkisliak/contractum` proves the file was built by the repository's release workflow.
 
 Features that need a third-party package are extras. A missing extra is a clear error that names the one to install.
 
@@ -55,14 +57,14 @@ Features that need a third-party package are extras. A missing extra is a clear 
 uv tool install "contractum[delta] @ $WHEEL"
 ```
 
-**Docker image.** Each release also pushes a hardened, non-root image of the CLI (`clients/python/Dockerfile`, entrypoint `contractum`, working directory `/work`) to `ghcr.io/rkisliak/contractum-cli`, tagged with the version and `latest`; pin the version. It carries the `delta` and `sql` extras, not pandas or polars, and no credential: pass `CONTRACTUM_URL` and `CONTRACTUM_TOKEN` at run time. If the package is not public, `docker login ghcr.io` first. Before the first release, build it yourself with `docker build -t contractum:test clients/python`.
+**Docker image.** Each release also pushes a hardened, non-root image of the CLI (`clients/python/Dockerfile`, entrypoint `contractum`, working directory `/work`) to `ghcr.io/rkisliak/contractum-cli`, tagged with the platform version (`1.0.0`, or `1.1.0-rc.1` for a release candidate); a stable release also moves `latest`. Pin the version. It carries the `delta` and `sql` extras, not pandas or polars, and no credential: pass `CONTRACTUM_URL` and `CONTRACTUM_TOKEN` at run time. If the package is not public, `docker login ghcr.io` first. Before the first release, build it yourself with `docker build -t contractum:test clients/python`.
 
 ```bash
-docker run --rm ghcr.io/rkisliak/contractum-cli:0.1.0 --version
-docker run --rm -v "$PWD:/work:ro" ghcr.io/rkisliak/contractum-cli:0.1.0 test data/orders.parquet --contract payments.orders --frozen --offline
+docker run --rm ghcr.io/rkisliak/contractum-cli:1.0.0 --version
+docker run --rm -v "$PWD:/work:ro" ghcr.io/rkisliak/contractum-cli:1.0.0 test data/orders.parquet --contract payments.orders --frozen --offline
 ```
 
-The release workflow (`.github/workflows/sdk-release.yml`) builds and smoke-tests the wheel, the source archive and the image on every pull request. Only an `contractum-v*` tag creates the GitHub Release (with `SHA256SUMS` and attestations) and pushes the image; no tag has been pushed yet.
+The `sdk-package` job of `.github/workflows/sdk.yml` builds and smoke-tests the wheel, the source archive and the image on every pull request that touches the client. Only the platform release workflow (`.github/workflows/release.yml`) publishes them: it attaches the wheel, the source archive and `SHA256SUMS` to the GitHub Release, with attestations, and pushes the image. No release has been published yet.
 
 ## Sign in
 
@@ -291,7 +293,7 @@ contractum compare data/orders.parquet --contract payments.orders --json compare
 Installing the package registers a pytest plugin with no cost until you use it. Add the release wheel as a test dependency of the project, pinned by its URL:
 
 ```bash
-uv add --dev "contractum @ https://github.com/rkisliak/contractum/releases/download/contractum-v0.1.0/contractum-0.1.0-py3-none-any.whl"
+uv add --dev "contractum @ https://github.com/rkisliak/contractum/releases/download/v1.0.0/contractum-1.0.0-py3-none-any.whl"
 ```
 
 ```python
@@ -352,7 +354,7 @@ jobs:
         env:
           CONTRACTUM_URL: ${{ vars.CONTRACTUM_URL }}
           CONTRACTUM_TOKEN: ${{ secrets.CONTRACTUM_TOKEN }}
-          WHEEL: https://github.com/rkisliak/contractum/releases/download/contractum-v0.1.0/contractum-0.1.0-py3-none-any.whl
+          WHEEL: https://github.com/rkisliak/contractum/releases/download/v1.0.0/contractum-1.0.0-py3-none-any.whl
         run: uvx --from "$WHEEL" contractum test data/orders.parquet --contract payments.orders --junit report.xml --markdown summary.md
       - name: Show the summary
         if: always()
@@ -363,7 +365,7 @@ jobs:
 
 ```yaml
       - name: Test data against the pinned contract
-        run: docker run --rm -v "$PWD:/work:ro" ghcr.io/rkisliak/contractum-cli:0.1.0 test data/orders.parquet --contract payments.orders --frozen --offline
+        run: docker run --rm -v "$PWD:/work:ro" ghcr.io/rkisliak/contractum-cli:1.0.0 test data/orders.parquet --contract payments.orders --frozen --offline
 ```
 
 **GitLab CI:**
@@ -372,7 +374,7 @@ jobs:
 contract-test:
   image: python:3.13-slim
   variables:
-    WHEEL: https://github.com/rkisliak/contractum/releases/download/contractum-v0.1.0/contractum-0.1.0-py3-none-any.whl
+    WHEEL: https://github.com/rkisliak/contractum/releases/download/v1.0.0/contractum-1.0.0-py3-none-any.whl
   script:
     - pip install "$WHEEL"
     - contractum test data/orders.parquet --contract payments.orders --junit report.xml

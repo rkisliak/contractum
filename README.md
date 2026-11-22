@@ -148,8 +148,8 @@ deploy/helm/       Helm chart for Kubernetes
 tests/             cross-service repo, integration and end-to-end tests
 scripts/           CI, end-to-end and smoke scripts, OpenAPI export
 docs/              docs by audience: user/, admin/ and dev/ (the docs site source)
-.github/           workflows (ci, security, e2e-nightly, dast-nightly, sdk, sdk-release,
-                   docs, docs-links-weekly) and Dependabot config
+.github/           workflows (ci, security, e2e-nightly, dast-nightly, sdk, release, docs,
+                   docs-links-weekly) and Dependabot config
 compose.yaml       the whole platform for a local trial, development and tests
 run.sh, run.ps1    start and manage the local stack
 ```

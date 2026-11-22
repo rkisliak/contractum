@@ -32,7 +32,7 @@ finding. The rest report to GitHub code scanning for review.
 | Dependencies | Dependabot (security and version updates), GitHub dependency review, pip-audit, pnpm audit, Trivy |
 | Container images and config | Trivy scans of all service images and the CLI image, Dockerfiles, Compose files and the Helm chart |
 | Secrets | gitleaks over the full git history, GitHub secret scanning with push protection |
-| Supply chain | Every GitHub Action is pinned to a commit SHA. Scanners are official releases with verified checksums. SDK releases carry SHA-256 checksums and build provenance attestations |
+| Supply chain | Every GitHub Action is pinned to a commit SHA. Scanners are official releases with verified checksums. Releases carry SHA-256 checksums of the attached files and build provenance attestations for every image, the Helm chart and the SDK wheel and sdist |
 
 ## Tested against the running system
 

@@ -9,10 +9,14 @@ It needs Python 3.11 or newer.
 
 ## Install
 
-`contractum` is published on the GitHub Releases page of the Contractum repository (tags
-`contractum-vX.Y.Z`, each with the wheel, the source archive and `SHA256SUMS`), not on a package index.
-Install the wheel from its release URL, for example with `uv tool install` or `pipx install`. Until the
-first release, install from a checkout with `uv tool install ./clients/python`.
+`contractum` ships with every platform release on the GitHub Releases page of the Contractum
+repository (tag `vX.Y.Z`, or `vX.Y.Z-rc.N` for a release candidate), not on a package index. Each
+release carries the wheel, the source archive and `SHA256SUMS`, with the same version as the server
+(`1.1.0rc1` in PEP 440 form for `v1.1.0-rc.1`). Install the wheel from its release URL, for example
+with `uv tool install` or `pip install`, or download it with
+`gh release download vX.Y.Z --pattern '*.whl' --repo rkisliak/contractum`. Until the first release,
+install from a checkout with `uv tool install ./clients/python` (it reports the placeholder version
+`0.0.0.dev0`).
 
 ## Quickstart
 

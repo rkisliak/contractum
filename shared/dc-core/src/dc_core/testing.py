@@ -1,7 +1,8 @@
 """Shared pytest plugin: real Postgres 18, a database per test, an ASGI client.
 
 Loaded through the root ``conftest.py``. Integration tests need a running Docker daemon;
-unit tests never request these fixtures.
+unit tests never request these fixtures. ``release_library_caches`` keeps the session's heap
+from growing with every test (the root ``conftest.py`` calls it after each one).
 """
 
 from __future__ import annotations
@@ -75,6 +76,48 @@ def asgi_client() -> Callable[..., AbstractAsyncContextManager[httpx.AsyncClient
                 yield client
 
     return _make
+
+
+def release_library_caches() -> None:
+    """Release what process-wide library caches still hold of the apps and engines a test built.
+
+    A service process builds one app and one engine for its whole life, so these caches hold a
+    fixed set there. A test session builds new ones in almost every test, and three library caches
+    keep them reachable after the test has ended:
+
+    * FastAPI's dependency classification caches in ``fastapi.dependencies.models`` (up to 4096
+      callables each, keyed by the callable): every app's dependency closures, and through them
+      its session factory, its engine and the statements the engine compiled;
+    * every ORM mapper's compiled-statement cache (keyed by the dialect): every engine's dialect
+      and the INSERT and UPDATE statements compiled for it;
+    * the PostgreSQL dialect's reflection-query caches (``functools.lru_cache`` on its methods,
+      keyed by the dialect instance): the dialects of the Alembic runs.
+
+    Left alone they kept about 14,000 objects per test that starts the three services, so the
+    integration session grew to millions of objects, and a full garbage collection of that heap
+    held the GIL for up to 3.7 s inside requests that run under a deadline. Clearing a cache drops
+    only entries that the next call rebuilds; the code under test is unchanged. The root
+    ``conftest.py`` calls this after every test.
+    """
+    from fastapi.dependencies import models as fastapi_dependency_models
+    from sqlalchemy.dialects.postgresql.base import PGDialect
+    from sqlalchemy.orm import mapperlib
+
+    for value in vars(fastapi_dependency_models).values():
+        _cache_clear(value)
+    for registry in mapperlib._all_registries():
+        for mapper in registry.mappers:
+            mapper._compiled_cache.clear()
+    for klass in PGDialect.__mro__:
+        for value in vars(klass).values():
+            _cache_clear(value)
+
+
+def _cache_clear(value: object) -> None:
+    """Empty ``value`` if it is a ``functools`` cache (anything with a ``cache_clear``)."""
+    clear = getattr(value, "cache_clear", None)
+    if callable(clear):
+        clear()
 
 
 def _nats_container() -> DockerContainer:

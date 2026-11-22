@@ -7,8 +7,9 @@ variable ``DC_OP_TRACE`` names a file, every request a test sends through ``http
 one JSON line: method, path (no query string), status and the test node id. Never a header, token
 or body. With the variable unset the tracer is not installed and nothing changes.
 
-And it keeps the garbage the session has piled up out of every ``timing`` test's measurement
-(``_timing_test_gc_isolation``).
+And it keeps the session's heap small: after every test, library caches let go of the apps and
+engines that test built (``_release_library_caches``), and every ``timing`` test starts with the
+earlier tests' garbage collected and frozen out of its measurement (``_timing_test_gc_isolation``).
 """
 
 from __future__ import annotations
@@ -66,16 +67,34 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _timing_test_gc_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
-    """A ``timing`` test measures the code under test, not the session's garbage.
+def _release_library_caches() -> Iterator[None]:
+    """After every test, library caches let go of the apps and engines the test built.
 
-    One pytest process runs a whole suite, so a late test shares the heap with everything earlier
-    tests left behind. At the hostile-rule tests of the CI integration run that is about 4.3
-    million GC-tracked objects and 1.1 GB, 0.67 million of them uncollected garbage; a fresh
-    process holds 0.24 million. An allocation-heavy test then triggers a full collection of that
-    whole heap inside its measured window: 3.2 s with the GIL held on a GitHub runner, where the
-    same collection in a fresh process takes 0.09 s. The validation service keeps no objects per
-    run (none left after 330 runs in one app), so a deployed process does not grow such a heap.
+    Without this, FastAPI's and SQLAlchemy's process-wide caches kept about 14,000 objects of every
+    test that starts the services (``dc_core.testing.release_library_caches``). Halfway through the
+    CI integration run the pytest process then held 3.7 million objects, and a full garbage
+    collection of them took up to 3.7 s on a GitHub runner, longer than contracts' 3 s deadline for
+    a call to validation: a rule-set dry run answered 503 ``validation-unavailable`` where its test
+    expected 200.
+    """
+    # Imported here, not at the top: ``pytest_plugins`` must import dc_core.testing first, so that
+    # pytest can rewrite its asserts.
+    from dc_core.testing import release_library_caches
+
+    yield
+    release_library_caches()
+
+
+@pytest.fixture(autouse=True)
+def _timing_test_gc_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
+    """A ``timing`` test measures the code under test, not the garbage earlier tests left.
+
+    One pytest process runs a whole suite. ``_release_library_caches`` keeps the earlier tests'
+    apps and engines from staying reachable, but they are reference cycles that only a garbage
+    collection frees: an allocation-heavy test could still trigger a full collection of them
+    inside its measured window and count it against the code under test. The validation service
+    keeps no objects per run (none left after 330 runs in one app), so a deployed process has no
+    such heap.
 
     So before a ``timing`` test the garbage is collected and the surviving objects are frozen
     (``gc.freeze``: moved to the permanent generation, which collections skip); they are unfrozen

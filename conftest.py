@@ -6,12 +6,17 @@ variable ``DC_OP_TRACE`` names a file, every request a test sends through ``http
 (the only in-process transport the suites use, see ``dc_core.testing.asgi_client``) is recorded as
 one JSON line: method, path (no query string), status and the test node id. Never a header, token
 or body. With the variable unset the tracer is not installed and nothing changes.
+
+And it keeps the garbage the session has piled up out of every ``timing`` test's measurement
+(``_timing_test_gc_isolation``).
 """
 
 from __future__ import annotations
 
+import gc
 import json
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -58,3 +63,32 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_setup(item: pytest.Item) -> None:
     _current_test[0] = item.nodeid
+
+
+@pytest.fixture(autouse=True)
+def _timing_test_gc_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
+    """A ``timing`` test measures the code under test, not the session's garbage.
+
+    One pytest process runs a whole suite, so a late test shares the heap with everything earlier
+    tests left behind. At the hostile-rule tests of the CI integration run that is about 4.3
+    million GC-tracked objects and 1.1 GB, 0.67 million of them uncollected garbage; a fresh
+    process holds 0.24 million. An allocation-heavy test then triggers a full collection of that
+    whole heap inside its measured window: 3.2 s with the GIL held on a GitHub runner, where the
+    same collection in a fresh process takes 0.09 s. The validation service keeps no objects per
+    run (none left after 330 runs in one app), so a deployed process does not grow such a heap.
+
+    So before a ``timing`` test the garbage is collected and the surviving objects are frozen
+    (``gc.freeze``: moved to the permanent generation, which collections skip); they are unfrozen
+    afterwards. Autouse fixtures are set up before the test's own fixtures, so everything the test
+    builds (the apps, the sandbox, the documents) is collected as usual and the services' own GC
+    cost stays inside every measurement.
+    """
+    if request.node.get_closest_marker("timing") is None:
+        yield
+        return
+    gc.collect()
+    gc.freeze()
+    try:
+        yield
+    finally:
+        gc.unfreeze()

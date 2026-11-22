@@ -102,13 +102,15 @@ async def test_problem_error_carries_headers_and_request_id(asgi_client) -> None
 
 async def test_validation_error_has_pointers_and_never_echoes_input(asgi_client) -> None:  # type: ignore[no-untyped-def]
     async with asgi_client(_app()) as client:
+        # A number is not a string. Its text holds a ".", which is not a hex digit, so it never
+        # turns up by chance in the random request id.
         response = await client.post(
-            "/api/v1/probe/body", json={"name": 987654321, "extra": "S3CR3T"}
+            "/api/v1/probe/body", json={"name": 9876.54321, "extra": "S3CR3T"}
         )
         body = _assert_problem(response, 422, "validation-error")
     assert body["errors"][0]["pointer"] == "/body/name"
     assert "detail" in body["errors"][0]
-    assert "987654321" not in response.text
+    assert "9876.54321" not in response.text
     assert "S3CR3T" not in response.text
 
 

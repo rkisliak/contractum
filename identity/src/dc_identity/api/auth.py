@@ -112,6 +112,15 @@ DeliveryHeader = Annotated[
             "Send `cookie` to receive the refresh token as an HttpOnly cookie instead of in the "
             "response body, and to authorise the cookie as the refresh credential."
         ),
+        # The one accepted value as a parameter example: generated clients and scanners (OWASP ZAP
+        # fills a header from it) then send `cookie`, not an empty value that answers 422.
+        openapi_examples={
+            "cookie": {
+                "summary": "Cookie delivery",
+                "description": "Deliver the refresh token as an HttpOnly cookie.",
+                "value": "cookie",
+            }
+        },
     ),
 ]
 

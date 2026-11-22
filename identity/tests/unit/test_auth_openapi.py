@@ -75,6 +75,18 @@ def test_every_cookie_aware_operation_declares_the_delivery_header(
     assert _enum_values(param["schema"]) == {"cookie"}
 
 
+@pytest.mark.parametrize("name", ["login", "refresh", "logout"])
+def test_the_delivery_header_carries_its_only_value_as_the_example(
+    document: dict[str, Any], name: str
+) -> None:
+    # Scanners (OWASP ZAP) and generated clients fill a header from its parameter example; the
+    # `anyOf` schema alone gives them no type, so without it they send an empty value (a 422).
+    param = _param(_op(document, name), "X-Token-Delivery", "header")
+    assert param is not None
+    examples = param["examples"]
+    assert [example["value"] for example in examples.values()] == ["cookie"]
+
+
 @pytest.mark.parametrize("name", ["refresh", "logout"])
 def test_refresh_and_logout_declare_the_cookie_parameter(
     document: dict[str, Any], name: str

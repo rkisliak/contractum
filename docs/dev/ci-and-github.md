@@ -283,10 +283,13 @@ Tear the stack down afterwards:
 `docker compose -f compose.yaml -f compose.test.yaml --profile test down -v`.
 
 The ZAP API scan is an active scan. It sends attack traffic carrying the admin token to the test
-stack and creates and deletes data there. Both scans are paced with a ZAP rate limit rule at 40
-requests per second (`ZAP_REQUESTS_PER_SECOND`), below the gateway's API limit of 50 per second, so
-every probe reaches a service: a probe answered 429 tests nothing, and a 429 on one probe of a pair
-makes the boolean SQL injection rule (40018) report a false High. The active scan is capped below
+stack and creates and deletes data there. The scans are paced with a ZAP rate limit rule below the
+gateway's limits, so every probe reaches a service: a probe answered 429 tests nothing, and a 429
+on one probe of a pair makes the boolean SQL injection rule (40018) report a false High. The API
+scan runs in two passes over a split copy of the merged OpenAPI document: every route outside
+`/api/v1/identity/auth/` at 40 requests per second (`ZAP_REQUESTS_PER_SECOND`, limit 50), then the
+credential routes at 4 per second (`ZAP_AUTH_REQUESTS_PER_SECOND`, limit 5), each with its own
+access token. The active scan is capped below
 the 15 minute lifetime of the access token. ZAP runs last on purpose, because the scan feeds the
 login throttle.
 

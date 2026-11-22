@@ -24,8 +24,11 @@
 # rate limit rule for the `traefik` host. An unpaced active scan gets 429 for a large part of its
 # probes: those never reach a service, so the scan does not test them, and the boolean-based SQL
 # injection rule (40018) reports a finding whenever one probe of a pair gets the constant 429
-# problem and the other one reaches the service. Keep ZAP_REQUESTS_PER_SECOND below the gateway's
-# average.
+# problem and the other one reaches the service. The credential routes under
+# /api/v1/identity/auth/ sit behind the stricter rl-auth (5 per second, burst 10), so the API scan
+# runs in two passes over a split copy of the merged OpenAPI document: every other route at
+# ZAP_REQUESTS_PER_SECOND (40), then the credential routes at ZAP_AUTH_REQUESTS_PER_SECOND (4).
+# Keep both below their limiter's average.
 #
 # Reports (HTML for people, JSON for scripts/zap_gate.py) land in OUTDIR. ZAP exits 0 (clean) or 2
 # (warnings, because of -I) when it completed; anything else is a failure of the scan itself. The
@@ -47,6 +50,10 @@ PW_FILE=".dev/admin_password"
 ACTIVE_SCAN_MINUTES="${ZAP_ACTIVE_SCAN_MINUTES:-12}"
 # Requests per second ZAP sends to the gateway, below rl-default's average of 50 (see the header).
 REQUESTS_PER_SECOND="${ZAP_REQUESTS_PER_SECOND:-40}"
+# The credential routes have their own, stricter limiter (rl-auth: 5 per second, burst 10), so
+# they are scanned in a separate pass at this rate.
+AUTH_PREFIX="/api/v1/identity/auth/"
+AUTH_REQUESTS_PER_SECOND="${ZAP_AUTH_REQUESTS_PER_SECOND:-4}"
 
 OUTDIR="${1:?usage: scripts/zap-scan.sh OUTDIR}"
 
@@ -70,31 +77,38 @@ if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
   echo "::add-mask::$password"
 fi
 
-# Same body shape as scripts/skeleton-smoke.sh; the password never touches a command line.
-# The here-string appends a newline that is not part of the password: strip it.
-body=$(python3 -c 'import json,sys; print(json.dumps({"username": "admin", "password": sys.stdin.read().rstrip("\n")}))' <<< "$password")
-unset password
-token=$(curl -sS --fail-with-body --cacert "$CA" -X POST "$LOGIN" \
-  -H 'Content-Type: application/json' --data "$body" \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
-unset body
-[ -n "$token" ] || { echo "login returned no token" >&2; exit 1; }
-if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-  echo "::add-mask::$token"
-  echo "::add-mask::Bearer $token"
-fi
+# Logs in as the admin and exports the bearer header ZAP sends (masked in GitHub Actions). Each API
+# pass mints its own token, so each pass has the full 15 minutes.
+login_for_zap() {
+  local password body token
+  password=$(cat "$PW_FILE")
+  if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    echo "::add-mask::$password"
+  fi
+  # Same body shape as scripts/skeleton-smoke.sh; the password never touches a command line.
+  # The here-string appends a newline that is not part of the password: strip it.
+  body=$(python3 -c 'import json,sys; print(json.dumps({"username": "admin", "password": sys.stdin.read().rstrip("\n")}))' <<< "$password")
+  unset password
+  token=$(curl -sS --fail-with-body --cacert "$CA" -X POST "$LOGIN" \
+    -H 'Content-Type: application/json' --data "$body" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+  unset body
+  [ -n "$token" ] || { echo "login returned no token" >&2; exit 1; }
+  if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    echo "::add-mask::$token"
+    echo "::add-mask::Bearer $token"
+  fi
+  export ZAP_AUTH_HEADER="Authorization"
+  export ZAP_AUTH_HEADER_VALUE="Bearer $token"
+  export ZAP_AUTH_HEADER_SITE="traefik"
+}
 
-export ZAP_AUTH_HEADER="Authorization"
-export ZAP_AUTH_HEADER_VALUE="Bearer $token"
-export ZAP_AUTH_HEADER_SITE="traefik"
-unset token
-
-# ZAP's network rate limit rule (network add-on), passed to both scans with -z.
-RATE_LIMIT="-config network.ratelimit.rules.rule(0).description=gateway"
-RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).enabled=true"
-RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).matchStr=traefik"
-RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).regex=false"
-RATE_LIMIT+=" -config network.ratelimit.rules.rule(0).reqsPerSec=${REQUESTS_PER_SECOND}"
+# ZAP's network rate limit rule (network add-on) for the traefik host: rate_limit REQS_PER_SECOND.
+rate_limit() {
+  local rule="-config network.ratelimit.rules.rule(0)"
+  echo "$rule.description=gateway $rule.enabled=true $rule.matchStr=traefik" \
+    "$rule.regex=false $rule.reqsPerSec=$1"
+}
 
 run_zap() { # script args... ; returns 0 on a completed scan, 1 otherwise
   local rc=0
@@ -107,15 +121,44 @@ run_zap() { # script args... ; returns 0 on a completed scan, 1 otherwise
   esac
 }
 
+login_for_zap
+
 echo "== ZAP baseline (passive) of the UI =="
 run_zap zap-baseline.py -t "$TARGET/" -j -c rules.tsv \
   -J zap-baseline.json -r zap-baseline.html -I \
-  -z "$RATE_LIMIT"
+  -z "$(rate_limit "$REQUESTS_PER_SECOND")"
 
-echo "== ZAP API scan of the merged OpenAPI document (authenticated) =="
-run_zap zap-api-scan.py -t "$TARGET/api/v1/openapi.json" -f openapi -c rules.tsv \
+# The merged OpenAPI document, split by gateway limit: the credential routes under
+# /api/v1/identity/auth/ (rl-auth) and everything else (rl-default). Both copies name the gateway
+# as their server, so ZAP sends every request to https://traefik.
+curl -sS --fail-with-body --cacert "$CA" "https://localhost:8443/api/v1/openapi.json" \
+  -o "$OUTDIR/openapi.json"
+python3 - "$OUTDIR/openapi.json" "$OUTDIR" "$AUTH_PREFIX" "$TARGET" <<'PY'
+import json, sys
+src, outdir, prefix, target = sys.argv[1:]
+doc = json.load(open(src))
+for name, keep in (("openapi-api.json", False), ("openapi-auth.json", True)):
+    part = dict(doc, servers=[{"url": target}])
+    part["paths"] = {p: v for p, v in doc["paths"].items() if p.startswith(prefix) == keep}
+    if not part["paths"]:
+        sys.exit(f"{name}: no paths (prefix {prefix})")
+    json.dump(part, open(f"{outdir}/{name}", "w"))
+    print(f"{name}: {len(part['paths'])} paths")
+PY
+chmod 644 "$OUTDIR/openapi.json" "$OUTDIR/openapi-api.json" "$OUTDIR/openapi-auth.json"
+
+echo "== ZAP API scan of every route outside $AUTH_PREFIX (authenticated) =="
+run_zap zap-api-scan.py -t /zap/wrk/openapi-api.json -f openapi -c rules.tsv \
   -J zap-api.json -r zap-api.html -I \
-  -z "$RATE_LIMIT -config scanner.maxScanDurationInMins=${ACTIVE_SCAN_MINUTES} -config scanner.threadPerHost=2"
+  -z "$(rate_limit "$REQUESTS_PER_SECOND") -config scanner.maxScanDurationInMins=${ACTIVE_SCAN_MINUTES} -config scanner.threadPerHost=2"
+
+login_for_zap
+echo "== ZAP API scan of the credential routes under $AUTH_PREFIX (authenticated) =="
+run_zap zap-api-scan.py -t /zap/wrk/openapi-auth.json -f openapi -c rules.tsv \
+  -J zap-api-auth.json -r zap-api-auth.html -I \
+  -z "$(rate_limit "$AUTH_REQUESTS_PER_SECOND") -config scanner.maxScanDurationInMins=${ACTIVE_SCAN_MINUTES} -config scanner.threadPerHost=2"
+unset ZAP_AUTH_HEADER_VALUE
 
 echo "== Gate: no unignored High alert =="
-python3 scripts/zap_gate.py "$OUTDIR/zap-baseline.json" "$OUTDIR/zap-api.json" --rules .zap/rules.tsv
+python3 scripts/zap_gate.py "$OUTDIR/zap-baseline.json" "$OUTDIR/zap-api.json" \
+  "$OUTDIR/zap-api-auth.json" --rules .zap/rules.tsv

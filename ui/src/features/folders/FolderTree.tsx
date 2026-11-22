@@ -264,10 +264,17 @@ export function FolderTree({
               className={styles.label}
               title={folderName(folder)}
             >
-              {folderName(folder)}
               {folder.archived ? (
-                <VisuallyHidden>, archived</VisuallyHidden>
-              ) : null}
+                // The clip pattern is position: absolute, which makes the hidden span a block, and
+                // the accessible name puts a space around a block ("Old , archived"). The hidden
+                // span therefore carries the whole name and the visible one is hidden from it.
+                <>
+                  <span aria-hidden="true">{folderName(folder)}</span>
+                  <VisuallyHidden>{`${folderName(folder)}, archived`}</VisuallyHidden>
+                </>
+              ) : (
+                folderName(folder)
+              )}
             </span>
             {folder.archived ? (
               <span className={styles.badge} aria-hidden="true">

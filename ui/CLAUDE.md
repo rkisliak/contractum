@@ -240,7 +240,8 @@ detail route is rendered as "Not found", never as forbidden (D-UI-08-25).
 - `src/test/msw.ts` (`server`, `http`, `HttpResponse`) is started by `src/test/setup.ts` with `onUnhandledFrame: "error"`
   (msw 3 name; an unmocked call fails the test) and reset after each test; add handlers with `server.use(...)`. `setup.ts`
   also resolves same-origin paths against the jsdom origin for `Request` and `fetch`, as a browser does (Node throws on a
-  relative URL).
+  relative URL). It also turns off CSS animations and transitions in the test DOM: jsdom (31 and later) computes
+  `animation-name` but never fires `animationend`, so a closing Radix dialog would otherwise stay mounted.
 - **App shell** (`src/features/shell/`, Enterprise preview layout): `_app.tsx` renders `AppShell`: skip link; at 1024px and
   up the slate icon `Rail` (`nav` "Sections", one icon per registry section, the current section a brand tile plus a
   light edge bar; at the bottom "Versions" (info icon, `VersionsDialog`), the account avatar (`AccountMenu

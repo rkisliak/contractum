@@ -21,6 +21,7 @@ import { request, type APIRequestContext, type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   adminPassword,
+  escapeRegExp,
   expectCleanPage,
   findDemo,
   IssueCollector,
@@ -669,7 +670,7 @@ test.describe.serial("role journeys", () => {
     await expect(grant).toBeHidden();
     const revokeReader = main.getByRole("button", {
       name: new RegExp(
-        `^Revoke Organization reader from .*${LEDGER_READER.displayName.replace(/[()]/g, "\\$&")}`,
+        `^Revoke Organization reader from .*${escapeRegExp(LEDGER_READER.displayName)}`,
       ),
     });
     await expect(revokeReader).toBeVisible();

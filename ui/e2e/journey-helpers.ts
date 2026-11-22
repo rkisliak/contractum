@@ -14,6 +14,11 @@ import { expect } from "./fixtures";
 // compose name (see global-setup.ts).
 const GATEWAY_URL = process.env.DC_UI_E2E_SETUP_URL ?? "https://traefik";
 
+/** `value` as a literal inside a RegExp: every regex metacharacter, the backslash included, escaped. */
+export function escapeRegExp(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&");
+}
+
 export function adminPassword(): string {
   const password = process.env.DC_UI_E2E_ADMIN_PASSWORD;
   if (!password)

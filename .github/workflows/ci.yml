@@ -1,5 +1,7 @@
 # CI only: the job-level mirror of scripts/ci.sh steps 1-8 (lint, unit, integration, ui) plus an
 # image build check. Images are built but never pushed, and no registry login happens here.
+# A docs-only change (scripts/ci_changes.py DOCS_PATTERNS) skips the code jobs and runs the repo
+# tests only; ci-ok still reports the result.
 # The cold-start e2e (scripts/ci.sh step 9) lives in e2e-nightly.yml, scanning in security.yml.
 # A manual run exists for the Release gate (release.yml): a commit pushed with [skip ci] gets its
 # successful CI run that way.
@@ -19,8 +21,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Docs-only detection (scripts/ci_changes.py classify). A change that touches only documentation
+  # files skips the code jobs below and runs docs-repo-tests instead; anything else, or a change
+  # whose paths cannot be listed, runs everything. Plain git diff, no third-party filter action.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Classify the changed paths
+        id: classify
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          paths="$RUNNER_TEMP/changed-paths.txt"
+          # A manual run (workflow_dispatch) has no base commit: the paths are unknown.
+          if [ -z "$BASE_SHA" ] || ! git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" >"$paths"; then
+            echo "no base commit or git diff failed: the changed paths are unknown" >&2
+            rm -f "$paths"
+          fi
+          python3 scripts/ci_changes.py classify --paths-file "$paths"
+
+  # On a docs-only change the repo tests still check the docs (site nav, diagrams, problem slugs,
+  # portable paths, personal data); every other change runs them inside python-unit.
+  docs-repo-tests:
+    name: docs-repo-tests
+    needs: changes
+    if: needs.changes.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: uv sync --frozen
+        run: uv sync --frozen
+      - name: repo tests
+        run: uv run pytest tests/repo -m "unit and not performance" -q
+
   python-lint:
     name: python-lint
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -49,18 +106,23 @@ jobs:
             identity/src contracts/src validation/src audit/src mail/src \
             gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
             scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
-            scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py
+            scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py \
+            scripts/ci_changes.py
       - name: lint-imports
         run: uv run lint-imports
 
   python-unit:
     name: python-unit
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history: tests/repo/test_no_personal_data.py reads every author email.
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           version: "0.13.7"
@@ -75,6 +137,8 @@ jobs:
 
   python-integration:
     name: python-integration
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -95,6 +159,8 @@ jobs:
 
   ui:
     name: ui
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -128,6 +194,8 @@ jobs:
 
   docker-build:
     name: docker-build (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -184,21 +252,21 @@ jobs:
           cache-from: type=gha,scope=img-${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=img-${{ matrix.name }}
 
+  # The one required check. scripts/ci_changes.py verdict: every job that should have run must
+  # succeed; a code job may be skipped only on a docs-only change, docs-repo-tests only on any
+  # other change. A failed, cancelled or unexpectedly skipped job fails ci-ok.
   ci-ok:
     name: ci-ok
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [python-lint, python-unit, python-integration, ui, docker-build]
+    needs: [changes, docs-repo-tests, python-lint, python-unit, python-integration, ui, docker-build]
     if: always()
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Summarise the results
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          echo "job results: $RESULTS"
-          for result in $RESULTS; do
-            if [ "$result" != "success" ]; then
-              echo "ci failed: at least one job did not succeed" >&2
-              exit 1
-            fi
-          done
+          NEEDS: ${{ toJSON(needs) }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+        run: python3 scripts/ci_changes.py verdict --needs "$NEEDS" --docs-only "$DOCS_ONLY"

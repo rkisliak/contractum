@@ -4,16 +4,20 @@
 
 # Contractum: data contract governance
 
-[![License: evaluation and noncommercial](https://img.shields.io/badge/license-evaluation%20%26%20noncommercial-lightgrey)](LICENSE)
-[![ODCS v3.2.0](https://img.shields.io/badge/ODCS-v3.2.0-6A5ACD)](https://bitol-io.github.io/open-data-contract-standard/)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-evaluation%20%26%20noncommercial-lightgrey" alt="License: evaluation and noncommercial"></a>
+  <a href="https://bitol-io.github.io/open-data-contract-standard/"><img src="https://img.shields.io/badge/ODCS-v3.2.0-6A5ACD" alt="ODCS v3.2.0"></a>
+</p>
 
-[![ci](https://github.com/rkisliak/contractum/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/ci.yml?query=branch%3Amain)
-[![security](https://github.com/rkisliak/contractum/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/security.yml?query=branch%3Amain)
-[![sdk](https://github.com/rkisliak/contractum/actions/workflows/sdk.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/sdk.yml?query=branch%3Amain)
-[![docs](https://github.com/rkisliak/contractum/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/docs.yml?query=branch%3Amain)
-[![e2e nightly](https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml?query=branch%3Amain)
-[![DAST nightly](https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml?query=branch%3Amain)
-[![docs links weekly](https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml/badge.svg?branch=main)](https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml?query=branch%3Amain)
+<p align="center">
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/security.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/security.yml/badge.svg?branch=main" alt="security"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/sdk.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/sdk.yml/badge.svg?branch=main" alt="sdk"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/docs.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/docs.yml/badge.svg?branch=main" alt="docs"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/e2e-nightly.yml/badge.svg?branch=main" alt="e2e nightly"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/dast-nightly.yml/badge.svg?branch=main" alt="DAST nightly"></a>
+  <a href="https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml?query=branch%3Amain"><img src="https://github.com/rkisliak/contractum/actions/workflows/docs-links-weekly.yml/badge.svg?branch=main" alt="docs links weekly"></a>
+</p>
 
 Contractum is one central place where data-engineering teams write, version and publish
 **ODCS data contracts**. Contracts live in a folder tree: Root, then Organization, Project and Team.

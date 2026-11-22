@@ -183,9 +183,9 @@ def test_relative_md_links_stay_inside_docs() -> None:
 
 
 WORKFLOW_BADGE = re.compile(
-    r"\[!\[[^\]]+\]\(https://github\.com/rkisliak/contractum/actions/workflows/([a-z0-9-]+\.yml)"
-    r"/badge\.svg\?branch=main\)\]\(https://github\.com/rkisliak/contractum/actions/workflows/\1"
-    r"\?query=branch%3Amain\)"
+    r'<a href="https://github\.com/rkisliak/contractum/actions/workflows/([a-z0-9-]+\.yml)'
+    r'\?query=branch%3Amain"><img src="https://github\.com/rkisliak/contractum/actions/workflows/'
+    r'\1/badge\.svg\?branch=main" alt="[^"]+"></a>'
 )
 
 
@@ -211,5 +211,7 @@ def test_readme_logo_badges_and_no_repository_url() -> None:
         "docs-links-weekly.yml",
     }
     assert expected <= set(badges)
+    # Both badge rows are centred.
+    assert text.count('<p align="center">') >= 3
     rest = WORKFLOW_BADGE.sub("", text)
     assert not re.search(r"github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", rest)

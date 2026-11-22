@@ -105,10 +105,17 @@ def _parse_response(data: bytes) -> RawResponse:
     return RawResponse(status, headers, body)
 
 
+def _tls_context(cafile: str | None = None) -> ssl.SSLContext:
+    """A verifying client context that refuses anything older than TLS 1.2, like the gateway."""
+    context = ssl.create_default_context(cafile=cafile)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
 def _connect() -> tuple[ssl.SSLSocket, str]:
     url = urlparse(os.environ["DC_E2E_GATEWAY_URL"])
     host = url.hostname or "traefik"
-    context = ssl.create_default_context(cafile=os.environ["DC_E2E_CA_FILE"])
+    context = _tls_context(os.environ["DC_E2E_CA_FILE"])
     raw = socket.create_connection((host, url.port or 443), timeout=15)
     return context.wrap_socket(raw, server_hostname=host), host
 
@@ -197,7 +204,7 @@ async def _raw(target: bytes, *, method: str = "GET") -> RawResponse:
 def test_tls_handshake_with_the_dev_ca_negotiates_tls_1_2_or_newer() -> None:
     url = urlparse(os.environ["DC_E2E_GATEWAY_URL"])
     host = url.hostname or "traefik"
-    context = ssl.create_default_context(cafile=os.environ["DC_E2E_CA_FILE"])
+    context = _tls_context(os.environ["DC_E2E_CA_FILE"])
     with socket.create_connection((host, url.port or 443), timeout=10) as raw:
         with context.wrap_socket(raw, server_hostname=host) as tls:
             assert tls.version() in {"TLSv1.2", "TLSv1.3"}
@@ -208,7 +215,7 @@ def test_tls_handshake_with_the_dev_ca_negotiates_tls_1_2_or_newer() -> None:
 def test_tls_handshake_works_for_a_client_limited_to_tls_1_2() -> None:
     url = urlparse(os.environ["DC_E2E_GATEWAY_URL"])
     host = url.hostname or "traefik"
-    context = ssl.create_default_context(cafile=os.environ["DC_E2E_CA_FILE"])
+    context = _tls_context(os.environ["DC_E2E_CA_FILE"])
     context.maximum_version = ssl.TLSVersion.TLSv1_2
     with socket.create_connection((host, url.port or 443), timeout=10) as raw:
         with context.wrap_socket(raw, server_hostname=host) as tls:
@@ -218,7 +225,7 @@ def test_tls_handshake_works_for_a_client_limited_to_tls_1_2() -> None:
 def test_tls_verification_fails_for_a_client_that_does_not_trust_the_dev_ca() -> None:
     url = urlparse(os.environ["DC_E2E_GATEWAY_URL"])
     host = url.hostname or "traefik"
-    context = ssl.create_default_context()  # system roots only: the dev CA is not among them
+    context = _tls_context()  # system roots only: the dev CA is not among them
     with (
         socket.create_connection((host, url.port or 443), timeout=10) as raw,
         pytest.raises(ssl.SSLCertVerificationError),

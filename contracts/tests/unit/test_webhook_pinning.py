@@ -112,6 +112,7 @@ class TlsServer:
                 return
 
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.load_cert_chain(cert, key)
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self._server.socket = context.wrap_socket(self._server.socket, server_side=True)
@@ -142,6 +143,7 @@ def server(pki: tuple[Path, Path, Path]) -> Iterator[TlsServer]:
 
 def _client(ca: Path) -> httpx.AsyncClient:
     context = ssl.create_default_context(cafile=str(ca))
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     return httpx.AsyncClient(verify=context, timeout=5.0)
 
 

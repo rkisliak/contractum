@@ -167,18 +167,7 @@ Where in the code: `shared/dc-rules/src/dc_rules/model.py` (the rule model),
 A rule set lives in a folder (any level: ROOT, Organization, Project or Team), or in the special
 **platform** scope, which has no folder.
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> Draft: POST folders/ID/rule-sets
-    Draft --> Draft: PUT draft with If-Match
-    Draft --> Checking: POST publish
-    Checking --> Draft: 422 rule-invalid or ruleset-fixtures-failed
-    Checking --> Version: check ok, frozen as version N
-    Version --> Deprecated: POST versions/N/deprecate
-    Version --> [*]
-    Deprecated --> [*]
-```
+![Diagram: 2. Rule sets](../../images/diagrams/04-validation-and-rules-1.png)
 
 ### Draft and versions
 
@@ -419,36 +408,7 @@ callers:
 | `publish` | contracts, at the publish gate | **Yes, forever and immutable** |
 | on demand | `POST /api/v1/validation/folders/{folder_id}/validate` (raw YAML or JSON upload) | No |
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as Data engineer
-    participant G as Gateway
-    participant C as contracts
-    participant V as validation
-    participant I as identity PDP
-    participant S as Sandbox workers
-    participant DB as validation DB
-    U->>G: POST /api/v1/contracts/contracts/{id}/drafts/{draft_id}/publish
-    G->>C: forward with the user's bearer
-    C->>C: check contract:publish, local ODCS check
-    C->>V: POST /internal/v1/validation/folders/{folder_id}/runs
-    Note over C,V: mode publish, document bytes, attachments, baseline, ref facts, same bearer
-    V->>I: check contract:validate at folder_id
-    I-->>V: allow plus folder facts and ancestor_ids
-    V->>V: re-parse bytes, ODCS JSON Schema
-    V->>DB: read now, mandatory sets, attachments
-    V->>V: resolve rule sets, diff against baseline
-    V->>S: evaluate units, no session held
-    S-->>V: pass, fail or error per rule
-    V->>DB: insert validation_run, immutable
-    V-->>C: run_id, pins, report
-    alt publishable
-        C-->>U: 201 new version, pins recorded
-    else not publishable
-        C-->>U: 422 contract-validation-failed with the report
-    end
-```
+![Diagram: 5. The validation run](../../images/diagrams/04-validation-and-rules-2.png)
 
 1. **The caller's own bearer.** contracts forwards the end user's token. Validation checks
    `contract:validate` itself through identity's PDP. contracts never acts with its own
@@ -586,31 +546,7 @@ rules now in force?"*
   warn versions fail) or `compliant` (counted, not listed). Items show `pinned_rule_sets` next to
   `current_versions`, so you can see which set moved.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor P as Policy Manager
-    participant C as contracts
-    participant V as validation
-    participant I as identity PDP
-    participant S as Sandbox batch pool
-    P->>C: POST /api/v1/contracts/governance/rule-set-dry-runs
-    C->>V: GET /api/v1/validation/rule-sets/{rule_set_id} with the caller's bearer
-    V-->>C: rule set and its folder, or 404
-    C->>I: check ruleset:dry-run and the caller's scope
-    C->>C: next keyset page of contracts with a Latest, at most 25
-    C->>V: POST /internal/v1/validation/rule-sets/{rule_set_id}/dry-run
-    V->>I: check ruleset:dry-run at each distinct item folder
-    V->>S: take a batch slot, then one run slot per document
-    loop each document, page clock checked first
-        S-->>V: pass, fail or error per rule
-    end
-    V-->>C: per-contract verdicts, rule keys, at most 20 pointers per rule
-    C->>I: which contracts may the caller read
-    C->>C: hide names without contract:read-metadata, drop pointers without contract:read
-    C->>C: write one counts-only audit event governance.rule_set_dry_run
-    C-->>P: items, summary, next_cursor, total_in_scope
-```
+![Diagram: 6.4 Rule dry-run and drift](../../images/diagrams/04-validation-and-rules-3.png)
 
 1. contracts learns the rule set's folder from validation, with the caller's token. An unknown
    set, an unreadable one and a platform set all give the same 404.

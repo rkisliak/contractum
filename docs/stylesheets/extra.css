@@ -1,7 +1,0 @@
-/* Mermaid sizes each box from the label text, then draws the label. The theme sets the diagram font
-   to the page's web font (Inter) on `:root > *`; when Inter arrives after a diagram was measured,
-   the label is drawn wider than its box. System fonts are available at once, so the measured and
-   the drawn text always match. The selector matches the theme's own, which this file overrides. */
-:root > * {
-  --md-mermaid-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}

@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    actor Caller
+    participant C as contracts - require
+    participant ID as identity - LocalAuthorizer
+    participant DB as identity DB
+    Caller->>C: POST /api/v1/contracts/contracts/ID/drafts/DID/publish
+    C->>C: authenticate the token, resolve the target folder of the contract
+    C->>ID: POST /internal/v1/authz/check - bearer forwarded, X-Request-ID, permission, folder_id, service, route
+    ID->>ID: authenticate the forwarded token, require authz:check
+    ID->>ID: PrincipalGate - live, admitted
+    ID->>DB: folder facts - ancestors via ltree
+    ID->>DB: effective roles - grants on the chain, groups, block cut
+    ID->>ID: map roles to permissions, read-only narrowing, visible_via rule
+    alt allow
+        ID-->>C: outcome allow, folder facts, permissions
+        C->>C: handler runs
+        C-->>Caller: 201 published
+    else deny
+        ID->>DB: commit check.denied outbox row
+        ID-->>C: outcome not_found or forbidden
+        C-->>Caller: 404 not-found or 403 forbidden
+    else identity down or denial not saved
+        ID--xC: timeout, connection error or 503
+        C-->>Caller: 503 service-unavailable
+    end

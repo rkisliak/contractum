@@ -54,7 +54,7 @@ Related documents outside this folder:
 Every page uses three kinds of diagrams:
 
 1. **Pictures** (SVG files in `images/`). They are hand-written and many are animated. A dot travels along the flow, and numbered circles light up in turn. The numbers match the numbered steps in the text. A picture still makes sense when the animation does not play (for example in a PDF).
-2. **Mermaid diagrams** inside the Markdown, for sequences, states and small flowcharts. GitHub and most IDEs draw them.
+2. **Mermaid diagrams**, for sequences, states and small flowcharts. The source is in `docs/diagrams/<page>-<n>.mmd` and the page embeds the PNG image rendered from it (`docs/images/diagrams/<page>-<n>.png`), so the diagram looks the same in every browser and on GitHub.
 3. **draw.io files** (in `drawio/`): the editable versions of the main pictures, with the same colours and labels.
 
 ### Colour legend
@@ -83,7 +83,7 @@ Lines:
 
 - **draw.io files.** Open a `drawio/NN-*.drawio` file in [diagrams.net](https://app.diagrams.net) (*File → Open from → Device*), or in VS Code with the *Draw.io Integration* extension. The files are stored as plain, uncompressed XML, so a change shows as a readable diff. One file can hold several pages; use the page tabs at the bottom.
 - **SVG pictures.** The animated SVGs are hand-written, not exported from draw.io. Exporting from draw.io gives a correct static picture but loses the animation. To change a picture, edit the SVG text and keep the role colours above. Keep it self-contained: no external fonts, images or scripts (GitHub strips scripts), and use SMIL `<animate>` or `<animateMotion>` for movement. Then check it is well-formed with `xmllint --noout images/<file>.svg` and update the matching draw.io page so the two stay in step.
-- **Mermaid.** Edit the code fence in the Markdown. Check it with `npx -y @mermaid-js/mermaid-cli -i <page>.md -o /tmp/out.svg`. Keep labels free of parentheses and semicolons unless you quote them.
+- **Mermaid.** Edit the source in `docs/diagrams/<page>-<n>.mmd`, run `bash scripts/render-diagrams.sh` from the repository root (it uses the official Mermaid CLI image) and commit the source and the PNG image together. Never put a live Mermaid code fence in a page. Keep labels free of parentheses and semicolons unless you quote them.
 
 ## Glossary
 

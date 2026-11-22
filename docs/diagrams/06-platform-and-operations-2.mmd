@@ -1,0 +1,28 @@
+flowchart LR
+    U["Users, pipelines, CLI"] --> LB["Service gateway, LoadBalancer or ClusterIP, port 443"]
+    LB --> GW["Deployment gateway, Traefik"]
+    subgraph EDGE["Edge pods"]
+        UI["ui"]
+        AD["api-docs"]
+        PR["problem-responder"]
+    end
+    subgraph APP["App pods"]
+        ID["identity"]
+        CO["contracts"]
+        VA["validation"]
+        AU["audit"]
+        MA["mail"]
+    end
+    subgraph BACK["Backing services, bundled or external"]
+        PG[("postgres StatefulSet or managed server")]
+        NA[("nats StatefulSet or external server")]
+    end
+    MJ["Job migrate-r revision"] --> PG
+    GW --> EDGE
+    GW --> ID
+    GW --> CO
+    GW --> VA
+    GW --> AU
+    AD --> APP
+    APP --> PG
+    APP --> NA

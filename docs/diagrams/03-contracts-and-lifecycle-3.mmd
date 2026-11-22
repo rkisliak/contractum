@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    actor A as Author or pipeline
+    participant C as contracts API
+    participant DB as contracts DB
+    participant V as validation
+    participant N as NATS AUDIT stream
+    A->>C: POST .../drafts/{draft_id}/publish with If-Match
+    C->>C: policy contract:publish, folder writable, If-Match present
+    C->>DB: unlocked read of bytes, attachments, baseline, floor, link facts
+    C->>V: POST /internal/v1/validation/folders/{folder_id}/runs, publish mode, caller bearer
+    alt validation down, slow, 5xx or hash mismatch
+        V-->>C: no clean answer
+        C-->>A: 503 validation-unavailable, nothing published
+    else a mandatory rule or the schema fails
+        V-->>C: report with publishable false
+        C->>DB: record contract.version.publish_refused in outbox
+        C-->>A: 422 contract-validation-failed with report and run_id
+    else publishable
+        V-->>C: report, run_id, pins, engine_version, schema_sha
+        C->>DB: lock contract, then draft
+        alt state changed during the gate
+            C-->>A: 412 precondition-failed, or 409 rules-changed, semver-conflict, baseline-changed
+        else all re-checks pass
+            C->>DB: draft becomes published with pins, plus outbox event, one commit
+            C-->>A: 201 version_id, semver, status, ETag, Location
+            DB--)N: outbox relay publishes contract.version_published
+        end
+    end

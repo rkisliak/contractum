@@ -15,9 +15,6 @@ theme:
     - navigation.sections
     - content.code.copy
 
-extra_css:
-  - stylesheets/extra.css
-
 markdown_extensions:
   - admonition
   - attr_list
@@ -28,11 +25,7 @@ markdown_extensions:
       # GitHub-compatible heading ids, so one anchor works on GitHub, on the site and in lychee.
       slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
   - pymdownx.details
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.superfences
 
 plugins:
   - search

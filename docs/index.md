@@ -32,11 +32,4 @@ How Contractum is protected and how every change is checked: [Security](security
 Every request goes through one gateway. It serves the web UI to browsers and sends API calls to
 the module that owns them.
 
-```mermaid
-flowchart LR
-  browser["Browser"] --> gateway["Gateway"]
-  clients["API clients, SDK and CLI"] --> gateway
-  gateway --> ui["Web UI"]
-  gateway --> api["API: identity, contracts, validation, audit"]
-  gateway --> docs["API docs: /api/v1/docs/"]
-```
+![Diagram: How you reach Contractum](images/diagrams/index-1.png)

@@ -105,31 +105,7 @@ ROOT. The admin has no password yet. Instead, identity reads a one-time secret f
 `/run/secrets/bootstrap_admin_secret` (the dev-init container generates it; see
 [06-platform-and-operations.md](06-platform-and-operations.md)).
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Admin
-    participant GW as Gateway
-    participant ID as identity
-    participant DB as identity DB
-    Admin->>GW: POST /api/v1/identity/auth/login - user admin, bootstrap secret
-    GW->>ID: forward
-    ID->>DB: throttle check, load user admin - no password hash yet
-    ID->>ID: compare SHA-256 of the secret file in constant time
-    ID-->>Admin: 200 restricted JWT - scope password:rotate, 10 min, no refresh token
-    Admin->>ID: GET any other route with the restricted JWT
-    ID-->>Admin: 403 password-rotation-required
-    Admin->>ID: POST /api/v1/identity/auth/password - new_password
-    ID->>ID: password policy - length and deny-list, never the bootstrap secret
-    ID->>DB: store Argon2id hash, mark bootstrap consumed, revoke all sessions
-    ID->>DB: audit event user.password_rotated in the same transaction
-    ID-->>Admin: 204 No Content
-    Admin->>ID: POST /api/v1/identity/auth/login - user admin, new password
-    ID-->>Admin: 200 access JWT - scope api, 15 min - plus refresh token
-    Admin->>ID: POST /api/v1/identity/auth/refresh - refresh token
-    ID->>DB: revoke the old refresh token, store the next one
-    ID-->>Admin: 200 new access JWT plus new refresh token
-```
+![Diagram: 1.2 The bootstrap admin and the first password rotation](../../images/diagrams/02-identity-and-access-1.png)
 
 Notes:
 
@@ -197,36 +173,7 @@ Identity gets its Graph token with the OAuth client-credentials flow, using plai
 development, `fake-graph` stands in for Microsoft Graph and `mock-oidc` stands in for Entra.
 See [Entra setup](../../admin/entra-setup.md) to connect a real tenant.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Entra user
-    participant Entra as Microsoft Entra ID
-    participant C as contracts
-    participant ID as identity
-    participant Cache as DirectoryCache 60 s
-    participant Graph as Microsoft Graph
-    User->>Entra: sign in, request a token for the API app
-    Entra-->>User: v2 access token - tid, oid, scp
-    User->>C: GET /api/v1/contracts/contracts/ID/versions/latest - Bearer token
-    C->>C: issuer registry picks the Entra entry by iss
-    C->>Entra: fetch JWKS - only on a cache miss or unknown kid
-    C->>C: check signature, aud, ver 2.0, pinned tid - Principal entra:tid:oid
-    C->>ID: POST /internal/v1/authz/check - same bearer token, permission contract:read-published, folder id
-    ID->>ID: verify the token again, independently
-    ID->>Cache: look up user oid in tenant tid
-    alt cache miss
-        Cache->>Graph: GET /users/oid - accountEnabled
-        Cache->>Graph: GET /users/oid/transitiveMemberOf - paged group ids
-        Graph-->>Cache: enabled, group ids
-    end
-    Cache-->>ID: enabled, groups
-    ID->>ID: admitted? direct registration or a registered group
-    ID->>ID: write the just-in-time entra_users row on first sight
-    ID->>ID: effective roles at the folder - own grants, local groups, Entra groups
-    ID-->>C: 200 outcome allow, folder facts, permissions
-    C-->>User: 200 contract document
-```
+![Diagram: 1.3 Entra users and service principals](../../images/diagrams/02-identity-and-access-2.png)
 
 ### 1.4 PATs and service-account keys: opaque `dcp_` tokens
 
@@ -241,30 +188,7 @@ A service never parses a `dcp_` token itself. JWTs start with `eyJ`, so a token 
 `POST /internal/v1/authz/principal` (`shared/dc-auth/src/dc_auth/opaque.py`, `RemoteOpaqueResolver`)
 on **every request, with no cache**.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant P as Pipeline
-    participant V as validation
-    participant ID as identity
-    participant DB as identity DB
-    P->>V: request with Bearer dcp_ token
-    V->>V: token starts with dcp_ so it is not a JWT
-    V->>ID: POST /internal/v1/authz/principal - Bearer dcp_ token, empty body
-    ID->>DB: find credential by public_id, compare SHA-256 of the secret
-    ID->>ID: PrincipalGate - credential not revoked or expired, owner or account still active
-    ID-->>V: 200 principal id, type, via pat or api_key
-    V->>ID: POST /internal/v1/authz/check - same dcp_ token, permission, folder id
-    ID->>DB: load and gate the credential again, then compute roles
-    alt allowed
-        ID-->>V: 200 allow
-        V-->>P: 2xx
-    else not allowed
-        ID->>DB: commit one check.denied outbox row
-        ID-->>V: 200 not_found or forbidden
-        V-->>P: 404 or 403 problem
-    end
-```
+![Diagram: 1.4 PATs and service-account keys: opaque `dcp_` tokens](../../images/diagrams/02-identity-and-access-3.png)
 
 What a PAT and a key may do:
 
@@ -507,72 +431,11 @@ Key design points:
 - Inside identity itself, the authorizer is `LocalAuthorizer` (`identity/src/dc_identity/authz.py`),
   called directly in process.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Caller
-    participant C as contracts - require
-    participant ID as identity - LocalAuthorizer
-    participant DB as identity DB
-    Caller->>C: POST /api/v1/contracts/contracts/ID/drafts/DID/publish
-    C->>C: authenticate the token, resolve the target folder of the contract
-    C->>ID: POST /internal/v1/authz/check - bearer forwarded, X-Request-ID, permission, folder_id, service, route
-    ID->>ID: authenticate the forwarded token, require authz:check
-    ID->>ID: PrincipalGate - live, admitted
-    ID->>DB: folder facts - ancestors via ltree
-    ID->>DB: effective roles - grants on the chain, groups, block cut
-    ID->>ID: map roles to permissions, read-only narrowing, visible_via rule
-    alt allow
-        ID-->>C: outcome allow, folder facts, permissions
-        C->>C: handler runs
-        C-->>Caller: 201 published
-    else deny
-        ID->>DB: commit check.denied outbox row
-        ID-->>C: outcome not_found or forbidden
-        C-->>Caller: 404 not-found or 403 forbidden
-    else identity down or denial not saved
-        ID--xC: timeout, connection error or 503
-        C-->>Caller: 503 service-unavailable
-    end
-```
+![Diagram: 3.2 RemoteAuthorizer: the call to identity](../../images/diagrams/02-identity-and-access-4.png)
 
 ### 3.3 How a permission decision is made
 
-```mermaid
-flowchart TD
-    A["Check: principal, permission, folder"] --> G{"PrincipalGate: live and admitted?"}
-    G -- "no: 401 or 403 principal-not-registered" --> RG["Record denial: gate_refused"]
-    G -- "Graph down" --> U["503: nothing recorded"]
-    G -- yes --> P1{"password:rotate?"}
-    P1 -- yes --> P2{"local user signed in with a JWT?"}
-    P2 -- yes --> ALLOW
-    P2 -- no --> FORB
-    P1 -- no --> R{"restricted bootstrap session?"}
-    R -- yes --> FORB
-    R -- no --> AC{"authz:check?"}
-    AC -- yes --> ALLOW
-    AC -- no --> K{"known permission?"}
-    K -- no --> FORB
-    K -- yes --> T{"permission target"}
-    T -- principal --> PL{"read-only PAT asking for a write?"}
-    PL -- yes --> FORB
-    PL -- no --> ALLOW
-    T -- root --> RT{"held at ROOT?"}
-    RT -- yes --> IO
-    RT -- no --> FORB
-    T -- folder --> F{"folder exists?"}
-    F -- no --> NF
-    F -- yes --> E["Effective roles: grants on folder and ancestors, own, local groups, Entra groups, minus block cut"]
-    E --> H{"permission held? read-only PAT keeps reads only"}
-    H -- yes --> IO{"interactive-only and not a JWT?"}
-    IO -- yes --> RI["Record denial: interactive_required, then 403 interactive-session-required"]
-    IO -- no --> ALLOW["ALLOW"]
-    H -- no --> VV{"visible_via permission held here?"}
-    VV -- yes --> FORB["FORBIDDEN"]
-    VV -- no --> NF["NOT_FOUND"]
-    FORB --> RD["Record denial, commit, then answer 403"]
-    NF --> RN["Record denial, commit, then answer 404"]
-```
+![Diagram: 3.3 How a permission decision is made](../../images/diagrams/02-identity-and-access-5.png)
 
 ### 3.4 404 or 403: hiding what you cannot see
 

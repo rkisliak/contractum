@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    actor Client as Client - CLI or pipeline
+    participant GW as Traefik gateway
+    participant Svc as contracts - any service
+    participant Id as identity - PDP
+    participant DB as contracts DB
+    participant N as NATS stream AUDIT
+    participant Au as audit
+    Client->>GW: HTTPS request with Bearer token - TLS ends here
+    GW->>GW: security headers, CORS, header strip, 2 MiB body limit, rate limit
+    GW->>Svc: route /api/v1/contracts/...
+    Svc->>Svc: verify token - JWKS cached, or dcp_ key looked up at identity
+    Svc->>Id: POST /internal/v1/authz/check - permission and folder
+    Note over Svc,Id: identity answers allow, 404 or 403 and records every denial first
+    Svc->>DB: one transaction - domain row plus outbox row
+    Svc-->>Client: 201 Created or problem+json, through Traefik
+    DB->>N: outbox relay publishes audit.contracts.contract.contract.version_published
+    Note over N,Au: audit-writer stores the event once - unique event_id

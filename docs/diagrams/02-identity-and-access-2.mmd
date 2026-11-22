@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor User as Entra user
+    participant Entra as Microsoft Entra ID
+    participant C as contracts
+    participant ID as identity
+    participant Cache as DirectoryCache 60 s
+    participant Graph as Microsoft Graph
+    User->>Entra: sign in, request a token for the API app
+    Entra-->>User: v2 access token - tid, oid, scp
+    User->>C: GET /api/v1/contracts/contracts/ID/versions/latest - Bearer token
+    C->>C: issuer registry picks the Entra entry by iss
+    C->>Entra: fetch JWKS - only on a cache miss or unknown kid
+    C->>C: check signature, aud, ver 2.0, pinned tid - Principal entra:tid:oid
+    C->>ID: POST /internal/v1/authz/check - same bearer token, permission contract:read-published, folder id
+    ID->>ID: verify the token again, independently
+    ID->>Cache: look up user oid in tenant tid
+    alt cache miss
+        Cache->>Graph: GET /users/oid - accountEnabled
+        Cache->>Graph: GET /users/oid/transitiveMemberOf - paged group ids
+        Graph-->>Cache: enabled, group ids
+    end
+    Cache-->>ID: enabled, groups
+    ID->>ID: admitted? direct registration or a registered group
+    ID->>ID: write the just-in-time entra_users row on first sight
+    ID->>ID: effective roles at the folder - own grants, local groups, Entra groups
+    ID-->>C: 200 outcome allow, folder facts, permissions
+    C-->>User: 200 contract document

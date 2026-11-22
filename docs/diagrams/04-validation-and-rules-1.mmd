@@ -1,0 +1,10 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Draft: POST folders/ID/rule-sets
+    Draft --> Draft: PUT draft with If-Match
+    Draft --> Checking: POST publish
+    Checking --> Draft: 422 rule-invalid or ruleset-fixtures-failed
+    Checking --> Version: check ok, frozen as version N
+    Version --> Deprecated: POST versions/N/deprecate
+    Version --> [*]
+    Deprecated --> [*]

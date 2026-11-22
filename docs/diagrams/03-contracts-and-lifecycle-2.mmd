@@ -1,0 +1,23 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Draft: create, upload, from-template, starter or from-version
+    Draft --> Draft: PUT drafts/ID saves, revision plus 1
+    Draft --> [*]: DELETE drafts/ID
+    Draft --> Latest: POST drafts/ID/publish, first publish
+    Draft --> Preview: POST drafts/ID/publish, later publishes
+    Latest --> Older: a higher version is promoted
+    Latest --> Preview: a lower version is promoted
+    Preview --> Latest: POST versions/REF/promote
+    Older --> Latest: POST versions/REF/promote
+    Preview --> Older: a higher version is promoted
+    Preview --> Unpublished: POST versions/REF/unpublish
+    Older --> Unpublished: POST versions/REF/unpublish
+    Unpublished --> Preview: POST versions/REF/republish, higher than Latest
+    Unpublished --> Older: POST versions/REF/republish, lower than Latest
+    Latest --> Draft: POST drafts, copy of a version
+    note right of Latest
+        Latest, Preview and Older are the published states.
+        POST versions/REF/deprecate sets the Deprecated flag
+        and a sunset date on any of them, including the Latest.
+        Promote clears it. The bytes never change.
+    end note

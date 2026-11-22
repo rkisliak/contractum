@@ -36,27 +36,7 @@ and `scripts/e2e.sh` wait for the whole stack (`docker compose up --wait`).
 
 ## 1. The gateway
 
-```mermaid
-flowchart LR
-    C["Client, https://localhost:8443"] --> EP["Traefik entry point websecure, port 443, TLS 1.2+"]
-    EP --> R1{"Path prefix?"}
-    R1 -- "/api/v1/identity/auth/" --> MA["security-headers, cors, gateway-problems, strip-identity-headers, body-limit, rl-auth"]
-    R1 -- "/api/v1/identity/" --> MD1["standard middleware chain, rl-default"]
-    R1 -- "/api/v1/contracts/" --> MD2["standard middleware chain, rl-default"]
-    R1 -- "/api/v1/validation/" --> MD3["standard middleware chain, rl-default"]
-    R1 -- "/api/v1/audit/" --> MD4["standard middleware chain, rl-default"]
-    R1 -- "/api/v1/openapi.json, /api/v1/docs/" --> MD5["standard middleware chain, rl-default"]
-    R1 -- "GET or HEAD of any other path" --> MU["security-headers, gateway-problems, rl-ui"]
-    R1 -- "anything else" --> MC["security-headers, cors, gateway-problems, rl-default, replace-path-404"]
-    MA --> ID["identity:8000"]
-    MD1 --> ID
-    MD2 --> CO["contracts:8000"]
-    MD3 --> VA["validation:8000"]
-    MD4 --> AU["audit:8000"]
-    MD5 --> AD["api-docs:8080"]
-    MU --> UI["ui:8080"]
-    MC --> PR["problem-responder:8080, renders 404"]
-```
+![Diagram: 1. The gateway](../../images/diagrams/06-platform-and-operations-1.png)
 
 Traefik v3.7 is configured by files only: `gateway/traefik.yml` (static) and
 `gateway/dynamic/*.yml` (routers, middlewares, TLS).
@@ -225,36 +205,7 @@ Kubernetes ignores image health checks and uses the chart's probes.
 Production runs the same images on Kubernetes with the Helm chart in `deploy/helm/contractum`. How
 to install, configure and upgrade it: [Deploy on Kubernetes](../../admin/deploy-kubernetes.md).
 
-```mermaid
-flowchart LR
-    U["Users, pipelines, CLI"] --> LB["Service gateway, LoadBalancer or ClusterIP, port 443"]
-    LB --> GW["Deployment gateway, Traefik"]
-    subgraph EDGE["Edge pods"]
-        UI["ui"]
-        AD["api-docs"]
-        PR["problem-responder"]
-    end
-    subgraph APP["App pods"]
-        ID["identity"]
-        CO["contracts"]
-        VA["validation"]
-        AU["audit"]
-        MA["mail"]
-    end
-    subgraph BACK["Backing services, bundled or external"]
-        PG[("postgres StatefulSet or managed server")]
-        NA[("nats StatefulSet or external server")]
-    end
-    MJ["Job migrate-r revision"] --> PG
-    GW --> EDGE
-    GW --> ID
-    GW --> CO
-    GW --> VA
-    GW --> AU
-    AD --> APP
-    APP --> PG
-    APP --> NA
-```
+![Diagram: 4. The Kubernetes topology (Helm)](../../images/diagrams/06-platform-and-operations-2.png)
 
 | Piece | What the chart creates |
 |---|---|

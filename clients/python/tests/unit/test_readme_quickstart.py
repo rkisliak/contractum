@@ -312,7 +312,7 @@ def test_the_guide_explains_exit_codes_reports_and_the_release_state() -> None:
         assert code in text, f"exit code row {code}"
     for flag in ("--json", "--junit", "--markdown"):
         assert flag in text, flag
-    assert "No `contractum-v*` release has been published yet" in text
+    assert "No platform release has been published yet" in text
     for sign_in in (
         "--token -",
         "account menu (your initials) > Access tokens",

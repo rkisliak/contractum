@@ -4,8 +4,10 @@
     python3 scripts/release/next_version.py --mode pre-release [--head REV] [--github-output FILE]
     python3 scripts/release/next_version.py --mode promote [--github-output FILE]
 
-One version covers the whole platform (every image and the Helm chart). It is never written into a
-file: the Release workflow computes it here and injects it at build and package time.
+One version covers the whole platform (every image, the Helm chart and the Python SDK and CLI). It
+is never written into a file: the Release workflow computes it here and injects it at build and
+package time. The SDK package takes its PEP 440 form (``python-version``: ``1.2.0rc1`` for
+``1.2.0-rc.1``).
 
 pre-release
     Reads the commits since the last stable tag ``vX.Y.Z`` and bumps it: a breaking change (``!``
@@ -19,7 +21,8 @@ promote
     Takes the newest release candidate ``vX.Y.Z-rc.N`` and releases the same commit as
     ``vX.Y.Z``. It must be newer than the last stable tag.
 
-It prints ``key=value`` lines (version, tag, sha, previous, prerelease), also appended to
+It prints ``key=value`` lines (version, python-version, tag, sha, previous, prerelease), also
+appended to
 ``--github-output``. When there is nothing to do it explains why and exits 1. Standard library
 only, so the workflow runs it with the runner's own Python.
 """
@@ -74,6 +77,12 @@ class Version:
     @property
     def tag(self) -> str:
         return f"v{self.text}"
+
+    @property
+    def python(self) -> str:
+        """The PEP 440 form of the SDK package version: ``1.2.3rc4`` for ``1.2.3-rc.4``."""
+        core = f"{self.major}.{self.minor}.{self.patch}"
+        return core if self.rc is None else f"{core}rc{self.rc}"
 
     @property
     def base(self) -> Version:
@@ -187,6 +196,7 @@ class Plan:
     def outputs(self) -> dict[str, str]:
         return {
             "version": self.version.text,
+            "python-version": self.version.python,
             "tag": self.version.tag,
             "sha": self.sha,
             "previous": self.previous.tag if self.previous else "",

@@ -20,6 +20,8 @@ pytestmark = pytest.mark.unit
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE = ROOT / ".github" / "workflows" / "release.yml"
+SDK_WORKFLOW = ROOT / ".github" / "workflows" / "sdk.yml"
+SDK = ROOT / "clients" / "python"
 CHART = ROOT / "deploy" / "helm" / "contractum"
 PLATFORM_IMAGES = {"identity", "contracts", "validation", "audit", "mail", "api-docs", "ui"}
 
@@ -63,10 +65,19 @@ def test_least_privilege_per_job() -> None:
     }
     assert jobs["image"]["permissions"] == publish
     assert jobs["chart"]["permissions"] == publish
+    assert jobs["cli-image"]["permissions"] == publish
+    # The wheel and the sdist are attested, not pushed: no packages: write.
+    assert jobs["sdk"]["permissions"] == {
+        "contents": "read",
+        "id-token": "write",
+        "attestations": "write",
+    }
     assert jobs["release"]["permissions"] == {"contents": "write"}
     assert jobs["image"]["needs"] == "plan"
+    assert jobs["sdk"]["needs"] == "plan"
+    assert jobs["cli-image"]["needs"] == "plan"
     assert jobs["chart"]["needs"] == ["plan", "image"]
-    assert jobs["release"]["needs"] == ["plan", "image", "chart"]
+    assert jobs["release"]["needs"] == ["plan", "image", "chart", "sdk", "cli-image"]
 
 
 def test_no_expression_is_expanded_inside_a_shell_script() -> None:
@@ -94,6 +105,8 @@ def test_the_plan_computes_the_version_gates_on_the_three_workflows_and_writes_n
     assert 'head_sha="$SHA"' in gate
     assert "status=success" in gate
     assert "scripts/release/changelog.py" in steps["Release notes"]["run"]
+    outputs = _workflow()["jobs"]["plan"]["outputs"]
+    assert outputs["python-version"] == "${{ steps.version.outputs.python-version }}"
 
 
 def test_ci_can_be_run_by_hand_so_a_skip_ci_head_can_pass_the_gate() -> None:
@@ -156,6 +169,96 @@ def test_the_release_job_creates_the_tag_and_marks_candidates_as_pre_releases() 
     assert "--prerelease --latest=false" in script
     assert "flags=(--latest)" in script
     assert "notes/release-notes.md" in script
+    for asset in (
+        '"assets/contractum-${VERSION}.tgz"',
+        '"assets/contractum-${PY_VERSION}-py3-none-any.whl"',
+        '"assets/contractum-${PY_VERSION}.tar.gz"',
+        "assets/SHA256SUMS",
+    ):
+        assert asset in script, asset
+    sums = _steps("release")["Check the SDK files and write SHA256SUMS of every attached file"]
+    assert "sha256sum -c SHA256SUMS" in sums["run"]
+    assert "sha256sum -- * > SHA256SUMS" in sums["run"]
+
+
+def test_the_sdk_job_builds_the_release_version_from_the_released_commit_and_attests_it() -> None:
+    steps = _steps("sdk")
+    checkout = steps["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"]["with"]
+    assert checkout["ref"] == "${{ needs.plan.outputs.sha }}"
+    setup_uv = next(step for name, step in steps.items() if name.startswith("astral-sh/setup-uv@"))
+    assert setup_uv["with"]["enable-cache"] is False  # nothing from the Actions cache in a release
+    build = steps["Build and check the wheel and the sdist"]
+    assert build["env"] == {"PY_VERSION": "${{ needs.plan.outputs.python-version }}"}
+    assert build["run"] == 'bash scripts/build_release.sh "$PY_VERSION"'
+    attest = steps["Attest the wheel and the sdist"]
+    assert attest["uses"].startswith("actions/attest@")
+    assert attest["with"]["subject-checksums"] == "clients/python/dist/SHA256SUMS"
+    upload = next(s for n, s in steps.items() if n.startswith("actions/upload-artifact@"))
+    assert upload["with"]["name"] == "sdk-dist"
+
+
+def test_the_cli_image_carries_the_version_is_smoke_tested_and_is_latest_only_when_stable() -> None:
+    steps = _steps("cli-image")
+    assert steps["Set the release version"]["run"] == (
+        'bash scripts/build_release.sh --set-only "$PY_VERSION"'
+    )
+    assert "image=ghcr.io/${OWNER,,}/contractum-cli" in steps["Image name"]["run"]
+    smoke = steps["Build the image for the smoke test"]["with"]
+    assert (smoke["load"], smoke["push"], smoke["no-cache"]) == (True, False, True)
+    assert smoke["build-args"] == "VERSION=${{ needs.plan.outputs.version }}"
+    reports = steps["Image reports the release version"]["run"]
+    assert '[ "$out" = "contractum ${PY_VERSION}" ]' in reports
+    fixtures = steps["Image smoke, conforming data exits 0, non-conforming data exits 1"]["run"]
+    assert '[ "$good" -eq 0 ] && [ "$bad" -eq 1 ]' in fixtures
+    push = steps["Build and push the image"]["with"]
+    assert push["build-args"] == smoke["build-args"]
+    assert (push["context"], push["file"]) == (smoke["context"], smoke["file"])
+    assert (push["push"], push["sbom"], push["provenance"]) == (True, True, "mode=max")
+    tags = push["tags"].splitlines()
+    assert tags[0] == "${{ steps.meta.outputs.image }}:${{ needs.plan.outputs.version }}"
+    assert tags[1] == (
+        "${{ needs.plan.outputs.prerelease == 'false' && "
+        "format('{0}:latest', steps.meta.outputs.image) || '' }}"
+    )
+    attest = steps["Attest build provenance"]["with"]
+    assert attest["push-to-registry"] is True
+
+
+def test_the_release_workflow_is_the_only_way_to_release_the_sdk() -> None:
+    workflows = ROOT / ".github" / "workflows"
+    assert not (workflows / "sdk-release.yml").exists()
+    for path in workflows.glob("*.yml"):
+        text = path.read_text(encoding="utf-8")
+        assert "contractum-v" not in text, path.name
+        if path != RELEASE:
+            assert "gh release create" not in text, path.name
+            assert "packages: write" not in text, path.name
+
+
+def test_the_sdk_workflow_dry_runs_the_release_build_without_publishing() -> None:
+    workflow = _yaml(SDK_WORKFLOW)
+    assert "pull_request" in workflow[True]
+    job = workflow["jobs"]["sdk-package"]
+    assert "permissions" not in job  # the workflow's contents: read
+    assert workflow["permissions"] == {"contents": "read"}
+    steps = {step.get("name", step.get("uses", "")): step for step in job["steps"]}
+    assert steps["Build and check the release files (version 0.0.0rc1)"]["run"] == (
+        "bash scripts/build_release.sh 0.0.0rc1"
+    )
+    image = steps["Build the CLI image (not pushed)"]["with"]
+    assert (image["push"], image["load"]) == (False, True)
+    assert "contractum 0.0.0rc1" in steps["Image reports the release version"]["run"]
+    assert "sdk-package" in workflow["jobs"]["sdk-ok"]["needs"]
+
+
+def test_the_committed_sdk_version_is_the_dev_placeholder() -> None:
+    project = (SDK / "pyproject.toml").read_text(encoding="utf-8")
+    assert re.search(r'(?m)^version = "0\.0\.0\.dev0"$', project)
+    script = (SDK / "scripts" / "build_release.sh").read_text(encoding="utf-8")
+    assert 'uv version "$version" --no-sync' in script
+    assert "git diff --numstat -- uv.lock" in script
+    assert "License-Expression: Apache-2.0" in script
+    assert "Noncommercial[ ]License" in script
 
 
 @pytest.mark.parametrize(
@@ -178,7 +281,12 @@ def test_every_platform_dockerfile_takes_the_version_and_labels_the_image(docker
 def test_every_action_in_the_release_workflow_is_pinned_by_sha() -> None:
     uses = re.findall(r"uses:\s*(\S+)", RELEASE.read_text(encoding="utf-8"))
     assert uses
-    allowed = ("actions/", "docker/setup-buildx-action@", "docker/build-push-action@")
+    allowed = (
+        "actions/",
+        "astral-sh/setup-uv@",
+        "docker/setup-buildx-action@",
+        "docker/build-push-action@",
+    )
     assert "azure/setup-helm" not in RELEASE.read_text(encoding="utf-8")
     for ref in uses:
         assert ref.startswith(allowed), ref

@@ -11,7 +11,8 @@ Performance and Other changes (``refactor``, ``revert``, dependency updates and 
 not Conventional Commits). ``docs``, ``test``, ``ci``, ``style``, ``build`` and ``chore`` commits
 are left out. Inside a group the lines are sorted by scope; each links its pull request (the
 ``(#NN)`` of a squash-merge subject) or, without one, its commit. The notes end with the image
-and chart references of the version and how to verify them. Standard library only.
+and chart references of the version, how to install the Python SDK and CLI from the wheel attached
+to the release (or run the CLI image) and how to verify them. Standard library only.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 # next_version.py sits next to this file: Python puts the script's directory first on sys.path.
-from next_version import Commit, git, is_dependency_update, read_commits
+from next_version import Commit, git, is_dependency_update, parse_tag, read_commits
 
 GROUPS = ("Breaking changes", "Features", "Fixes", "Security", "Performance", "Other changes")
 OTHER_TYPES = frozenset({"refactor", "revert"})
@@ -85,7 +86,15 @@ def changes(commits: Sequence[Commit], repo_url: str, since: str | None) -> str:
     return "\n".join(lines)
 
 
-def artifacts(version: str, repo: str) -> str:
+def python_version(version: str) -> str:
+    """The PEP 440 form of a platform version (``1.2.0rc1`` for ``1.2.0-rc.1``)."""
+    parsed = parse_tag(f"v{version}")
+    if parsed is None:
+        raise ValueError(f"not a release version: {version!r}")
+    return parsed.python
+
+
+def artifacts(version: str, repo: str, server_url: str) -> str:
     owner = repo.split("/", 1)[0].lower()
     registry = f"ghcr.io/{owner}"
     lines = ["## Images and Helm chart", ""]
@@ -110,6 +119,31 @@ def artifacts(version: str, repo: str) -> str:
         "```",
         "",
     ]
+    py = python_version(version)
+    wheel = f"contractum-{py}-py3-none-any.whl"
+    url = f"{server_url.rstrip('/')}/{repo}/releases/download/v{version}/{wheel}"
+    lines += [
+        "## Python SDK and CLI",
+        "",
+        f"The `contractum` package `{py}` (Python 3.11 to 3.14) is attached to this release: "
+        f"`{wheel}` and `contractum-{py}.tar.gz`. Install the CLI with:",
+        "",
+        "```bash",
+        f"uv tool install {url}",
+        f"pip install {url}",
+        "```",
+        "",
+        f"CLI image for pipelines: `{registry}/contractum-cli:{version}`.",
+        "",
+        "Verify the downloads and the image:",
+        "",
+        "```bash",
+        "sha256sum -c SHA256SUMS --ignore-missing",
+        f"gh attestation verify {wheel} --repo {repo}",
+        f"gh attestation verify oci://{registry}/contractum-cli:{version} --repo {repo}",
+        "```",
+        "",
+    ]
     return "\n".join(lines)
 
 
@@ -117,7 +151,7 @@ def notes(
     version: str, commits: Sequence[Commit], repo: str, server_url: str, since: str | None
 ) -> str:
     repo_url = f"{server_url.rstrip('/')}/{repo}"
-    return changes(commits, repo_url, since) + "\n" + artifacts(version, repo)
+    return changes(commits, repo_url, since) + "\n" + artifacts(version, repo, server_url)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

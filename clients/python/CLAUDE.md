@@ -60,9 +60,14 @@ workspace and root ruff, so the server gates (lock, lint, coverage) never see th
 - `tests/conftest.py`: canary token, `assert_no_secret`, path-based markers, isolated
   config/data/cache environment.
 - `../../.github/workflows/sdk.yml`: SDK CI, aggregated by the `sdk-ok` check.
-- `../../.github/workflows/sdk-release.yml`: release path. Pull requests dry-run the build and
-  smoke; an `contractum-v*` tag publishes wheel, sdist and `SHA256SUMS` as a GitHub Release (`gh release
-  create`, attested) and pushes `ghcr.io/<owner>/contractum-cli`. No package index (D-42).
+- `scripts/build_release.sh`: builds and checks the wheel and sdist for a given PEP 440 version
+  (sets it with `uv version`, never committed; the committed version is the placeholder
+  `0.0.0.dev0`). The `sdk-package` job of `sdk.yml` dry-runs it with `0.0.0rc1` on pull requests
+  and builds and smoke-tests the CLI image; nothing is published from there.
+- `../../.github/workflows/release.yml`: the only release path. The platform release builds the
+  wheel and sdist with the platform version (jobs `sdk` and `cli-image`), attests them, attaches
+  them to the GitHub Release `vX.Y.Z[-rc.N]` and pushes `ghcr.io/<owner>/contractum-cli:<version>`
+  (`latest` only for a stable release). No package index.
 
 ## Module skills
 

@@ -1,4 +1,5 @@
-# Release of the server platform: one version for all 7 images and the Helm chart.
+# Release of the platform: one version for the 7 server images, the Helm chart and the Python SDK
+# and CLI (clients/python, package contractum: wheel, sdist and the CLI image).
 #
 #   Actions › Release › Run workflow (on main), mode:
 #     pre-release  release candidate vX.Y.Z-rc.N of the current main HEAD
@@ -7,7 +8,9 @@
 # Nobody types a version and no commit bumps one: scripts/release/next_version.py derives it from
 # the Conventional Commits since the last stable tag vX.Y.Z (breaking = major, feat = minor, fix,
 # perf, security, refactor, revert and dependency updates = patch; 1.0.0 first) and the build
-# injects it (build argument VERSION, `helm package --version/--app-version`).
+# injects it (build argument VERSION, `helm package --version/--app-version`, `uv version` for the
+# SDK in its PEP 440 form: 1.1.0rc1 for 1.1.0-rc.1). The committed SDK version is the placeholder
+# 0.0.0.dev0, like the chart's.
 #
 # Gate: the released commit must have a successful run of ci.yml, e2e-nightly.yml and
 # dast-nightly.yml for that exact SHA, or the run stops and names what is missing.
@@ -16,19 +19,26 @@
 #   ghcr.io/<owner>/contractum/<component>:<version>   (identity, contracts, validation, audit,
 #                                                       mail, api-docs, ui)
 #   oci://ghcr.io/<owner>/charts/contractum --version <version>
+#   ghcr.io/<owner>/contractum-cli:<version>            (the CLI image; also `latest` when stable)
 #   the git tag v<version> and its GitHub Release (a pre-release for -rc.N, Latest for stable),
-#   with notes from scripts/release/changelog.py and the chart archive attached.
+#   with notes from scripts/release/changelog.py and attached: the chart archive, the SDK wheel
+#   and sdist (contractum-<python-version>...) and SHA256SUMS of the three files.
 #
 # Each image is built from scratch (no build cache) with BuildKit SBOM and SLSA provenance
 # (mode=max) attestations attached in the registry, and gets a GitHub artifact attestation (build
-# provenance, actions/attest) pushed next to it; the chart archive is attested too. Verify with
+# provenance, actions/attest) pushed next to it; the chart archive, the wheel and the sdist are
+# attested too. The wheel and the sdist are built and installed on Python 3.11 and 3.14 by
+# clients/python/scripts/build_release.sh, and the CLI image runs an offline smoke before it is
+# pushed. Verify with
 #   gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum
 #   gh attestation verify contractum-<version>.tgz --repo <owner>/contractum
+#   gh attestation verify contractum-<python-version>-py3-none-any.whl --repo <owner>/contractum
 # The only token is the workflow's GITHUB_TOKEN. packages: write is granted only to the jobs that
 # push, id-token/attestations only to the jobs that attest, contents: write only to the release
 # job. Tags it creates trigger nothing (GITHUB_TOKEN events start no workflow), so nothing builds
-# twice. Pull requests and pushes to main never publish: ci.yml builds every image and
-# security.yml scans them.
+# twice. Pull requests and pushes to main never publish: ci.yml builds every image, sdk.yml dry-runs
+# the SDK build and the CLI image (job sdk-package) and security.yml scans them. This workflow is
+# the only way anything is released.
 name: Release
 
 on:
@@ -61,6 +71,7 @@ jobs:
       actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      python-version: ${{ steps.version.outputs.python-version }}
       tag: ${{ steps.version.outputs.tag }}
       sha: ${{ steps.version.outputs.sha }}
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -232,6 +243,140 @@ jobs:
         if: always()
         run: docker logout ghcr.io
 
+  # The SDK wheel and sdist, built from the released commit with the release version and attested.
+  sdk:
+    name: sdk
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: clients/python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      # No Actions cache in a release job: everything is fetched fresh.
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: false
+      - name: Build and check the wheel and the sdist
+        env:
+          PY_VERSION: ${{ needs.plan.outputs.python-version }}
+        run: bash scripts/build_release.sh "$PY_VERSION"
+      - name: Attest the wheel and the sdist
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: clients/python/dist/SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sdk-dist
+          path: |
+            clients/python/dist/contractum-*.whl
+            clients/python/dist/contractum-*.tar.gz
+            clients/python/dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+  # The CLI image, with the same version inside (`contractum --version`) and on the tag. It is
+  # smoke-tested offline first, then pushed from the same builder cache with SBOM and provenance.
+  cli-image:
+    name: cli-image
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: clients/python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: false
+      - name: Set the release version
+        env:
+          PY_VERSION: ${{ needs.plan.outputs.python-version }}
+        run: bash scripts/build_release.sh --set-only "$PY_VERSION"
+      - name: Image name
+        id: meta
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "image=ghcr.io/${OWNER,,}/contractum-cli" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the image for the smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: clients/python
+          file: clients/python/Dockerfile
+          build-args: VERSION=${{ needs.plan.outputs.version }}
+          tags: contractum-cli:smoke
+          no-cache: true
+          pull: true
+          push: false
+          load: true
+      - name: Image reports the release version
+        env:
+          PY_VERSION: ${{ needs.plan.outputs.python-version }}
+        run: |
+          set -euo pipefail
+          out=$(docker run --rm contractum-cli:smoke --version)
+          echo "$out"
+          [ "$out" = "contractum ${PY_VERSION}" ]
+      - name: Image smoke, conforming data exits 0, non-conforming data exits 1
+        run: |
+          set -uo pipefail
+          docker run --rm -v "$PWD/tests/fixtures/image:/work:ro" contractum-cli:smoke \
+            test orders.csv --contract payments.orders --lock contractum.lock --frozen --offline
+          good=$?
+          docker run --rm -v "$PWD/tests/fixtures/image:/work:ro" contractum-cli:smoke \
+            test orders_bad.csv --contract payments.orders --lock contractum.lock --frozen --offline
+          bad=$?
+          echo "exit codes: conforming ${good}, non-conforming ${bad}"
+          [ "$good" -eq 0 ] && [ "$bad" -eq 1 ]
+      - name: Log in to ghcr.io
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      # The same inputs as the smoke build, so the builder cache gives the tested layers.
+      - name: Build and push the image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: clients/python
+          file: clients/python/Dockerfile
+          build-args: VERSION=${{ needs.plan.outputs.version }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ needs.plan.outputs.version }}
+            ${{ needs.plan.outputs.prerelease == 'false' && format('{0}:latest', steps.meta.outputs.image) || '' }}
+          push: true
+          sbom: true
+          provenance: mode=max
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.meta.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: Log out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io
+
   # After every image exists, so the chart never names an image that is missing.
   chart:
     name: chart
@@ -294,10 +439,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # Last: the tag and the GitHub Release appear only when every image and the chart are published.
+  # Last: the tag and the GitHub Release appear only when every image, the chart and the SDK files
+  # are published.
   release:
     name: release
-    needs: [plan, image, chart]
+    needs: [plan, image, chart, sdk, cli-image]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -311,10 +457,26 @@ jobs:
         with:
           name: chart
           path: chart
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sdk-dist
+          path: sdk
+      - name: Check the SDK files and write SHA256SUMS of every attached file
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          PY_VERSION: ${{ needs.plan.outputs.python-version }}
+        run: |
+          set -euo pipefail
+          (cd sdk && sha256sum -c SHA256SUMS)
+          mkdir assets
+          cp "chart/contractum-${VERSION}.tgz" "sdk/contractum-${PY_VERSION}-py3-none-any.whl" \
+            "sdk/contractum-${PY_VERSION}.tar.gz" assets/
+          (cd assets && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
       - name: Create the tag and the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.plan.outputs.version }}
+          PY_VERSION: ${{ needs.plan.outputs.python-version }}
           TAG: ${{ needs.plan.outputs.tag }}
           SHA: ${{ needs.plan.outputs.sha }}
           PRERELEASE: ${{ needs.plan.outputs.prerelease }}
@@ -335,4 +497,7 @@ jobs:
             --title "Contractum ${VERSION}" \
             --notes-file notes/release-notes.md \
             "${flags[@]}" \
-            "chart/contractum-${VERSION}.tgz"
+            "assets/contractum-${VERSION}.tgz" \
+            "assets/contractum-${PY_VERSION}-py3-none-any.whl" \
+            "assets/contractum-${PY_VERSION}.tar.gz" \
+            assets/SHA256SUMS

@@ -339,13 +339,17 @@ jobs:
           [ "$out" = "contractum ${PY_VERSION}" ]
       - name: Image smoke, conforming data exits 0, non-conforming data exits 1
         run: |
-          set -uo pipefail
+          set -euo pipefail
+          # The runner uses bash -e, and exit 1 is the expected result for the bad file, so each
+          # exit code is captured with || to reach the assertion below.
+          good=0
           docker run --rm -v "$PWD/tests/fixtures/image:/work:ro" contractum-cli:smoke \
-            test orders.csv --contract payments.orders --lock contractum.lock --frozen --offline
-          good=$?
+            test orders.csv --contract payments.orders --lock contractum.lock --frozen --offline \
+            || good=$?
+          bad=0
           docker run --rm -v "$PWD/tests/fixtures/image:/work:ro" contractum-cli:smoke \
-            test orders_bad.csv --contract payments.orders --lock contractum.lock --frozen --offline
-          bad=$?
+            test orders_bad.csv --contract payments.orders --lock contractum.lock --frozen --offline \
+            || bad=$?
           echo "exit codes: conforming ${good}, non-conforming ${bad}"
           [ "$good" -eq 0 ] && [ "$bad" -eq 1 ]
       - name: Log in to ghcr.io

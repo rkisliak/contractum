@@ -6,6 +6,15 @@
 # prints `.dev` secrets: no step reads `.dev` except the full gate's copy of the e2e operation
 # coverage report (.dev/phase7-operation-coverage.json, no secret), and no artifact holds `.dev`.
 # Runner differences are handled here, so scripts/ci.sh stays runner-neutral.
+#
+# The Release workflow calls this one (workflow_call) with `full: true` and the manifest of the
+# images it just built (`release-images`, the artifact holding release-images.json, and
+# `release-version`, the version they report). The ui-e2e and py-e2e jobs then pull exactly those
+# digests, tag them as the compose images and start the stack with `--no-build`; the stack, the
+# images it runs and the version it reports are checked before the tests and again after them
+# (scripts/release/tested_images.sh verify-stack). The registry credential is used only to pull and
+# is removed before the stack starts, because the e2e runner holds the Docker socket. Nightly and
+# manual runs leave the inputs empty and build from source exactly as before.
 name: E2E Nightly
 
 on:
@@ -17,12 +26,29 @@ on:
         description: "Run the full gate: bash scripts/ci.sh --full"
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      full:
+        description: "Run the full gate: bash scripts/ci.sh --full"
+        type: boolean
+        default: false
+      release-images:
+        description: "Name of the artifact that holds release-images.json; empty builds from source"
+        type: string
+        default: ""
+      release-version:
+        description: "The platform version the release images must report (DC_VERSION)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
+# A release call has its own group, so a queued nightly can never cancel the pending release call.
+# github.workflow is not used: in a called workflow it names the caller, which would collide with
+# the Release group.
 concurrency:
-  group: e2e-nightly
+  group: ${{ inputs.release-images && format('e2e-release-{0}', github.run_id) || 'e2e-nightly' }}
   cancel-in-progress: false
 
 jobs:
@@ -139,6 +165,12 @@ jobs:
     if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DC_RELEASE_IMAGES: ${{ inputs.release-images && '.release-images/release-images.json' || '' }}
+      DC_VERSION: ${{ inputs.release-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -166,6 +198,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.release-images != ''
+        with:
+          name: ${{ inputs.release-images }}
+          path: .release-images
+      # The credential exists only inside this step: it is removed before any container of the test
+      # stack (or the e2e runner with its Docker socket) is started.
+      - name: Load the release images by digest
+        if: inputs.release-images != ''
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          bash scripts/release/tested_images.sh load
       # compose.test.yaml bind-mounts ./ui/test-results (long syntax, the source is not created),
       # and a runner-owned .dev makes dev-init chown its mirror files to the runner user.
       - name: Prepare bind-mount directories
@@ -181,6 +229,9 @@ jobs:
           else
             bash scripts/ci.sh
           fi
+      - name: The stack still runs the release images
+        if: success() && inputs.release-images != ''
+        run: bash scripts/release/tested_images.sh verify-stack
       - name: Collect compose diagnostics
         if: failure()
         run: |
@@ -217,6 +268,12 @@ jobs:
     if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DC_RELEASE_IMAGES: ${{ inputs.release-images && '.release-images/release-images.json' || '' }}
+      DC_VERSION: ${{ inputs.release-version }}
     steps:
       - name: Free disk space
         run: |
@@ -228,6 +285,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.release-images != ''
+        with:
+          name: ${{ inputs.release-images }}
+          path: .release-images
+      # The credential exists only inside this step: it is removed before any container of the test
+      # stack (or the e2e runner with its Docker socket) is started.
+      - name: Load the release images by digest
+        if: inputs.release-images != ''
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          bash scripts/release/tested_images.sh load
       - name: Prepare bind-mount directories
         run: mkdir -p .dev ui/test-results
       - name: Run the py-e2e part
@@ -240,6 +313,9 @@ jobs:
           else
             bash scripts/ci.sh
           fi
+      - name: The stack still runs the release images
+        if: success() && inputs.release-images != ''
+        run: bash scripts/release/tested_images.sh verify-stack
       # The e2e operation coverage (written by tests/e2e/test_zz_operation_coverage.py), read by
       # `operation-coverage` (its e2e column). The only file taken from .dev; it holds no secret.
       - name: Copy the e2e operation coverage report

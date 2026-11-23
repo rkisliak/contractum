@@ -28,6 +28,12 @@
 #   CI_INTEGRATION=0   skip step 7 even when Docker is available
 #   CI_E2E=1           run step 9 (needs Docker and free port 8443)
 #   CI_UI=0            skip the ui step (8) and the UI e2e inside step 9
+#   DC_RELEASE_IMAGES  a release image manifest (scripts/release/release_images.py), set by the
+#                      Release workflow's call of E2E Nightly: the cold start of step 9 then runs
+#                      exactly those images, already loaded as contractum/<name>:dev by
+#                      scripts/release/tested_images.sh load, with `up --no-build`, and
+#                      tested_images.sh verify-stack proves it before any test. DC_VERSION is the
+#                      version the stack reports. Unset (the default) builds from source as before
 #   CI_PART=<part>     run one part of the gate, so a CI system can run the parts as parallel jobs
 #                      (.github/workflows/e2e-nightly.yml); default `all`, the whole gate in order:
 #                        checks              steps 1-7 (7b under the full gate)
@@ -124,7 +130,7 @@ if part checks; then
     gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
     scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
     scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py \
-    scripts/ci_changes.py
+    scripts/release/release_images.py scripts/ci_changes.py
 
   step "lint-imports"
   uv run lint-imports
@@ -188,9 +194,16 @@ fi
 if { [ "$CI_PART" = "all" ] && [ "${CI_E2E:-0}" = "1" ]; } \
   || [ "$CI_PART" = "ui-e2e" ] || [ "$CI_PART" = "py-e2e" ]; then
   docker_available || { echo "the cold-start e2e needs a running Docker daemon" >&2; exit 1; }
-  step "cold start (compose down -v, rebuild, up)"
-  docker compose down -v --remove-orphans
-  docker compose up -d --build --wait --wait-timeout 300
+  if [ -n "${DC_RELEASE_IMAGES:-}" ]; then
+    step "cold start on the release images (compose down -v, up --no-build, verify the images)"
+    docker compose down -v --remove-orphans
+    docker compose up -d --no-build --wait --wait-timeout 300
+    bash scripts/release/tested_images.sh verify-stack
+  else
+    step "cold start (compose down -v, rebuild, up)"
+    docker compose down -v --remove-orphans
+    docker compose up -d --build --wait --wait-timeout 300
+  fi
   if [ "$CI_PART" = "all" ] && [ "${CI_UI:-1}" = "0" ]; then
     echo "==> ui e2e tests skipped: CI_UI=0"
   elif part ui-e2e; then

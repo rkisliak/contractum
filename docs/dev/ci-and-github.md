@@ -8,8 +8,9 @@ What the workflows publish:
 
 - `release.yml` publishes the seven server images, the Helm chart and the CLI image to GitHub
   Container Registry and creates the platform's tag and GitHub Release with the Python SDK wheel
-  and sdist attached, but only when run by hand on `main` (see [Releasing](#releasing)). It is
-  the only workflow that releases anything.
+  and sdist attached, but only when run by hand on `main` (see [Releasing](#releasing)). It
+  builds the server images once, runs the full end-to-end and DAST tests on those exact images and
+  promotes the same digests to the stable version. It is the only workflow that releases anything.
 - `docs.yml` deploys the docs site to GitHub Pages, but only on a push to `main` when the
   repository variable `DOCS_PAGES_ENABLED` is `true`.
 - Every other workflow only builds, tests and scans. Pull requests and pushes to `main` build the
@@ -17,9 +18,11 @@ What the workflows publish:
 
 The only repository secret any workflow reads is `SONAR_TOKEN`, in the inactive `sonarqube` job.
 A few jobs use the automatic `GITHUB_TOKEN`: the server release (to read the gate's workflow
-runs, push the images, the chart and their attestations, and create the tag and release), the weekly link check (to raise GitHub's rate limit), and the `gate` jobs of
-`e2e-nightly` and `dast-nightly` (to find the last green run and skip a nightly run when nothing
-changed).
+runs, push and retag the images, push the chart, attest, and create the tag and release), the
+weekly link check (to raise GitHub's rate limit), the `gate` jobs of `e2e-nightly` and
+`dast-nightly` (to find the last green run and skip a nightly run when nothing changed), and the
+test jobs of those two workflows when the release calls them (to pull the release images, read
+only).
 
 ## The workflows
 
@@ -27,15 +30,15 @@ changed).
 |----------|---------|------|-----------------------------|
 | Continuous Integration (`ci.yml`) | pull request, push to `main`, manual | `changes`, `docs-repo-tests`, `python-lint`, `python-unit`, `python-integration`, `ui`, `docker-build (<image>)`, `ci-ok` | The job-level mirror of `scripts/ci.sh` without the end-to-end step: lock check, ruff, mypy and import rules; unit tests; integration tests against the runner's Docker; the UI static checks (`pnpm ci:static`); every image builds (identity, contracts, validation, audit, mail, api-docs, ui), never pushed. A docs-only change skips the code jobs (see [The docs-only skip](#the-docs-only-skip)). `ci-ok` is one aggregate result |
 | Security (`security.yml`) | pull request, push to `main`, daily 04:23 UTC, manual | `trivy-fs-report`, `trivy-fs-gate`, `trivy-image (<image>)`, `dependency-review`, `codeql (<language>)`, `gitleaks`, `pip-audit`, `pnpm-audit`, `sonarqube` | The scanners in [Security scanners](#security-scanners). `dependency-review` runs on pull requests only. `sonarqube` is inactive until `SONAR_ENABLED` is `true` |
-| E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`) | `gate`, `checks`, `ui-static`, `ui-e2e (<part>)`, `py-e2e`, `operation-coverage` | `CI_E2E=1 bash scripts/ci.sh`, or the full gate when `full` is ticked, as parallel jobs, one per part of the script (`CI_PART`): the checks, the UI static checks, the Playwright UI tests on one cold stack per shard or volume project, and the Python end-to-end tests on their own cold stack. `operation-coverage` runs under the full gate only |
-| DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
+| E2E Nightly (`e2e-nightly.yml`) | nightly 01:41 UTC, manual (input `full`), called by Release | `gate`, `checks`, `ui-static`, `ui-e2e (<part>)`, `py-e2e`, `operation-coverage` | `CI_E2E=1 bash scripts/ci.sh`, or the full gate when `full` is ticked, as parallel jobs, one per part of the script (`CI_PART`): the checks, the UI static checks, the Playwright UI tests on one cold stack per shard or volume project, and the Python end-to-end tests on their own cold stack. `operation-coverage` runs under the full gate only |
+| DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual, called by Release | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
 | SDK (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-package`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor; `sdk-package`, the dry run of the SDK release: `clients/python/scripts/build_release.sh 0.0.0rc1` builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files and writes `SHA256SUMS`, then the CLI image is built and runs an offline smoke. Nothing is published. `sdk-ok` is one aggregate result |
-| Release (`release.yml`) | manual on `main` only (input `mode`: `pre-release` or `promote`) | `plan`, `image (<image>)`, `sdk`, `cli-image`, `chart`, `release` | Computes the next platform version from the commits, checks that the commit passed CI, E2E Nightly and DAST Nightly, builds the seven server images without cache, the SDK wheel and sdist and the CLI image with the same version, packages the Helm chart, pushes the images and the chart to `ghcr.io/<owner>` with attestations, then creates the tag and the GitHub Release with the chart and the SDK files attached. See [Releasing](#releasing) |
+| Release (`release.yml`) | manual on `main` only (input `mode`: `pre-release` or `promote`) | `plan`, `image (<image>)`, `images-manifest`, `e2e`, `dast`, `tested`, `verify-candidate`, `promote-images`, `images-ready`, `sdk`, `cli-image`, `chart`, `release`, `latest` | Computes the next platform version from the commits and checks that the commit passed CI, E2E Nightly and DAST Nightly. A pre-release builds the seven server images once, runs the full E2E and DAST tests on exactly those digests and records them as tested. A promote builds no server image: it verifies that record and adds the stable tag to the same digests. Both build the SDK wheel and sdist and the CLI image, package the Helm chart pinned to the tested digests, then create the tag and the GitHub Release. See [Releasing](#releasing) |
 | Documentation (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only from `main` (a push, or a manual run on `main`) with `DOCS_PAGES_ENABLED` set to `true` |
 | Docs Links Weekly (`docs-links-weekly.yml`) | Mondays 05:17 UTC, manual | `external-links` | lychee over the external links of every Markdown file. It never runs on pull requests, so a remote site that is down never blocks a merge |
 
 The nightly `e2e-nightly` and `dast-nightly` runs skip a scheduled run when the head of `main`
-equals the head of the last green run. A manual run always runs.
+equals the head of the last green run. A manual run, and a run the release calls, always runs.
 
 ### The docs-only skip
 
@@ -64,17 +67,27 @@ equals the head of the last green run. A manual run always runs.
 The platform has one version for all seven server images (identity, contracts, validation,
 audit, mail, api-docs, ui), the Helm chart and the Python SDK and CLI (`clients/python`, package
 `contractum`: the wheel, the sdist and the CLI image). Nobody types a version and no commit bumps
-one: the Release workflow computes it and injects it at build and package time. The committed
-versions are placeholders (`0.0.0.dev0` in `clients/python/pyproject.toml`, like the chart's). The
-SDK takes the PEP 440 form of the version: `1.1.0rc1` for `v1.1.0-rc.1`, `1.1.0` for `v1.1.0`.
-There is no other release path: no tag push, no separate SDK release.
+one: the Release workflow computes it. The committed versions are placeholders (`0.0.0.dev0` in
+`clients/python/pyproject.toml`, like the chart's). The SDK takes the PEP 440 form of the version:
+`1.1.0rc1` for `v1.1.0-rc.1`, `1.1.0` for `v1.1.0`. There is no other release path: no tag push,
+no separate SDK release.
+
+**The server images hold no version.** They are built once and then released unchanged, so the
+version cannot be part of them. The services and api-docs report the `DC_VERSION` they are started
+with, and the UI reports `DC_UI_VERSION` (written into its `config.json`); both read `dev` when
+none is given. The images do carry the commit and the commit time (`GIT_SHA`, `BUILD_TIME`, and the
+OCI labels `revision` and `created`). Compose passes `DC_VERSION` (default `dev`) to every
+component, and the chart passes the chart's `appVersion`, or the `global.imageTag` an operator set.
 
 **Run a release.** Open Actions, **Release**, **Run workflow**, keep the branch `main` and pick a
 mode:
 
-- `pre-release` releases the current head of `main` as a release candidate `vX.Y.Z-rc.N`.
-- `promote` takes the newest release candidate and releases the same commit as `vX.Y.Z`. The
-  images are built again from that commit, so they report the final version.
+- `pre-release` releases the current head of `main` as a release candidate `vX.Y.Z-rc.N`. It
+  builds the server images, tests them and records the result. It creates no tag, GitHub Release,
+  chart or CLI image unless the full E2E and DAST tests both passed on those images.
+- `promote` takes the newest release candidate and releases the same commit as `vX.Y.Z`. It builds
+  no server image: the stable images are the candidate's tested images with a new tag, so the
+  images that were tested are the images that ship.
 
 **Version rules.** `scripts/release/next_version.py` reads the commit subjects since the last
 stable tag `vX.Y.Z` as [Conventional Commits](https://www.conventionalcommits.org/):
@@ -98,41 +111,94 @@ the run stops and names the missing ones. Run a missing one by hand on `main` (A
 workflow, **Run workflow**) and start the release again. A commit pushed with `[skip ci]` gets its
 CI run this way.
 
-**What a release publishes.** The jobs run in this order, so nothing is tagged until everything
-is published:
+**What a release publishes.** Pre-release and promote run different jobs. In both, `plan` runs
+first and nothing is tagged until everything else is published.
 
-1. `plan` computes the version, checks the gate and writes the release notes with
-   `scripts/release/changelog.py`: every commit since the previous stable tag, grouped as
-   Breaking changes, Features, Fixes, Security, Performance and Other changes, sorted by scope,
-   each line linking its pull request.
-2. `image (<image>)` builds each image from scratch (no build cache) with the build arguments
-   `VERSION`, `GIT_SHA` (12 characters) and `BUILD_TIME` (the commit time), and pushes
-   `ghcr.io/<owner>/contractum/<image>:<version>`. BuildKit attaches an SBOM and SLSA provenance
-   (`mode=max`), and `actions/attest` pushes a GitHub build provenance attestation next to it.
-   The images carry the OCI labels `org.opencontainers.image.{title,version,revision,created,source}`.
-3. `chart` installs a pinned Helm release (checked against its sha256), runs
-   `helm package --version <version> --app-version <version>` and pushes the chart to
+`plan` computes the version, checks the gate and writes the release notes with
+`scripts/release/changelog.py`: every commit since the previous stable tag, grouped as Breaking
+changes, Features, Fixes, Security, Performance and Other changes, sorted by scope, each line
+linking its pull request. For a promote it also names the candidate and the version its images were
+built under.
+
+*Pre-release: build once and test by digest.*
+
+1. `image (<image>)` builds each of the seven images once, from scratch (no build cache), with the
+   build arguments `GIT_SHA` (12 characters) and `BUILD_TIME` (the commit time), and pushes
+   `ghcr.io/<owner>/contractum/<image>:<version>`, where the version is the candidate's
+   `X.Y.Z-rc.N`. BuildKit attaches an SBOM and SLSA provenance (`mode=max`), and `actions/attest`
+   pushes a GitHub build provenance attestation next to it. Each job uploads the image digest.
+2. `images-manifest` collects the seven digests into `release-images.json` (written by
+   `scripts/release/release_images.py`) and checks that every candidate tag in the registry resolves
+   to its digest.
+3. `e2e` and `dast` call `e2e-nightly.yml` (with `full: true`) and `dast-nightly.yml` on exactly
+   those images. Their test jobs download the manifest, pull every image by digest, tag it as the
+   image compose runs (`contractum/<name>:dev`) and start the stack with `--no-build`.
+   `scripts/release/tested_images.sh verify-stack` checks that every container runs one of those
+   image IDs and that each service, api-docs, the UI and mail report the candidate's version, before
+   the tests and again after them. The scope is the same as a manual full run: every part of the
+   full gate, every Playwright project and shard, Schemathesis and ZAP.
+4. `tested` runs only when both passed. It adds the run id and the two results to the manifest
+   (`tested-images.json`; the tool refuses anything but `success`) and attests the file. This
+   attestation exists only after both suites passed.
+5. `images-ready` marks the images as tested. The chart and the CLI image start only from there.
+
+*Promote: tag the tested digests.*
+
+1. `verify-candidate` stops the run before anything is published unless all of this holds: the
+   candidate's GitHub Release exists, is a pre-release and is not a draft; it carries
+   `tested-images.json`; the file passes the strict check (every key, digest, commit and repository)
+   and names the candidate's version, the released commit and this registry, with both results
+   `success`; the file and every image digest have a valid attestation from this repository's
+   Release workflow, built from that commit on `main` on a GitHub-hosted runner; and every
+   candidate tag still points at its recorded digest. The release asset is editable, so the file is
+   trusted only after its attestation verifies.
+2. `promote-images` runs `docker buildx imagetools create` for each image with the source
+   `<repository>@<digest>` and the new tag `<version>`, then reads every new tag back and compares
+   it with the digest. It has no build step, so the SBOM, the provenance and the attestations of
+   the candidate stay valid for the stable image.
+3. `images-ready` marks the images as released. The chart and the CLI image start only from there.
+
+*Both modes.*
+
+1. `chart` checks the record again, writes the seven tested digests into the chart's
+   `global.imageDigests` (on the runner's copy only), runs `helm lint`, packages it with
+   `helm package --version <version> --app-version <version>` using a pinned Helm release (checked
+   against its sha256), renders the packaged archive and checks that every platform image is
+   exactly `<repository>:<version>@<digest>`, and only then pushes it to
    `oci://ghcr.io/<owner>/charts/contractum`. The chart archive gets an attestation too.
-4. `sdk` (in parallel with `image`) runs `clients/python/scripts/build_release.sh <python-version>`
-   on the released commit: it sets the version with `uv version` (never committed), checks that
-   the lock changed only the project's own version line, builds the wheel and the sdist, installs
-   each on Python 3.11 and 3.14 and checks that `contractum --version` prints
-   `contractum <python-version>`, checks the Apache-2.0 licence files and writes `SHA256SUMS`.
-   `actions/attest` attests both files. No Actions cache is used.
-5. `cli-image` sets the same version, builds the CLI image (`clients/python/Dockerfile`, build
+2. `sdk` (in parallel with the image jobs) runs `clients/python/scripts/build_release.sh
+   <python-version>` on the released commit: it sets the version with `uv version` (never
+   committed), checks that the lock changed only the project's own version line, builds the wheel
+   and the sdist, installs each on Python 3.11 and 3.14 and checks that `contractum --version`
+   prints `contractum <python-version>`, checks the Apache-2.0 licence files and writes
+   `SHA256SUMS`. `actions/attest` attests both files. No Actions cache is used. The SDK and the CLI
+   image are still rebuilt on a promote, with these same install and smoke tests.
+3. `cli-image` sets the same version, builds the CLI image (`clients/python/Dockerfile`, build
    argument `VERSION`) without cache, checks `contractum --version` and the offline fixture smoke
    in it, then pushes `ghcr.io/<owner>/contractum-cli:<version>` with an SBOM, SLSA provenance and
    an attestation. A stable release also tags it `latest`; a release candidate never does.
-6. `release` creates the tag `v<version>` on the released commit and its GitHub Release with
-   the GitHub CLI: the notes, the chart archive, the wheel, the sdist and `SHA256SUMS` of those
-   files, marked as a pre-release for `-rc.N` and as Latest for a stable version. The notes say
-   how to install the CLI from the wheel's release URL (`uv tool install`, `pip install`) and name
-   the CLI image.
+4. `release` creates the tag `v<version>` on the released commit and its GitHub Release with the
+   GitHub CLI: the notes, the chart archive, the wheel, the sdist, `tested-images.json` and
+   `SHA256SUMS` of those files, marked as a pre-release for `-rc.N` and as Latest for a stable
+   version. The notes say how to install the CLI from the wheel's release URL (`uv tool install`,
+   `pip install`) and name the CLI image. `tested-images.json` records which images were tested, in
+   which run, and is attached to the candidate and to the stable release alike.
+5. `latest` (promote only) runs after the release exists and adds `latest` to the tested digests,
+   so `latest` never points at a version that was not released.
 
-Permissions are per job: `plan` reads the repository and the workflow runs, `image`, `chart` and
-`cli-image` hold `packages: write`, `id-token: write` and `attestations: write`, `sdk` holds only
-`id-token: write` and `attestations: write`, and only `release` holds `contents: write`. The tag
-the workflow creates triggers no other workflow.
+Permissions are per job: `plan` reads the repository and the workflow runs. `image`, `chart` and
+`cli-image` hold `packages: write`, `id-token: write` and `attestations: write`. `promote-images`
+and `latest` hold only `packages: write`. `images-manifest` and the two test jobs hold
+`packages: read`, and the registry login of a test job is removed before the test stack starts,
+because the end-to-end runner holds the Docker socket. `tested` and `sdk` hold only
+`id-token: write` and `attestations: write`, `verify-candidate` holds `attestations: read`, and only
+`release` holds `contents: write`. The tag the workflow creates triggers no other workflow.
+
+**What stops a promote.** `verify-candidate` fails, and nothing is published, when the candidate
+release or its `tested-images.json` is missing, when the file or an image attestation does not
+verify, when the file names another version, commit or registry, when a result is not `success`,
+or when a candidate tag points at another digest. `images-ready`, the chart, the CLI image, the
+release and `latest` each run only when the jobs before them succeeded.
 
 **Verify a release.**
 
@@ -145,6 +211,18 @@ gh attestation verify contractum-<python-version>-py3-none-any.whl --repo <owner
 gh attestation verify oci://ghcr.io/<owner>/contractum-cli:<version> --repo <owner>/contractum
 ```
 
+To verify which images were tested, download `tested-images.json` from the release and check it
+and one of its digests (the digest of each image is in the file):
+
+```bash
+gh release download v<version> --repo <owner>/contractum --pattern tested-images.json
+gh attestation verify tested-images.json --repo <owner>/contractum
+gh attestation verify oci://ghcr.io/<owner>/contractum/identity@<digest> --repo <owner>/contractum
+```
+
+The stable image tag and the candidate tag name the same digest. The attestation of a stable image
+is the one the candidate got when it was built.
+
 A container package that GitHub creates on the first push is private. Make each
 `contractum/<image>` package, the `contractum-cli` package and the `charts/contractum` package public (or give the cluster a
 pull Secret) under the package's settings, and check that it is linked to this repository.
@@ -155,6 +233,11 @@ pull Secret) under the package's settings, and check that it is linked to this r
   or use `gh workflow run e2e-nightly.yml -f full=true`.
 - It needs no secrets. Each stack job needs Docker on `ubuntu-latest`, a free port 8443 and the
   disk space its first step frees.
+- The Release workflow calls it with `full: true` and the manifest of the images it just built.
+  The `ui-e2e` and `py-e2e` jobs then pull exactly those digests and start the stack with
+  `--no-build` (`DC_RELEASE_IMAGES` names the manifest, `DC_VERSION` the version the images must
+  report); see [Releasing](#releasing). A release call uses its own concurrency group, so a queued
+  nightly never cancels it. Without those inputs the stack is built from source, as above.
 - The jobs run in parallel after `gate`:
   - `checks`: lock check, lint, format, types, import rules, unit and integration tests (with
     coverage and the coverage floors under the full gate).
@@ -177,6 +260,9 @@ pull Secret) under the package's settings, and check that it is linked to this r
 
 - Run it by hand from Actions, dast-nightly, Run workflow. It needs no secrets and the same runner
   resources as the nightly end-to-end run.
+- The Release workflow calls it with the manifest of the images it just built; the stack then
+  starts from exactly those digests (`--no-build`) and is checked before and after the scans, as in
+  the nightly end-to-end run. Schemathesis and ZAP are the same in both cases.
 - It fails on a Schemathesis failure and on any High ZAP alert that `.zap/rules.tsv` does not
   ignore with a reason. ZAP still runs after a Schemathesis failure, so one night reports both.
 - The `dast-reports-<run id>` artifact (14 days) holds the Schemathesis log and the ZAP HTML and

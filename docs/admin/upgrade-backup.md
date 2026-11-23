@@ -51,7 +51,7 @@ commit Secret values to a repository.
 3. Pick the new version on the repository's Releases page. A stable release `vX.Y.Z` is marked
    Latest; a release candidate `vX.Y.Z-rc.N` is a pre-release, for a test installation first.
    Read its notes: a major version (the first number) lists its breaking changes. The chart of a
-   release uses that release's images by default. If you set `global.imageTag` or run from your
+   release uses that release's tested images by digest. If you set `global.imageTag` or run from your
    own registry, mirror or build the new images first (see [Images](deploy-kubernetes.md#images))
    and set the new tag.
 4. Run, with the new version:

@@ -18,8 +18,8 @@ replaceable; it performs no authentication, and no security control may live onl
   build, unpacked with tar) at `/api/v1/docs/`, with `swagger-initializer.js` from this
   directory. Until a merge succeeds, and after a collision, `/healthz` and the document answer 503:
   a partial document is never served (D-176, D-178). `/api/v1/docs/version` answers the container's build
-  identity `{service: "api-docs", version, commit, built_at}` from `DC_VERSION`, `DC_GIT_SHA` and
-  `DC_BUILD_TIME` (the image's `VERSION`/`GIT_SHA`/`BUILD_TIME` build args, "dev" otherwise), the
+  identity `{service: "api-docs", version, commit, built_at}` from `DC_VERSION` (given at startup, the image holds no
+  version), `DC_GIT_SHA` and `DC_BUILD_TIME` (the image's `GIT_SHA`/`BUILD_TIME` build args), "dev" otherwise, the
   same shape as the services' `/version`; it is routed by the existing docs PathPrefix rule.
 - Compose publishes exactly one host port, `8443 -> 443`, from this module's container.
 

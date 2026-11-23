@@ -21,10 +21,13 @@ promote
     Takes the newest release candidate ``vX.Y.Z-rc.N`` and releases the same commit as
     ``vX.Y.Z``. It must be newer than the last stable tag.
 
-It prints ``key=value`` lines (version, python-version, tag, sha, previous, prerelease), also
-appended to
-``--github-output``. When there is nothing to do it explains why and exits 1. Standard library
-only, so the workflow runs it with the runner's own Python.
+It prints ``key=value`` lines (version, python-version, tag, sha, previous, prerelease, candidate,
+image-version), also appended to ``--github-output``. ``candidate`` is the release candidate tag a
+promote releases (empty for a pre-release) and ``image-version`` is the version the images were
+built under: that candidate's version when promoting, the version itself otherwise. Promote adds
+its tags to those tested images instead of building new ones. When there is nothing to do it
+explains why and exits 1. Standard library only, so the workflow runs it with the runner's own
+Python.
 """
 
 from __future__ import annotations
@@ -192,6 +195,7 @@ class Plan:
     version: Version
     sha: str
     previous: Version | None
+    candidate: Version | None = None
 
     def outputs(self) -> dict[str, str]:
         return {
@@ -201,6 +205,8 @@ class Plan:
             "sha": self.sha,
             "previous": self.previous.tag if self.previous else "",
             "prerelease": "false" if self.version.stable else "true",
+            "candidate": self.candidate.tag if self.candidate else "",
+            "image-version": (self.candidate or self.version).text,
         }
 
 
@@ -234,7 +240,7 @@ def plan_promote(tags: Mapping[Version, str]) -> Plan:
             f"nothing to promote: the newest release candidate {newest.tag} is not newer than "
             f"the stable release {previous.tag} (already promoted). Run a pre-release first."
         )
-    return Plan(newest.base, tags[newest], previous)
+    return Plan(newest.base, tags[newest], previous, newest)
 
 
 # --- git ----------------------------------------------------------------------------------------

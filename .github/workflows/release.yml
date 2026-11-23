@@ -1,44 +1,68 @@
 # Release of the platform: one version for the 7 server images, the Helm chart and the Python SDK
 # and CLI (clients/python, package contractum: wheel, sdist and the CLI image).
 #
-#   Actions › Release › Run workflow (on main), mode:
+#   Actions > Release > Run workflow (on main), mode:
 #     pre-release  release candidate vX.Y.Z-rc.N of the current main HEAD
 #     promote      the newest release candidate, released again as vX.Y.Z from the same commit
 #
 # Nobody types a version and no commit bumps one: scripts/release/next_version.py derives it from
 # the Conventional Commits since the last stable tag vX.Y.Z (breaking = major, feat = minor, fix,
-# perf, security, refactor, revert and dependency updates = patch; 1.0.0 first) and the build
-# injects it (build argument VERSION, `helm package --version/--app-version`, `uv version` for the
-# SDK in its PEP 440 form: 1.1.0rc1 for 1.1.0-rc.1). The committed SDK version is the placeholder
-# 0.0.0.dev0, like the chart's.
+# perf, security, refactor, revert and dependency updates = patch; 1.0.0 first). The server images
+# hold no version: services, api-docs and the UI report the one they are started with (DC_VERSION,
+# DC_UI_VERSION). `helm package --version/--app-version` and `uv version` for the SDK (in its PEP
+# 440 form: 1.1.0rc1 for 1.1.0-rc.1) take it at package time. The committed SDK version is the
+# placeholder 0.0.0.dev0, like the chart's.
+#
+# Build once, test by digest, promote by digest:
+#   pre-release  builds each of the 7 server images once, as <version> = X.Y.Z-rc.N, with SBOM and
+#                provenance. images-manifest records their registry digests (release-images.json).
+#                The full E2E (e2e-nightly.yml, full: true) and DAST (dast-nightly.yml) then run on
+#                exactly those digests: the jobs pull them, start the compose stack with
+#                `--no-build` and check that it runs them. Only when both passed does `tested`
+#                add the result to the record (tested-images.json) and attest it. Then the chart
+#                (pinned to those digests), the SDK and the CLI image are built, and last the tag
+#                and the GitHub Release appear, with tested-images.json attached. A pre-release
+#                creates no tag, release, chart or CLI image unless E2E and DAST passed.
+#   promote      builds no server image. verify-candidate takes tested-images.json from the
+#                candidate's GitHub Release (an editable asset, so it is trusted only after its
+#                attestation verifies), checks its version, commit and registry, that every rc tag
+#                still points at its digest and that every image attestation verifies. Any
+#                missing or mismatched item stops the run before anything is published.
+#                promote-images adds X.Y.Z to the same digests (imagetools create, no rebuild), so
+#                the SBOM, the provenance and the attestations stay valid. The chart is repackaged
+#                with the stable version and the same digests; the SDK and the CLI image are
+#                rebuilt with their install and smoke tests. After the release exists, `latest`
+#                is added to the same digests, so it never points at an unreleased version.
 #
 # Gate: the released commit must have a successful run of ci.yml, e2e-nightly.yml and
 # dast-nightly.yml for that exact SHA, or the run stops and names what is missing.
 #
 # Outputs, all with the same version:
 #   ghcr.io/<owner>/contractum/<component>:<version>   (identity, contracts, validation, audit,
-#                                                       mail, api-docs, ui)
+#                                                       mail, api-docs, ui; the candidate's own
+#                                                       images, tagged again when promoted)
 #   oci://ghcr.io/<owner>/charts/contractum --version <version>
 #   ghcr.io/<owner>/contractum-cli:<version>            (the CLI image; also `latest` when stable)
 #   the git tag v<version> and its GitHub Release (a pre-release for -rc.N, Latest for stable),
 #   with notes from scripts/release/changelog.py and attached: the chart archive, the SDK wheel
-#   and sdist (contractum-<python-version>...) and SHA256SUMS of the three files.
+#   and sdist (contractum-<python-version>...), tested-images.json and SHA256SUMS of the four files.
 #
-# Each image is built from scratch (no build cache) with BuildKit SBOM and SLSA provenance
-# (mode=max) attestations attached in the registry, and gets a GitHub artifact attestation (build
-# provenance, actions/attest) pushed next to it; the chart archive, the wheel and the sdist are
-# attested too. The wheel and the sdist are built and installed on Python 3.11 and 3.14 by
+# Attestations: each image gets a GitHub artifact attestation (build provenance, actions/attest)
+# pushed next to it in the pre-release; tested-images.json, the chart archive, the wheel and the
+# sdist are attested too. The wheel and the sdist are built and installed on Python 3.11 and 3.14 by
 # clients/python/scripts/build_release.sh, and the CLI image runs an offline smoke before it is
 # pushed. Verify with
 #   gh attestation verify oci://ghcr.io/<owner>/contractum/identity:<version> --repo <owner>/contractum
+#   gh attestation verify tested-images.json --repo <owner>/contractum
 #   gh attestation verify contractum-<version>.tgz --repo <owner>/contractum
 #   gh attestation verify contractum-<python-version>-py3-none-any.whl --repo <owner>/contractum
 # The only token is the workflow's GITHUB_TOKEN. packages: write is granted only to the jobs that
 # push, id-token/attestations only to the jobs that attest, contents: write only to the release
-# job. Tags it creates trigger nothing (GITHUB_TOKEN events start no workflow), so nothing builds
-# twice. Pull requests and pushes to main never publish: ci.yml builds every image, sdk.yml dry-runs
-# the SDK build and the CLI image (job sdk-package) and security.yml scans them. This workflow is
-# the only way anything is released.
+# job. The jobs that test the images get packages: read, and the registry credential is removed
+# before the test stack starts. Tags it creates trigger nothing (GITHUB_TOKEN events start no
+# workflow), so nothing builds twice. Pull requests and pushes to main never publish: ci.yml builds
+# every image, sdk.yml dry-runs the SDK build and the CLI image (job sdk-package) and security.yml
+# scans them. This workflow is the only way anything is released.
 name: Release
 
 on:
@@ -75,8 +99,11 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       sha: ${{ steps.version.outputs.sha }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      candidate: ${{ steps.version.outputs.candidate }}
+      image-version: ${{ steps.version.outputs.image-version }}
       git-sha: ${{ steps.build.outputs.git-sha }}
       build-time: ${{ steps.build.outputs.build-time }}
+      registry: ${{ steps.registry.outputs.registry }}
     steps:
       - name: Runs on main only
         env:
@@ -106,6 +133,11 @@ jobs:
           set -euo pipefail
           echo "git-sha=$(git rev-parse --short=12 "$SHA")" >> "$GITHUB_OUTPUT"
           echo "build-time=$(git log -1 --format=%cI "$SHA")" >> "$GITHUB_OUTPUT"
+      - name: Registry of the platform images
+        id: registry
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "registry=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
       - name: The commit passed CI, E2E Nightly and DAST Nightly
         env:
           GH_TOKEN: ${{ github.token }}
@@ -146,9 +178,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Pre-release only: every server image is built here, once, and never again. Promote tags these
+  # same digests.
   image:
     name: image (${{ matrix.name }})
     needs: plan
+    if: needs.plan.outputs.prerelease == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -218,11 +253,11 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           target: ${{ matrix.target }}
-          # The Dockerfiles turn these into the runtime version (DC_VERSION, the UI build) and the
-          # OCI labels org.opencontainers.image.{version,revision,created}.
+          # The Dockerfiles turn these into the commit the image reports and the OCI labels
+          # org.opencontainers.image.{revision,created}. The image holds no version: it is
+          # given at startup, so this build is the one that is tested and then promoted.
           build-args: |
             ${{ matrix.package && format('PACKAGE={0}', matrix.package) || '' }}
-            VERSION=${{ needs.plan.outputs.version }}
             GIT_SHA=${{ needs.plan.outputs.git-sha }}
             BUILD_TIME=${{ needs.plan.outputs.build-time }}
           tags: ${{ steps.meta.outputs.image }}:${{ needs.plan.outputs.version }}
@@ -239,9 +274,288 @@ jobs:
           push-to-registry: true
           # Storage records exist only for organization-owned repositories.
           create-storage-record: false
+      - name: Record the digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          NAME: ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          mkdir -p digest
+          printf '%s\n' "$DIGEST" > "digest/${NAME}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.name }}
+          path: digest/${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 7
       - name: Log out of ghcr.io
         if: always()
         run: docker logout ghcr.io
+
+  # The registry digests of the 7 images, read back from the registry: one record of what was built.
+  images-manifest:
+    name: images-manifest
+    needs: [plan, image]
+    if: needs.plan.outputs.prerelease == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          path: digests
+          merge-multiple: true
+      - name: Assemble the manifest of the built images
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          GIT_SHA: ${{ needs.plan.outputs.git-sha }}
+          REGISTRY: ${{ needs.plan.outputs.registry }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/release_images.py assemble --digests digests \
+            --version "$VERSION" --commit "$SHA" --git-sha "$GIT_SHA" --registry "$REGISTRY" \
+            --output release-images.json
+          cat release-images.json
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to ghcr.io
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Every candidate tag resolves to its recorded digest
+        env:
+          DC_RELEASE_IMAGES: release-images.json
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: bash scripts/release/tested_images.sh verify-tags "$VERSION"
+      - name: Log out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-images
+          path: release-images.json
+          if-no-files-found: error
+          retention-days: 7
+
+  # The full E2E and the DAST scans run on exactly the built images (pulled by digest, started with
+  # --no-build, checked before and after the tests). Their scope is that of the nightly runs.
+  e2e:
+    name: e2e
+    needs: [plan, images-manifest]
+    if: needs.plan.outputs.prerelease == 'true'
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    uses: ./.github/workflows/e2e-nightly.yml
+    with:
+      full: true
+      release-images: release-images
+      release-version: ${{ needs.plan.outputs.version }}
+
+  dast:
+    name: dast
+    needs: [plan, images-manifest]
+    if: needs.plan.outputs.prerelease == 'true'
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    uses: ./.github/workflows/dast-nightly.yml
+    with:
+      release-images: release-images
+      release-version: ${{ needs.plan.outputs.version }}
+
+  # The durable proof that these digests passed: only after both suites succeeded is the record
+  # completed, and its attestation exists only then. Promote relies on it.
+  tested:
+    name: tested
+    needs: [plan, images-manifest, e2e, dast]
+    if: needs.plan.outputs.prerelease == 'true' && needs.e2e.result == 'success' && needs.dast.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-images
+          path: built
+      - name: Record that E2E and DAST passed on these digests
+        env:
+          E2E_RESULT: ${{ needs.e2e.result }}
+          DAST_RESULT: ${{ needs.dast.result }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/release_images.py record --manifest built/release-images.json \
+            --run-id "$RUN_ID" --e2e "$E2E_RESULT" --dast "$DAST_RESULT" \
+            --output tested-images.json
+          cat tested-images.json
+      - name: Attest the tested record
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: tested-images.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tested-images
+          path: tested-images.json
+          if-no-files-found: error
+          retention-days: 7
+
+  # Promote: the candidate is trusted only after everything about it checks out. Nothing is
+  # published here.
+  verify-candidate:
+    name: verify-candidate
+    needs: plan
+    if: needs.plan.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: The candidate is a published pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ needs.plan.outputs.candidate }}
+        run: |
+          set -euo pipefail
+          state=$(gh release view "$CANDIDATE" --repo "$GITHUB_REPOSITORY" \
+            --json isPrerelease,isDraft --jq '"prerelease=\(.isPrerelease) draft=\(.isDraft)"')
+          if [ "$state" != "prerelease=true draft=false" ]; then
+            echo "::error::${CANDIDATE} is not a published pre-release (${state})" >&2
+            exit 1
+          fi
+      - name: Download the tested record of the candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ needs.plan.outputs.candidate }}
+        run: |
+          set -euo pipefail
+          gh release download "$CANDIDATE" --repo "$GITHUB_REPOSITORY" \
+            --pattern tested-images.json --dir candidate
+          test -s candidate/tested-images.json
+      - name: The record is for this version, commit and registry, and both suites passed
+        env:
+          IMAGE_VERSION: ${{ needs.plan.outputs.image-version }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          REGISTRY: ${{ needs.plan.outputs.registry }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/release_images.py check --manifest candidate/tested-images.json \
+            --version "$IMAGE_VERSION" --commit "$SHA" --registry "$REGISTRY" --tested
+      - name: Log in to ghcr.io
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: The record and every image attestation verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DC_RELEASE_IMAGES: candidate/tested-images.json
+        run: bash scripts/release/tested_images.sh verify-attestations
+      - name: Every candidate tag still points at its tested digest
+        env:
+          DC_RELEASE_IMAGES: candidate/tested-images.json
+          IMAGE_VERSION: ${{ needs.plan.outputs.image-version }}
+        run: bash scripts/release/tested_images.sh verify-tags "$IMAGE_VERSION"
+      - name: Log out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tested-images
+          path: candidate/tested-images.json
+          if-no-files-found: error
+          retention-days: 7
+
+  # Promote: the stable tag is added to the tested digests. No server image is built here, so the
+  # SBOM, the provenance and the attestations of the candidate are the stable image's too.
+  promote-images:
+    name: promote-images
+    needs: [plan, verify-candidate]
+    if: needs.plan.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tested-images
+          path: tested
+      - name: Log in to ghcr.io
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Add the stable tag to the tested digests
+        env:
+          DC_RELEASE_IMAGES: tested/tested-images.json
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: bash scripts/release/tested_images.sh tag "$VERSION"
+      - name: Log out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io
+
+  # The images of this release exist and were tested: built and tested (pre-release) or tagged
+  # (promote). The chart and the CLI image start only from here.
+  images-ready:
+    name: images-ready
+    needs: [plan, tested, promote-images]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && ((needs.plan.outputs.prerelease == 'true' && needs.tested.result == 'success') || (needs.plan.outputs.prerelease == 'false' && needs.promote-images.result == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tested-images
+          path: tested
+      - name: The released digests
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Images of ${VERSION}"
+            echo
+            echo "| image | digest |"
+            echo "|---|---|"
+            python3 scripts/release/release_images.py entries --manifest tested/tested-images.json \
+              | while IFS=$'\t' read -r name repository digest; do
+                echo "| ${repository} | ${digest} |"
+              done
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # The SDK wheel and sdist, built from the released commit with the release version and attested.
   sdk:
@@ -288,7 +602,8 @@ jobs:
   # smoke-tested offline first, then pushed from the same builder cache with SBOM and provenance.
   cli-image:
     name: cli-image
-    needs: plan
+    needs: [plan, images-ready]
+    if: ${{ !cancelled() && needs.images-ready.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -381,10 +696,12 @@ jobs:
         if: always()
         run: docker logout ghcr.io
 
-  # After every image exists, so the chart never names an image that is missing.
+  # After the images are tested and tagged, so the chart never names an image that is missing or
+  # untested: it pins every platform image to its tested digest.
   chart:
     name: chart
-    needs: [plan, image]
+    needs: [plan, images-ready]
+    if: ${{ !cancelled() && needs.images-ready.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -410,9 +727,25 @@ jobs:
           tar -xzf "$RUNNER_TEMP/helm.tgz" -C "$RUNNER_TEMP" linux-amd64/helm
           install -m 0755 "$RUNNER_TEMP/linux-amd64/helm" "$RUNNER_TEMP/helm-bin/helm"
           echo "$RUNNER_TEMP/helm-bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tested-images
+          path: tested
+      - name: Pin the chart to the tested digests
+        env:
+          IMAGE_VERSION: ${{ needs.plan.outputs.image-version }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          REGISTRY: ${{ needs.plan.outputs.registry }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/release_images.py check --manifest tested/tested-images.json \
+            --version "$IMAGE_VERSION" --commit "$SHA" --registry "$REGISTRY" --tested
+          python3 scripts/release/release_images.py pin-chart --manifest tested/tested-images.json \
+            --values deploy/helm/contractum/values.yaml
       - name: Package the chart
         env:
           VERSION: ${{ needs.plan.outputs.version }}
+          REGISTRY: ${{ needs.plan.outputs.registry }}
         run: |
           set -euo pipefail
           helm version
@@ -420,6 +753,10 @@ jobs:
           helm package deploy/helm/contractum --version "$VERSION" --app-version "$VERSION" \
             --destination dist
           test -f "dist/contractum-${VERSION}.tgz"
+          helm template dc "dist/contractum-${VERSION}.tgz" --set "global.imageRegistry=${REGISTRY}" \
+            > rendered.yaml
+          python3 scripts/release/release_images.py check-rendered \
+            --manifest tested/tested-images.json --version "$VERSION" --rendered rendered.yaml
       - name: Push the chart to ghcr.io
         env:
           VERSION: ${{ needs.plan.outputs.version }}
@@ -447,7 +784,8 @@ jobs:
   # are published.
   release:
     name: release
-    needs: [plan, image, chart, sdk, cli-image]
+    needs: [plan, images-ready, chart, sdk, cli-image]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.images-ready.result == 'success' && needs.chart.result == 'success' && needs.sdk.result == 'success' && needs.cli-image.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -465,6 +803,10 @@ jobs:
         with:
           name: sdk-dist
           path: sdk
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tested-images
+          path: tested
       - name: Check the SDK files and write SHA256SUMS of every attached file
         env:
           VERSION: ${{ needs.plan.outputs.version }}
@@ -474,7 +816,7 @@ jobs:
           (cd sdk && sha256sum -c SHA256SUMS)
           mkdir assets
           cp "chart/contractum-${VERSION}.tgz" "sdk/contractum-${PY_VERSION}-py3-none-any.whl" \
-            "sdk/contractum-${PY_VERSION}.tar.gz" assets/
+            "sdk/contractum-${PY_VERSION}.tar.gz" tested/tested-images.json assets/
           (cd assets && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
       - name: Create the tag and the GitHub Release
         env:
@@ -504,4 +846,38 @@ jobs:
             "assets/contractum-${VERSION}.tgz" \
             "assets/contractum-${PY_VERSION}-py3-none-any.whl" \
             "assets/contractum-${PY_VERSION}.tar.gz" \
+            assets/tested-images.json \
             assets/SHA256SUMS
+
+  # Promote only, and only after the release exists: `latest` is added to the tested digests, so it
+  # never points at a version that was not released.
+  latest:
+    name: latest
+    needs: [plan, release]
+    if: ${{ !cancelled() && needs.plan.outputs.prerelease == 'false' && needs.release.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tested-images
+          path: tested
+      - name: Log in to ghcr.io
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Point latest at the released digests
+        env:
+          DC_RELEASE_IMAGES: tested/tested-images.json
+        run: bash scripts/release/tested_images.sh tag latest
+      - name: Log out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io

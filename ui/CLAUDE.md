@@ -155,14 +155,16 @@ detail route is rendered as "Not found", never as forbidden (D-UI-08-25).
   (control radius, button glint) with the contract-sheet glyph (folded corner, two schema rows, a check). Used by the
   sidebar, top bar, sign-in panel (which adds the tagline "Data contract governance" under the wordmark) and boot screen; `public/favicon.svg` is the same mark with hex colours (linked from
   `index.html` and `redirect.html`). Never draw a text "DC" tile again.
-- **Versions** (`features/shell/VersionsDialog.tsx`, `src/buildInfo.ts`): the UI build (`__DC_BUILD__` defined in
-  `vite.config.ts` from the `VERSION`/`GIT_SHA`/`BUILD_TIME` build args of `ui.Dockerfile`, never `package.json`;
-  "dev" under Vitest and `pnpm dev`) plus `GET /api/v1/{identity,contracts,validation,audit}/version` (public,
+- **Versions** (`features/shell/VersionsDialog.tsx`, `src/buildInfo.ts`): the UI build (the commit and build time from
+  `__DC_BUILD__`, defined in `vite.config.ts` from the `GIT_SHA`/`BUILD_TIME` build args of `ui.Dockerfile`, never
+  `package.json`; the platform version from `config.version`, which the nginx entrypoint writes from `DC_UI_VERSION`
+  and `config.ts` validates, "dev" when absent; read through `useUiBuild()`; "dev" under Vitest and `pnpm dev`) plus `GET /api/v1/{identity,contracts,validation,audit}/version` (public,
   `ServiceVersionOut`) and `GET /api/v1/docs/version` (the api-docs container, same shape, typed locally because it is
   not in the merged document). The dialog (title "Versions") leads with "Contractum <UI version>"; a row whose version
   differs from the UI's carries a warning Badge "Different version" (text, not colour only). Settings > Platform >
   About does the same. A failed component reads "Unavailable", never an alert. One release gives every image the same
-  platform version (the Release workflow). `scripts/e2e-ui.sh` exports `GIT_SHA` (12-character HEAD) for the build.
+  platform version, supplied at startup (the image holds none, so the tested build is the released one).
+  `scripts/e2e-ui.sh` exports `GIT_SHA` (12-character HEAD) for the build.
 - `src/components/BootScreen/index.tsx`: logo mark plus `Loading` status, or the "Can't reach the server" state, styled
   from tokens (`BootScreen.module.css`).
 - `src/components/Button` (`Button`, `IconButton`), `src/components/form` (`FormField`, `TextField`, `PasswordField`,

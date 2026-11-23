@@ -54,37 +54,432 @@ def test_release_runs_only_by_hand_with_a_mode() -> None:
     assert _workflow()["concurrency"]["cancel-in-progress"] is False
 
 
+PUBLISH = {
+    "contents": "read",
+    "packages": "write",
+    "id-token": "write",
+    "attestations": "write",
+}
+PRE_RELEASE = "needs.plan.outputs.prerelease == 'true'"
+PROMOTE = "needs.plan.outputs.prerelease == 'false'"
+
+
 def test_least_privilege_per_job() -> None:
     jobs = _workflow()["jobs"]
     assert jobs["plan"]["permissions"] == {"contents": "read", "actions": "read"}
-    publish = {
-        "contents": "read",
-        "packages": "write",
-        "id-token": "write",
-        "attestations": "write",
-    }
-    assert jobs["image"]["permissions"] == publish
-    assert jobs["chart"]["permissions"] == publish
-    assert jobs["cli-image"]["permissions"] == publish
+    assert jobs["image"]["permissions"] == PUBLISH
+    assert jobs["chart"]["permissions"] == PUBLISH
+    assert jobs["cli-image"]["permissions"] == PUBLISH
     # The wheel and the sdist are attested, not pushed: no packages: write.
-    assert jobs["sdk"]["permissions"] == {
+    attest = {"contents": "read", "id-token": "write", "attestations": "write"}
+    assert jobs["sdk"]["permissions"] == attest
+    # The tested record is attested, never pushed.
+    assert jobs["tested"]["permissions"] == attest
+    # Jobs that only read the registry get no write.
+    assert jobs["images-manifest"]["permissions"] == {"contents": "read", "packages": "read"}
+    assert jobs["verify-candidate"]["permissions"] == {
         "contents": "read",
-        "id-token": "write",
-        "attestations": "write",
+        "packages": "read",
+        "attestations": "read",
     }
+    # The nightlies called with the release images pull them, and so need packages: read.
+    for caller in ("e2e", "dast"):
+        assert jobs[caller]["permissions"] == {
+            "contents": "read",
+            "actions": "read",
+            "packages": "read",
+        }
+    # Retagging needs packages: write and nothing else.
+    for tagger in ("promote-images", "latest"):
+        assert jobs[tagger]["permissions"] == {"contents": "read", "packages": "write"}
+    assert jobs["images-ready"]["permissions"] == {"contents": "read"}
     assert jobs["release"]["permissions"] == {"contents": "write"}
-    assert jobs["image"]["needs"] == "plan"
-    assert jobs["sdk"]["needs"] == "plan"
-    assert jobs["cli-image"]["needs"] == "plan"
-    assert jobs["chart"]["needs"] == ["plan", "image"]
-    assert jobs["release"]["needs"] == ["plan", "image", "chart", "sdk", "cli-image"]
+    holders = [name for name, job in jobs.items() if job["permissions"].get("contents") == "write"]
+    assert holders == ["release"]
+    writers = {name for name, job in jobs.items() if "packages" in job["permissions"]}
+    assert {n for n in writers if jobs[n]["permissions"]["packages"] == "write"} == {
+        "image",
+        "chart",
+        "cli-image",
+        "promote-images",
+        "latest",
+    }
+
+
+def test_the_job_graph_builds_once_tests_the_digests_and_promotes_them() -> None:
+    jobs = _workflow()["jobs"]
+    assert set(jobs) == {
+        "plan",
+        "image",
+        "images-manifest",
+        "e2e",
+        "dast",
+        "tested",
+        "verify-candidate",
+        "promote-images",
+        "images-ready",
+        "sdk",
+        "cli-image",
+        "chart",
+        "release",
+        "latest",
+    }
+    needs = {name: job.get("needs") for name, job in jobs.items()}
+    assert needs == {
+        "plan": None,
+        "image": "plan",
+        "images-manifest": ["plan", "image"],
+        "e2e": ["plan", "images-manifest"],
+        "dast": ["plan", "images-manifest"],
+        "tested": ["plan", "images-manifest", "e2e", "dast"],
+        "verify-candidate": "plan",
+        "promote-images": ["plan", "verify-candidate"],
+        "images-ready": ["plan", "tested", "promote-images"],
+        "sdk": "plan",
+        "cli-image": ["plan", "images-ready"],
+        "chart": ["plan", "images-ready"],
+        "release": ["plan", "images-ready", "chart", "sdk", "cli-image"],
+        "latest": ["plan", "release"],
+    }
+    for name in ("image", "images-manifest", "e2e", "dast"):
+        assert jobs[name]["if"] == PRE_RELEASE, name
+    assert jobs["tested"]["if"] == (
+        f"{PRE_RELEASE} && needs.e2e.result == 'success' && needs.dast.result == 'success'"
+    )
+    for name in ("verify-candidate", "promote-images"):
+        assert jobs[name]["if"] == PROMOTE, name
+    assert "if" not in jobs["sdk"]  # the SDK rebuilds in both modes
+
+
+def test_a_job_behind_a_skipped_branch_is_not_skipped_with_it() -> None:
+    # A job whose ancestor was skipped is skipped too, unless its own `if` says otherwise; the
+    # chart, the CLI image, the release and latest each name the exact results they need.
+    jobs = _workflow()["jobs"]
+    ready = jobs["images-ready"]["if"]
+    assert "!cancelled()" in ready
+    assert "needs.plan.result == 'success'" in ready
+    assert "needs.plan.outputs.prerelease == 'true' && needs.tested.result == 'success'" in ready
+    assert (
+        "needs.plan.outputs.prerelease == 'false' && needs.promote-images.result == 'success'"
+        in ready
+    )
+    for name in ("cli-image", "chart"):
+        assert jobs[name]["if"] == "${{ !cancelled() && needs.images-ready.result == 'success' }}"
+    release = jobs["release"]["if"]
+    assert "!cancelled()" in release
+    for direct in ("plan", "images-ready", "chart", "sdk", "cli-image"):
+        assert f"needs.{direct}.result == 'success'" in release, direct
+    latest = jobs["latest"]["if"]
+    assert "!cancelled()" in latest
+    assert "needs.plan.outputs.prerelease == 'false'" in latest
+    assert "needs.release.result == 'success'" in latest
 
 
 def test_no_expression_is_expanded_inside_a_shell_script() -> None:
     # Inputs and step outputs reach `run:` through env variables only (no script injection).
     for name, job in _workflow()["jobs"].items():
-        for step in job["steps"]:
+        for step in job.get("steps", []):
             assert "${{" not in step.get("run", ""), (name, step.get("name"))
+
+
+def _calls(command: str) -> list[str]:
+    """The names of the steps (in every job) whose script runs ``command``."""
+    return [
+        f"{name}/{step.get('name', step.get('uses', ''))}"
+        for name, job in _workflow()["jobs"].items()
+        for step in job.get("steps", [])
+        if command in step.get("run", "")
+    ]
+
+
+def _builds(job: str) -> list[str]:
+    steps = _workflow()["jobs"][job].get("steps", [])
+    return [
+        step.get("name", step.get("uses", ""))
+        for step in steps
+        if "docker/build-push-action" in step.get("uses", "")
+        or "docker build" in step.get("run", "")
+        or "buildx build" in step.get("run", "")
+    ]
+
+
+def test_only_the_pre_release_builds_server_images_and_promote_builds_none() -> None:
+    assert _builds("image") == ["Build and push the image"]
+    for job in ("verify-candidate", "promote-images", "latest", "images-manifest", "tested"):
+        assert _builds(job) == [], job
+    # The server images are built nowhere else; the CLI image is the other build in the file.
+    built = {name for name in _workflow()["jobs"] if _builds(name)}
+    assert built == {"image", "cli-image"}
+
+
+def test_the_release_workflow_calls_the_two_nightlies_on_the_built_images() -> None:
+    jobs = _workflow()["jobs"]
+    assert jobs["e2e"]["uses"] == "./.github/workflows/e2e-nightly.yml"
+    assert jobs["e2e"]["with"] == {
+        "full": True,
+        "release-images": "release-images",
+        "release-version": "${{ needs.plan.outputs.version }}",
+    }
+    assert jobs["dast"]["uses"] == "./.github/workflows/dast-nightly.yml"
+    assert jobs["dast"]["with"] == {
+        "release-images": "release-images",
+        "release-version": "${{ needs.plan.outputs.version }}",
+    }
+    for name in ("e2e", "dast"):
+        assert "steps" not in jobs[name]
+        assert "secrets" not in jobs[name]  # no secret is passed to the test runs
+
+
+def test_the_manifest_is_assembled_from_the_built_digests_and_the_tags_are_read_back() -> None:
+    steps = _steps("images-manifest")
+    download = steps["actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"]["with"]
+    assert (download["pattern"], download["merge-multiple"]) == ("digest-*", True)
+    assemble = steps["Assemble the manifest of the built images"]
+    assert "release_images.py assemble --digests digests" in assemble["run"]
+    assert assemble["env"]["VERSION"] == "${{ needs.plan.outputs.version }}"
+    assert assemble["env"]["REGISTRY"] == "${{ needs.plan.outputs.registry }}"
+    verify = steps["Every candidate tag resolves to its recorded digest"]
+    assert verify["env"]["DC_RELEASE_IMAGES"] == "release-images.json"
+    assert verify["run"] == 'bash scripts/release/tested_images.sh verify-tags "$VERSION"'
+    upload = next(s for n, s in steps.items() if n.startswith("actions/upload-artifact@"))
+    assert upload["with"]["name"] == "release-images"
+    image = _steps("image")
+    assert "digest-${{ matrix.name }}" in str(image)
+
+
+def test_tested_needs_both_suites_and_attests_the_record_it_writes() -> None:
+    steps = _steps("tested")
+    record = steps["Record that E2E and DAST passed on these digests"]
+    assert record["env"]["E2E_RESULT"] == "${{ needs.e2e.result }}"
+    assert record["env"]["DAST_RESULT"] == "${{ needs.dast.result }}"
+    assert '--e2e "$E2E_RESULT" --dast "$DAST_RESULT"' in record["run"]
+    attest = steps["Attest the tested record"]
+    assert attest["uses"].startswith("actions/attest@")
+    assert attest["with"] == {"subject-path": "tested-images.json"}
+    upload = next(s for n, s in steps.items() if n.startswith("actions/upload-artifact@"))
+    assert upload["with"]["name"] == "tested-images"
+    # Only this job writes the record and only it attests it.
+    assert _calls("release_images.py record") == [
+        "tested/Record that E2E and DAST passed on these digests"
+    ]
+
+
+def test_verify_candidate_trusts_nothing_before_it_checks_everything() -> None:
+    steps = _steps("verify-candidate")
+    names = list(steps)
+    published = steps["The candidate is a published pre-release"]
+    assert published["env"]["CANDIDATE"] == "${{ needs.plan.outputs.candidate }}"
+    assert "prerelease=true draft=false" in published["run"]
+    assert "gh release view" in published["run"]
+    download = steps["Download the tested record of the candidate"]
+    assert "--pattern tested-images.json" in download["run"]
+    assert "test -s candidate/tested-images.json" in download["run"]
+    check = steps["The record is for this version, commit and registry, and both suites passed"]
+    assert check["env"] == {
+        "IMAGE_VERSION": "${{ needs.plan.outputs.image-version }}",
+        "SHA": "${{ needs.plan.outputs.sha }}",
+        "REGISTRY": "${{ needs.plan.outputs.registry }}",
+    }
+    assert (
+        '--version "$IMAGE_VERSION" --commit "$SHA" --registry "$REGISTRY" --tested' in check["run"]
+    )
+    attestations = steps["The record and every image attestation verify"]
+    assert attestations["run"] == "bash scripts/release/tested_images.sh verify-attestations"
+    assert attestations["env"]["DC_RELEASE_IMAGES"] == "candidate/tested-images.json"
+    tags = steps["Every candidate tag still points at its tested digest"]
+    assert tags["run"] == 'bash scripts/release/tested_images.sh verify-tags "$IMAGE_VERSION"'
+    # Nothing is read from the record before it was checked, and the registry login is removed.
+    order = [
+        "The candidate is a published pre-release",
+        "Download the tested record of the candidate",
+        "The record is for this version, commit and registry, and both suites passed",
+        "Log in to ghcr.io",
+        "The record and every image attestation verify",
+        "Every candidate tag still points at its tested digest",
+        "Log out of ghcr.io",
+    ]
+    positions = [names.index(n) for n in order]
+    assert positions == sorted(positions)
+    assert steps["Log out of ghcr.io"]["if"] == "always()"
+    upload = next(s for n, s in steps.items() if n.startswith("actions/upload-artifact@"))
+    assert upload["with"]["name"] == "tested-images"
+
+
+def test_promote_images_only_adds_the_stable_tag_to_the_verified_digests() -> None:
+    steps = _steps("promote-images")
+    tag = steps["Add the stable tag to the tested digests"]
+    assert tag["run"] == 'bash scripts/release/tested_images.sh tag "$VERSION"'
+    assert tag["env"] == {
+        "DC_RELEASE_IMAGES": "tested/tested-images.json",
+        "VERSION": "${{ needs.plan.outputs.version }}",
+    }
+    download = steps["actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"]["with"]
+    assert download["name"] == "tested-images"
+    assert steps["Log out of ghcr.io"]["if"] == "always()"
+
+
+def test_latest_follows_the_release_and_uses_the_released_digests() -> None:
+    steps = _steps("latest")
+    tag = steps["Point latest at the released digests"]
+    assert tag["run"] == "bash scripts/release/tested_images.sh tag latest"
+    assert tag["env"] == {"DC_RELEASE_IMAGES": "tested/tested-images.json"}
+    assert _calls("tested_images.sh tag latest") == ["latest/Point latest at the released digests"]
+    assert steps["Log out of ghcr.io"]["if"] == "always()"
+
+
+def test_the_chart_pins_the_tested_digests_and_checks_the_package_before_the_push() -> None:
+    steps = _steps("chart")
+    names = list(steps)
+    pin = steps["Pin the chart to the tested digests"]
+    assert "release_images.py check --manifest tested/tested-images.json" in pin["run"]
+    assert "--tested" in pin["run"]
+    assert pin["env"]["IMAGE_VERSION"] == "${{ needs.plan.outputs.image-version }}"
+    assert "pin-chart" in pin["run"]
+    assert "--values deploy/helm/contractum/values.yaml" in pin["run"]
+    package = steps["Package the chart"]["run"]
+    assert "helm lint deploy/helm/contractum" in package
+    assert '--version "$VERSION" --app-version "$VERSION"' in package
+    assert 'helm template dc "dist/contractum-${VERSION}.tgz"' in package
+    assert "check-rendered" in package
+    assert '--version "$VERSION" --rendered rendered.yaml' in package
+    order = [
+        "Pin the chart to the tested digests",
+        "Package the chart",
+        "Push the chart to ghcr.io",
+    ]
+    assert [names.index(n) for n in order] == sorted(names.index(n) for n in order)
+
+
+def test_the_release_attaches_the_tested_record_before_the_checksums_are_written() -> None:
+    steps = _steps("release")
+    download = [
+        s["with"]["name"]
+        for n, s in steps.items()
+        if n.startswith("actions/download-artifact@") and s["with"]["name"] == "tested-images"
+    ]
+    assert download == ["tested-images"]
+    sums = steps["Check the SDK files and write SHA256SUMS of every attached file"]["run"]
+    assert "tested/tested-images.json assets/" in sums
+    assert sums.index("tested/tested-images.json") < sums.index("sha256sum -- * > SHA256SUMS")
+    create = steps["Create the tag and the GitHub Release"]["run"]
+    assert create.index("assets/tested-images.json") < create.index("assets/SHA256SUMS")
+
+
+def test_the_plan_outputs_the_candidate_the_image_version_and_the_registry() -> None:
+    outputs = _workflow()["jobs"]["plan"]["outputs"]
+    assert outputs["candidate"] == "${{ steps.version.outputs.candidate }}"
+    assert outputs["image-version"] == "${{ steps.version.outputs.image-version }}"
+    assert outputs["registry"] == "${{ steps.registry.outputs.registry }}"
+    registry = _steps("plan")["Registry of the platform images"]
+    assert registry["run"] == 'echo "registry=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"'
+
+
+# --- the two nightlies the release calls ----------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["e2e-nightly.yml", "dast-nightly.yml"])
+def test_a_nightly_keeps_its_triggers_and_declares_the_release_inputs(name: str) -> None:
+    workflow = _yaml(ROOT / ".github" / "workflows" / name)
+    triggers = workflow[True]
+    assert {"schedule", "workflow_dispatch", "workflow_call"} <= set(triggers)
+    assert len(triggers["schedule"]) == 1
+    inputs = triggers["workflow_call"]["inputs"]
+    assert inputs["release-images"] == {
+        "description": inputs["release-images"]["description"],
+        "type": "string",
+        "default": "",
+    }
+    assert inputs["release-version"]["type"] == "string"
+    assert inputs["release-version"]["default"] == ""
+    if name == "e2e-nightly.yml":
+        assert inputs["full"]["type"] == "boolean"
+        assert inputs["full"]["default"] is False
+        assert triggers["workflow_dispatch"]["inputs"]["full"]["default"] is False
+    else:
+        assert "full" not in inputs
+
+
+@pytest.mark.parametrize(
+    ("name", "release", "nightly"),
+    [
+        ("e2e-nightly.yml", "e2e-release-{0}", "e2e-nightly"),
+        ("dast-nightly.yml", "dast-release-{0}", "dast-nightly"),
+    ],
+)
+def test_a_release_call_has_its_own_concurrency_group(
+    name: str, release: str, nightly: str
+) -> None:
+    workflow = _yaml(ROOT / ".github" / "workflows" / name)
+    group = workflow["concurrency"]["group"]
+    assert group == (
+        f"${{{{ inputs.release-images && format('{release}', github.run_id) || '{nightly}' }}}}"
+    )
+    # In a called workflow github.workflow names the caller: it would collide with Release's group.
+    assert "github.workflow" not in group
+    assert workflow["concurrency"]["cancel-in-progress"] is False
+
+
+@pytest.mark.parametrize(
+    ("name", "jobs"),
+    [("e2e-nightly.yml", ("ui-e2e", "py-e2e")), ("dast-nightly.yml", ("dast",))],
+)
+def test_the_test_jobs_pull_the_release_images_without_a_credential_while_the_stack_runs(
+    name: str, jobs: tuple[str, ...]
+) -> None:
+    workflow = _yaml(ROOT / ".github" / "workflows" / name)
+    for job_name in jobs:
+        job = workflow["jobs"][job_name]
+        assert job["permissions"] == {"contents": "read", "packages": "read"}, job_name
+        assert job["env"]["DC_RELEASE_IMAGES"] == (
+            "${{ inputs.release-images && '.release-images/release-images.json' || '' }}"
+        )
+        assert job["env"]["DC_VERSION"] == "${{ inputs.release-version }}"
+        steps = {step.get("name", step.get("uses", "")): step for step in job["steps"]}
+        names = list(steps)
+        load = steps["Load the release images by digest"]
+        assert load["if"] == "inputs.release-images != ''"
+        assert load["env"] == {"REGISTRY_TOKEN": "${{ github.token }}"}
+        assert "--password-stdin" in load["run"]
+        # Logout in the same step, on any exit, before the stack or a runner with the Docker
+        # socket starts.
+        assert "trap 'docker logout ghcr.io' EXIT" in load["run"]
+        assert load["run"].index("trap") < load["run"].index("tested_images.sh load")
+        download = next(s for n, s in steps.items() if n.startswith("actions/download-artifact@"))
+        assert download["with"] == {
+            "name": "${{ inputs.release-images }}",
+            "path": ".release-images",
+        }
+        first_run = next(n for n in names if n.startswith(("Run the", "Start the compose")))
+        assert names.index("Load the release images by digest") < names.index(first_run)
+        verify = steps["The stack still runs the release images"]
+        assert verify["run"] == "bash scripts/release/tested_images.sh verify-stack"
+        assert "inputs.release-images != ''" in verify["if"]
+    # The `checks` job keeps the dev default: it takes no release environment.
+    if name == "e2e-nightly.yml":
+        for plain in ("checks", "ui-static", "operation-coverage"):
+            assert "env" not in workflow["jobs"][plain]
+            assert "packages" not in workflow["jobs"][plain].get("permissions", {})
+
+
+def test_dast_starts_the_release_stack_without_a_build_and_keeps_its_scans() -> None:
+    workflow = _yaml(ROOT / ".github" / "workflows" / "dast-nightly.yml")
+    steps = {s.get("name", s.get("uses", "")): s for s in workflow["jobs"]["dast"]["steps"]}
+    up = steps["Start the compose stack"]
+    assert up["id"] == "up"
+    assert "docker compose up -d --no-build --wait --wait-timeout 300" in up["run"]
+    assert "docker compose up -d --build --wait --wait-timeout 300" in up["run"]
+    assert "tested_images.sh verify-stack" in up["run"]
+    names = list(steps)
+    assert names.index("Schemathesis (merged OpenAPI, authenticated)") < names.index(
+        "OWASP ZAP baseline and API scan (gate on High)"
+    )
+    assert (
+        "tests/e2e/test_phase7_schemathesis.py"
+        in steps["Schemathesis (merged OpenAPI, authenticated)"]["run"]
+    )
+    assert names.index("OWASP ZAP baseline and API scan (gate on High)") < names.index(
+        "The stack still runs the release images"
+    )
 
 
 def test_the_plan_computes_the_version_gates_on_the_three_workflows_and_writes_notes() -> None:
@@ -133,8 +528,10 @@ def test_the_image_job_publishes_every_platform_image_to_ghcr_with_attestations(
     assert checkout["ref"] == "${{ needs.plan.outputs.sha }}"
     assert "image=ghcr.io/${OWNER,,}/contractum/${NAME}" in steps["Image name"]["run"]
     build = steps["Build and push the image"]["with"]
-    for arg in ("VERSION=", "GIT_SHA=", "BUILD_TIME="):
+    for arg in ("GIT_SHA=", "BUILD_TIME="):
         assert arg in build["build-args"]
+    # The images hold no version: it is given at startup, so one build is tested and promoted.
+    assert "VERSION" not in build["build-args"]
     assert build["tags"].endswith(":${{ needs.plan.outputs.version }}")
     assert build["push"] is True
     assert build["sbom"] is True
@@ -143,6 +540,12 @@ def test_the_image_job_publishes_every_platform_image_to_ghcr_with_attestations(
     attest = steps["Attest build provenance"]
     assert attest["uses"].startswith("actions/attest@")
     assert attest["with"]["push-to-registry"] is True
+    digest = steps["Record the digest"]
+    assert digest["env"]["DIGEST"] == "${{ steps.build.outputs.digest }}"
+    assert digest["run"].rstrip().endswith('printf \'%s\\n\' "$DIGEST" > "digest/${NAME}"')
+    upload = next(s for n, s in steps.items() if n.startswith("actions/upload-artifact@"))
+    assert upload["with"]["name"] == "digest-${{ matrix.name }}"
+    assert upload["with"]["path"] == "digest/${{ matrix.name }}"
 
 
 def test_the_chart_job_packages_the_version_with_a_checked_helm_and_attests_it() -> None:
@@ -310,8 +713,14 @@ def test_every_action_in_the_release_workflow_is_pinned_by_sha() -> None:
         "docker/setup-buildx-action@",
         "docker/build-push-action@",
     )
+    # The two reusable workflows of this repository are the only references that are not pinned.
+    local = ("./.github/workflows/e2e-nightly.yml", "./.github/workflows/dast-nightly.yml")
+    assert [ref for ref in uses if ref.startswith("./")] == list(local)
     assert "azure/setup-helm" not in RELEASE.read_text(encoding="utf-8")
     for ref in uses:
+        if ref in local:
+            assert (ROOT / ref).is_file(), ref
+            continue
         assert ref.startswith(allowed), ref
         assert re.fullmatch(r"[\w./-]+@[0-9a-f]{40}", ref), ref
 

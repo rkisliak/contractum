@@ -278,15 +278,27 @@ def test_every_platform_dockerfile_takes_the_commit_and_labels_the_image(dockerf
     assert 'org.opencontainers.image.source="https://github.com/rkisliak/contractum"' in text
 
 
-@pytest.mark.parametrize("dockerfile", ["infra/docker/api-docs.Dockerfile"])
+@pytest.mark.parametrize("dockerfile", PLATFORM_DOCKERFILES)
 def test_a_platform_image_holds_no_release_version(dockerfile: str) -> None:
     # One build is tested and then released unchanged, so the version cannot be part of it: it
     # arrives at startup (DC_VERSION, DC_UI_VERSION).
     text = (ROOT / dockerfile).read_text(encoding="utf-8")
-    assert not re.search(r"(?m)^\s*ARG VERSION\b", text), dockerfile
-    assert "DC_VERSION" not in re.sub(r"(?m)^\s*#.*$", "", text), dockerfile
+    code = re.sub(r"(?m)^\s*#.*$", "", text)
+    assert not re.search(r"(?m)^\s*ARG VERSION\b", code), dockerfile
+    assert not re.search(r"\bDC(_UI)?_VERSION\b", code), dockerfile
+    assert not re.search(r"\$\{?VERSION\b", code), dockerfile
     assert 'org.opencontainers.image.version="${VERSION}"' not in text, dockerfile
-    assert "${VERSION}" not in text, dockerfile
+
+
+def test_the_ui_image_clears_the_version_label_its_base_image_sets() -> None:
+    # nginx-unprivileged labels itself with its own nginx version, and a Dockerfile cannot delete an
+    # inherited label: an empty one keeps it from passing for the platform version.
+    text = (ROOT / "infra/docker/ui.Dockerfile").read_text(encoding="utf-8")
+    runtime = text.split("AS runtime", 1)[1]
+    assert 'org.opencontainers.image.version=""' in runtime
+    for other in ("infra/docker/service.Dockerfile", "infra/docker/api-docs.Dockerfile"):
+        other_text = (ROOT / other).read_text(encoding="utf-8")
+        assert "org.opencontainers.image.version" not in other_text, other
 
 
 def test_every_action_in_the_release_workflow_is_pinned_by_sha() -> None:

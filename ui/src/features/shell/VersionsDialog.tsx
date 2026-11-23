@@ -1,9 +1,10 @@
 // "Versions" (the rail's info button and the account menu): which build of each component is
-// running, so a bug report can name it. The dialog leads with the platform version of the UI build
-// ("Contractum 1.4.0"); one release gives every component the same version. The UI's own build
-// comes from vite.config.ts; each routed service answers its public `GET /api/v1/<module>/version`
-// and the API docs container `GET /api/v1/docs/version`. A component whose version differs from
-// the UI's carries a "Different version" badge (text, not colour alone). A component that does not
+// running, so a bug report can name it. The dialog leads with the platform version the UI was
+// started with ("Contractum 1.4.0", from the runtime config); one release gives every component the
+// same version. The UI's commit and build time come from the image (vite.config.ts); each routed
+// service answers its public `GET /api/v1/<module>/version` and the API docs container
+// `GET /api/v1/docs/version`. A component whose version differs from the UI's carries a
+// "Different version" badge (text, not colour alone). A component that does not
 // answer reads "Unavailable" (muted), never an error alert. Mail and the gateway are not reachable
 // from the browser, so they are not listed.
 import { useQueries } from "@tanstack/react-query";
@@ -16,7 +17,7 @@ import { Button } from "@/components/Button";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Dialog } from "@/components/Dialog";
 import { Identifier } from "@/components/Identifier";
-import { uiBuild } from "@/buildInfo";
+import { useUiBuild } from "@/buildInfo";
 import styles from "./VersionsDialog.module.css";
 
 export const VERSIONED_SERVICES = [
@@ -74,6 +75,7 @@ export function VersionsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { api } = useRouteContext({ from: "__root__" });
+  const uiBuild = useUiBuild();
   const results = useQueries({
     queries: VERSIONED_SERVICES.map((service) => ({
       queryKey: ["versions", service],

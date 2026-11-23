@@ -10,7 +10,13 @@ export type RuntimeConfig = {
   entraProtocol: "aad" | "oidc";
   localLoginEnabled: boolean;
   apiBase: string;
+  // The platform version, written by the entrypoint from DC_UI_VERSION. Optional so a config
+  // built in a test needs no version; parseRuntimeConfig always sets it ("dev" when absent).
+  version?: string;
 };
+
+// The same pattern the nginx entrypoint enforces on DC_UI_VERSION before it writes the file.
+const VERSION_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_.+-]{0,127}$/;
 
 export class RuntimeConfigError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -59,6 +65,12 @@ function parseRuntimeConfig(body: unknown): RuntimeConfig {
       'config.json key "apiBase" must be a same-origin path',
     );
   }
+  const version = "version" in body ? readString(body, "version") : "dev";
+  if (!VERSION_PATTERN.test(version)) {
+    throw new RuntimeConfigError(
+      'config.json key "version" is not a platform version',
+    );
+  }
   return {
     entraEnabled: readBoolean(body, "entraEnabled"),
     entraClientId: readString(body, "entraClientId"),
@@ -69,6 +81,7 @@ function parseRuntimeConfig(body: unknown): RuntimeConfig {
     entraProtocol: protocol,
     localLoginEnabled: readBoolean(body, "localLoginEnabled"),
     apiBase,
+    version,
   };
 }
 

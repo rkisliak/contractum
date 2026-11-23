@@ -10,6 +10,9 @@
 name: contractum
 
 x-app-env: &app-env
+  # The platform version is given at startup, not baked into the images: a released stack sets
+  # DC_VERSION (scripts/release/tested_images.sh, the Release workflow), a local one reads "dev".
+  DC_VERSION: ${DC_VERSION:-dev}
   DC_NATS_URL: nats://nats:4222
   DC_AUTH_IDENTITY_INTERNAL_URL: http://identity:8000
   # Trusted issuers: the local IdP (identity) and two dev mock IdPs, never enabled outside compose:
@@ -198,7 +201,6 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-mail
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/mail:dev
@@ -264,7 +266,6 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-identity
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/identity:dev
@@ -361,7 +362,6 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-contracts
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/contracts:dev
@@ -456,7 +456,6 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-validation
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/validation:dev
@@ -540,7 +539,6 @@ services:
       dockerfile: infra/docker/service.Dockerfile
       args:
         PACKAGE: dc-audit
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/audit:dev
@@ -626,13 +624,13 @@ services:
       context: .
       dockerfile: infra/docker/api-docs.Dockerfile
       args:
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/api-docs:dev
     restart: unless-stopped
     environment:
       DC_API_DOCS_SERVICES: identity,contracts,validation,audit
+      DC_VERSION: ${DC_VERSION:-dev}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
       <<: *hc-defaults
@@ -662,7 +660,6 @@ services:
       dockerfile: ../infra/docker/ui.Dockerfile
       target: runtime
       args:
-        VERSION: ${VERSION:-dev}
         GIT_SHA: ${GIT_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-dev}
     image: contractum/ui:dev
@@ -678,6 +675,7 @@ services:
       DC_UI_ENTRA_PROTOCOL: oidc
       DC_UI_LOCAL_LOGIN_ENABLED: "true"
       DC_UI_API_BASE: /api/v1
+      DC_UI_VERSION: ${DC_VERSION:-dev}
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]

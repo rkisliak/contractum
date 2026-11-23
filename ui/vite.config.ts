@@ -33,13 +33,13 @@ function devRuntimeConfig(): Plugin {
   };
 }
 
-// The UI's build identity for the "Versions" dialog (src/buildInfo.ts): the platform version and
-// the VERSION / GIT_SHA / BUILD_TIME build arguments of infra/docker/ui.Dockerfile ("dev" locally).
-// Never package.json: the Release workflow injects the version at build time.
+// The image's build identity for the "Versions" dialog (src/buildInfo.ts): the GIT_SHA and
+// BUILD_TIME build arguments of infra/docker/ui.Dockerfile ("dev" locally). The platform version is
+// not part of the bundle: it comes from config.json at runtime (DC_UI_VERSION), so one build can be
+// tested and then released unchanged.
 export default defineConfig({
   define: {
     __DC_BUILD__: JSON.stringify({
-      version: process.env.VERSION || "dev",
       commit: process.env.GIT_SHA || "dev",
       builtAt: process.env.BUILD_TIME || "dev",
     }),

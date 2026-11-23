@@ -108,8 +108,9 @@ class ServiceVersionOut(BaseModel):
     built_at: str
 
 
-#: Build arguments the service image bakes in (infra/docker/service.Dockerfile); "dev" otherwise.
-#: DC_VERSION is the platform version the Release workflow builds (one for every image).
+#: DC_GIT_SHA and DC_BUILD_TIME are baked into the service image (infra/docker/service.Dockerfile).
+#: DC_VERSION is the platform version, supplied when the container starts (one for every image, so
+#: one build can be tested and released unchanged). "dev" for any that is unset.
 BUILD_VERSION_ENV = "DC_VERSION"
 BUILD_COMMIT_ENV = "DC_GIT_SHA"
 BUILD_TIME_ENV = "DC_BUILD_TIME"

@@ -74,7 +74,9 @@ def test_defaults_write_a_config_with_entra_off_and_a_csp_with_no_foreign_origin
         "entraProtocol",
         "localLoginEnabled",
         "apiBase",
+        "version",
     }
+    assert config["version"] == "dev"
     csp = _csp(tmp_path / "headers.conf")
     assert "http" not in csp
     directives = _directives(csp)
@@ -139,6 +141,16 @@ def test_an_authority_with_a_port_keeps_the_port_in_the_origin(tmp_path: Path) -
         ("DC_UI_API_BASE", "/api v1"),
         ("DC_UI_API_BASE", "/api/v1;"),
         ("DC_UI_API_BASE", "https://api.example.com/v1"),
+        ("DC_UI_VERSION", "1.2.3 beta"),
+        ("DC_UI_VERSION", 'v1"'),
+        ("DC_UI_VERSION", "v1'"),
+        ("DC_UI_VERSION", "1.2.3;x"),
+        ("DC_UI_VERSION", "1.2.3$host"),
+        ("DC_UI_VERSION", "1.2.3\nadd_header X-Evil 1;"),
+        ("DC_UI_VERSION", "1.2.3\\"),
+        ("DC_UI_VERSION", "-1.2.3"),
+        ("DC_UI_VERSION", ".1"),
+        ("DC_UI_VERSION", "1" * 129),
     ],
 )
 def test_an_invalid_value_fails_the_start_and_writes_nothing(
@@ -151,6 +163,30 @@ def test_an_invalid_value_fails_the_start_and_writes_nothing(
     assert variable in result.stderr
     if len(value) > 3:
         assert value not in result.stderr
+
+
+@pytest.mark.parametrize("version", ["dev", "1.4.0", "1.4.0-rc.1", "9.9.9-rc.12", "1.0.0+build.5"])
+def test_the_platform_version_lands_in_the_config(tmp_path: Path, version: str) -> None:
+    result = _run(tmp_path, {"DC_UI_VERSION": version})
+    assert result.returncode == 0, result.stderr
+    assert json.loads((tmp_path / "config.json").read_text())["version"] == version
+
+
+def test_an_empty_platform_version_reads_dev(tmp_path: Path) -> None:
+    assert _run(tmp_path, {"DC_UI_VERSION": ""}).returncode == 0
+    assert json.loads((tmp_path / "config.json").read_text())["version"] == "dev"
+
+
+def test_the_platform_version_is_the_only_thing_that_changes_the_config(tmp_path: Path) -> None:
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    assert _run(tmp_path / "a", ENTRA).returncode == 0
+    assert _run(tmp_path / "b", {**ENTRA, "DC_UI_VERSION": "2.0.0"}).returncode == 0
+    first = json.loads((tmp_path / "a" / "config.json").read_text())
+    second = json.loads((tmp_path / "b" / "config.json").read_text())
+    assert {k for k in first if first[k] != second[k]} == {"version"}
+    for name in ("headers.conf", "headers-bridge.conf"):
+        assert (tmp_path / "a" / name).read_text() == (tmp_path / "b" / name).read_text()
 
 
 def test_a_bad_value_is_refused_even_while_entra_is_disabled(tmp_path: Path) -> None:

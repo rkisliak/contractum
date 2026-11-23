@@ -64,6 +64,8 @@ securityContext:
 
 {{/* Environment shared by every Python service (x-app-env in compose.yaml). */}}
 {{- define "dc.appEnv" -}}
+- name: DC_VERSION
+  value: {{ include "dc.version" . | quote }}
 - name: DC_NATS_URL
   value: {{ .Values.nats.url | quote }}
 - name: DC_AUTH_IDENTITY_INTERNAL_URL

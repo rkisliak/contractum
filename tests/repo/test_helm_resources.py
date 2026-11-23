@@ -370,3 +370,21 @@ def test_api_docs_receives_the_platform_version() -> None:
     assert _env(api_docs)["DC_VERSION"] == _app_version()
     explicit = _by_name(_render("global.imageTag=1.2.3", namespace=NAMESPACE))
     assert _env(explicit[("api-docs", "api-docs")])["DC_VERSION"] == "1.2.3"
+
+
+def test_the_platform_version_reaches_all_seven_components() -> None:
+    for sets, expected in (((), _app_version()), (("global.imageTag=1.2.3",), "1.2.3")):
+        by_name = _by_name(_render(*sets, namespace=NAMESPACE))
+        versions = {}
+        for (workload, container), body in by_name.items():
+            if container in {"identity", "contracts", "validation", "audit", "mail", "api-docs"}:
+                if workload == container:
+                    versions[container] = _env(body)["DC_VERSION"]
+            if (workload, container) == ("ui", "ui"):
+                versions["ui"] = _env(body)["DC_UI_VERSION"]
+        assert versions == dict.fromkeys(PLATFORM_IMAGES, expected)
+
+
+def test_the_version_comes_from_the_tag_the_operator_set_not_from_a_digest() -> None:
+    by_name = _by_name(_render(*_digest_sets(), "global.imageTag=1.2.3", namespace=NAMESPACE))
+    assert _env(by_name[("identity", "identity")])["DC_VERSION"] == "1.2.3"

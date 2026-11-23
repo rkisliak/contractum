@@ -220,6 +220,48 @@ describe("app shell", () => {
   });
 });
 
+describe("the Versions dialog and the configured platform version", () => {
+  it("leads with the version the UI was started with and marks another one", async () => {
+    const user = userEvent.setup();
+    const ok = (service: string, version: string) =>
+      http.get(`*/api/v1/${service}/version`, () =>
+        HttpResponse.json({
+          service,
+          version,
+          commit: "abc1234def56",
+          built_at: "2026-11-15T20:00:00Z",
+        }),
+      );
+    renderApp("/", {
+      config: { version: "2.0.0" },
+      handlers: [
+        ok("identity", "2.0.0"),
+        ok("contracts", "2.0.0"),
+        ok("validation", "2.0.0"),
+        ok("audit", "1.4.0"),
+        ok("docs", "2.0.0"),
+      ],
+    });
+    await screen.findByRole("heading", { level: 1, name: /Welcome/ });
+    await user.click(
+      screen.getByRole("button", { name: "Versions", hidden: true }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Versions" });
+    expect(within(dialog).getByText("Contractum 2.0.0")).toBeVisible();
+    const row = (name: string) =>
+      within(
+        within(dialog)
+          .getByRole("rowheader", { name })
+          .closest("tr") as HTMLElement,
+      );
+    expect(row("Web UI").getByText("2.0.0")).toBeVisible();
+    expect(await row("Identity").findByText("2.0.0")).toBeVisible();
+    expect(await row("Audit").findByText("1.4.0")).toBeVisible();
+    expect(row("Audit").getByText("Different version")).toBeVisible();
+    expect(within(dialog).getAllByText("Different version")).toHaveLength(1);
+  });
+});
+
 describe("app shell panels and failures", () => {
   async function home(options: Parameters<typeof renderApp>[1] = {}) {
     const user = userEvent.setup();

@@ -15,7 +15,7 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { TextField, TextareaField } from "@/components/form";
 import { ProblemAlert } from "@/components/ProblemAlert";
 import { Skeleton } from "@/components/states";
-import { uiBuild } from "@/buildInfo";
+import { useUiBuild } from "@/buildInfo";
 import { fromLocalInput, toLocalInput } from "@/features/audit/query";
 import { formatDateTime } from "@/features/admin/shared";
 import { AnnouncementView } from "@/features/shell/AnnouncementBanner";
@@ -447,62 +447,70 @@ type AboutRow = {
   database: string | null;
 };
 
-const aboutColumns: Column<AboutRow>[] = [
-  { id: "service", header: "Service", rowHeader: true, cell: (r) => r.service },
-  {
-    id: "version",
-    header: "Version",
-    // One release gives every component the same version; another one is named in text.
-    cell: (r) =>
-      r.version !== null && r.version !== uiBuild.version ? (
-        <span className={styles.skew}>
-          {r.version}
-          <Badge intent="warning">Different version</Badge>
-        </span>
-      ) : (
-        orNotSet(r.version)
+function aboutColumns(uiVersion: string): Column<AboutRow>[] {
+  return [
+    {
+      id: "service",
+      header: "Service",
+      rowHeader: true,
+      cell: (r) => r.service,
+    },
+    {
+      id: "version",
+      header: "Version",
+      // One release gives every component the same version; another one is named in text.
+      cell: (r) =>
+        r.version !== null && r.version !== uiVersion ? (
+          <span className={styles.skew}>
+            {r.version}
+            <Badge intent="warning">Different version</Badge>
+          </span>
+        ) : (
+          orNotSet(r.version)
+        ),
+    },
+    {
+      id: "commit",
+      header: "Commit",
+      cell: (r) => <span className={styles.ident}>{r.commit ?? "—"}</span>,
+    },
+    {
+      id: "built",
+      header: "Built",
+      cell: (r) =>
+        r.built_at === null || r.built_at === "dev"
+          ? (r.built_at ?? "—")
+          : formatDateTime(r.built_at),
+    },
+    {
+      id: "head",
+      header: "Migration head",
+      cell: (r) => (
+        <span className={styles.ident}>{r.migration_head ?? "—"}</span>
       ),
-  },
-  {
-    id: "commit",
-    header: "Commit",
-    cell: (r) => <span className={styles.ident}>{r.commit ?? "—"}</span>,
-  },
-  {
-    id: "built",
-    header: "Built",
-    cell: (r) =>
-      r.built_at === null || r.built_at === "dev"
-        ? (r.built_at ?? "—")
-        : formatDateTime(r.built_at),
-  },
-  {
-    id: "head",
-    header: "Migration head",
-    cell: (r) => (
-      <span className={styles.ident}>{r.migration_head ?? "—"}</span>
-    ),
-  },
-  {
-    id: "database",
-    header: "Database",
-    cell: (r) => r.database ?? "—",
-  },
-  {
-    id: "status",
-    header: "Status",
-    nowrap: true,
-    cell: (r) =>
-      r.status === "ok" ? (
-        <Badge intent="success">OK</Badge>
-      ) : (
-        <Badge intent="neutral">Unreachable</Badge>
-      ),
-  },
-];
+    },
+    {
+      id: "database",
+      header: "Database",
+      cell: (r) => r.database ?? "—",
+    },
+    {
+      id: "status",
+      header: "Status",
+      nowrap: true,
+      cell: (r) =>
+        r.status === "ok" ? (
+          <Badge intent="success">OK</Badge>
+        ) : (
+          <Badge intent="neutral">Unreachable</Badge>
+        ),
+    },
+  ];
+}
 
 function About() {
   const about = useAbout();
+  const uiBuild = useUiBuild();
   if (about.isError) {
     return (
       <ProblemAlert
@@ -531,7 +539,7 @@ function About() {
       <DataTable
         caption="Services"
         captionHidden
-        columns={aboutColumns}
+        columns={aboutColumns(uiBuild.version)}
         rows={rows}
         getRowId={(row) => row.service}
       />

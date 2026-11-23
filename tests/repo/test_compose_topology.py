@@ -64,11 +64,12 @@ def test_app_images_are_built_from_the_service_dockerfile_with_their_package(
         build = svc.get("build")
         if not build:
             continue
-        # Every platform image takes the release build identity ("dev" unless the caller sets it).
-        assert {"VERSION", "GIT_SHA", "BUILD_TIME"} <= set(build.get("args") or {}), name
+        # Every platform image is built with its commit and commit time only ("dev" unless the
+        # caller sets them); the release version is never a build argument, it is given at startup.
+        assert set(build.get("args") or {}) - {"PACKAGE"} == {"GIT_SHA", "BUILD_TIME"}, name
         if name == "api-docs":
             assert build["dockerfile"] == API_DOCS_DOCKERFILE
-            assert set(build["args"]) == {"VERSION", "GIT_SHA", "BUILD_TIME"}
+            assert set(build["args"]) == {"GIT_SHA", "BUILD_TIME"}
             continue
         if name == "ui":
             assert Path(build["context"]).name == "ui"
@@ -587,3 +588,16 @@ def test_the_ui_e2e_runner_waits_for_the_gateway_identity_and_the_ui() -> None:
     assert set(depends) == {"traefik", "identity", "ui"}
     for name, condition in depends.items():
         assert condition["condition"] == "service_healthy", name
+
+
+def test_the_platform_version_is_given_at_startup_with_dev_as_the_default(
+    config: dict[str, Any],
+) -> None:
+    services = _services(config)
+    # Services and mail take it through the shared environment, api-docs and ui directly.
+    for name in (*APP_SERVICES, "mail", "api-docs"):
+        assert services[name]["environment"]["DC_VERSION"] == "dev", name
+    assert services["ui"]["environment"]["DC_UI_VERSION"] == "dev"
+    text = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    assert text.count("${DC_VERSION:-dev}") == 3
+    assert "${VERSION" not in text

@@ -261,21 +261,32 @@ def test_the_committed_sdk_version_is_the_dev_placeholder() -> None:
     assert "Noncommercial[ ]License" in script
 
 
-@pytest.mark.parametrize(
-    "dockerfile",
-    [
-        "infra/docker/service.Dockerfile",
-        "infra/docker/ui.Dockerfile",
-        "infra/docker/api-docs.Dockerfile",
-    ],
-)
-def test_every_platform_dockerfile_takes_the_version_and_labels_the_image(dockerfile: str) -> None:
+PLATFORM_DOCKERFILES = [
+    "infra/docker/service.Dockerfile",
+    "infra/docker/ui.Dockerfile",
+    "infra/docker/api-docs.Dockerfile",
+]
+
+
+@pytest.mark.parametrize("dockerfile", PLATFORM_DOCKERFILES)
+def test_every_platform_dockerfile_takes_the_commit_and_labels_the_image(dockerfile: str) -> None:
     text = (ROOT / dockerfile).read_text(encoding="utf-8")
-    for arg in ("VERSION", "GIT_SHA", "BUILD_TIME"):
+    for arg in ("GIT_SHA", "BUILD_TIME"):
         assert re.search(rf"(?m)^ARG {arg}=dev$", text), (dockerfile, arg)
-    for label in ("title", "version", "revision", "created", "source"):
+    for label in ("title", "revision", "created", "source"):
         assert f"org.opencontainers.image.{label}=" in text, (dockerfile, label)
     assert 'org.opencontainers.image.source="https://github.com/rkisliak/contractum"' in text
+
+
+@pytest.mark.parametrize("dockerfile", ["infra/docker/api-docs.Dockerfile"])
+def test_a_platform_image_holds_no_release_version(dockerfile: str) -> None:
+    # One build is tested and then released unchanged, so the version cannot be part of it: it
+    # arrives at startup (DC_VERSION, DC_UI_VERSION).
+    text = (ROOT / dockerfile).read_text(encoding="utf-8")
+    assert not re.search(r"(?m)^\s*ARG VERSION\b", text), dockerfile
+    assert "DC_VERSION" not in re.sub(r"(?m)^\s*#.*$", "", text), dockerfile
+    assert 'org.opencontainers.image.version="${VERSION}"' not in text, dockerfile
+    assert "${VERSION}" not in text, dockerfile
 
 
 def test_every_action_in_the_release_workflow_is_pinned_by_sha() -> None:

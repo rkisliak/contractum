@@ -121,6 +121,8 @@ spec:
             - {name: http, containerPort: 8080}
           env:
             - {name: DC_API_DOCS_SERVICES, value: "identity,contracts,validation,audit"}
+            - name: DC_VERSION
+              value: {{ include "dc.version" . | quote }}
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 5

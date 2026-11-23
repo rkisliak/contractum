@@ -12,6 +12,10 @@ global:
   # local images named contractum/<component>:<tag> (a local cluster with imported images).
   imageRegistry: "ghcr.io/rkisliak"
   imageTag: ""                 # empty: the chart's appVersion (the matching release)
+  # A published chart pins every platform image to the digest that was tested: the Release workflow
+  # fills this in, one key per component (identity, contracts, ..., ui). It applies only while
+  # imageTag is empty, so a tag you set yourself is never paired with a digest of another build.
+  imageDigests: {}
   imagePullPolicy: IfNotPresent
   imagePullSecrets: []         # e.g. [{name: regcred}]
   # The public URL users open (scheme://host[:port]). Used for the browser-visible Entra

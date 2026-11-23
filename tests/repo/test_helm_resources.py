@@ -296,3 +296,77 @@ def test_every_platform_resource_carries_the_app_version_label() -> None:
     for doc in labelled:
         labels = doc["metadata"]["labels"]
         assert labels["app.kubernetes.io/version"] == _app_version(), doc["metadata"]["name"]
+
+
+# --- digests and the runtime version -----------------------------------------------------------
+# A published chart pins every platform image to the digest that was tested (global.imageDigests,
+# written by scripts/release/release_images.py pin-chart). The images hold no version of their own,
+# so the chart hands the platform version to the containers as DC_VERSION.
+
+DIGESTS = {
+    name: "sha256:" + "0123456789abcdef"[i] * 64 for i, name in enumerate(sorted(PLATFORM_IMAGES))
+}
+
+
+def _digest_sets() -> list[str]:
+    return [f"global.imageDigests.{name}={digest}" for name, digest in DIGESTS.items()]
+
+
+def _platform_images(docs: list[dict[str, Any]]) -> dict[str, set[str]]:
+    """Every platform image reference of the render, by component."""
+    found: dict[str, set[str]] = {name: set() for name in PLATFORM_IMAGES}
+    for _, _, body in _containers(docs):
+        repository = body["image"].split("@", 1)[0].rsplit(":", 1)[0]
+        component = repository.rsplit("/", 1)[-1]
+        if component in PLATFORM_IMAGES:
+            found[component].add(body["image"])
+    return found
+
+
+def test_digests_render_as_tag_and_digest_for_every_platform_image() -> None:
+    images = _platform_images(_render(*_digest_sets(), namespace=NAMESPACE))
+    for name, references in images.items():
+        assert references == {
+            f"ghcr.io/rkisliak/contractum/{name}:{_app_version()}@{DIGESTS[name]}"
+        }, name
+
+
+def test_an_explicit_image_tag_renders_tag_only_even_with_digests() -> None:
+    images = _platform_images(
+        _render(*_digest_sets(), "global.imageTag=1.2.3", namespace=NAMESPACE)
+    )
+    for name, references in images.items():
+        assert references == {f"ghcr.io/rkisliak/contractum/{name}:1.2.3"}, name
+
+
+def test_a_component_without_a_digest_renders_tag_only() -> None:
+    sets = [s for s in _digest_sets() if "imageDigests.ui=" not in s]
+    images = _platform_images(_render(*sets, namespace=NAMESPACE))
+    assert images["ui"] == {f"ghcr.io/rkisliak/contractum/ui:{_app_version()}"}
+    assert images["identity"] == {
+        f"ghcr.io/rkisliak/contractum/identity:{_app_version()}@{DIGESTS['identity']}"
+    }
+
+
+def test_a_local_render_without_digests_is_unchanged() -> None:
+    docs = _render("global.imageRegistry=", "global.imageTag=dev", namespace=NAMESPACE)
+    images = _platform_images(docs)
+    for name, references in images.items():
+        assert references == {f"contractum/{name}:dev"}, name
+    assert (
+        yaml.safe_load((CHART / "values.yaml").read_text(encoding="utf-8"))["global"][
+            "imageDigests"
+        ]
+        == {}
+    )
+
+
+def _env(container: dict[str, Any]) -> dict[str, str]:
+    return {item["name"]: item.get("value", "") for item in container.get("env", [])}
+
+
+def test_api_docs_receives_the_platform_version() -> None:
+    api_docs = _by_name(_render(namespace=NAMESPACE))[("api-docs", "api-docs")]
+    assert _env(api_docs)["DC_VERSION"] == _app_version()
+    explicit = _by_name(_render("global.imageTag=1.2.3", namespace=NAMESPACE))
+    assert _env(explicit[("api-docs", "api-docs")])["DC_VERSION"] == "1.2.3"

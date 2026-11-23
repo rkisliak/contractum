@@ -1,14 +1,27 @@
-{{/* Image reference for a platform component: [registry/]contractum/<name>:<tag>. The default
-registry is ghcr.io/rkisliak, where .github/workflows/release.yml publishes the images; the tag
-defaults to the chart's appVersion, the release that published them. */}}
+{{/* Image reference for a platform component: [registry/]contractum/<name>:<tag>[@<digest>]. The
+default registry is ghcr.io/rkisliak, where .github/workflows/release.yml publishes the images; the
+tag defaults to the chart's appVersion, the release that published them. A published chart carries
+global.imageDigests, so each image is also pinned to the digest that was tested. An explicit
+global.imageTag renders tag-only. */}}
 {{- define "dc.image" -}}
 {{- $ctx := index . 0 -}}{{- $name := index . 1 -}}
 {{- $tag := $ctx.Values.global.imageTag | default $ctx.Chart.AppVersion -}}
-{{- if $ctx.Values.global.imageRegistry -}}
-{{ printf "%s/contractum/%s:%s" $ctx.Values.global.imageRegistry $name $tag }}
-{{- else -}}
-{{ printf "contractum/%s:%s" $name $tag }}
+{{- $digest := "" -}}
+{{- if not $ctx.Values.global.imageTag -}}
+{{- $digest = index ($ctx.Values.global.imageDigests | default dict) $name | default "" -}}
 {{- end -}}
+{{- $suffix := ternary (printf "@%s" $digest) "" (ne $digest "") -}}
+{{- if $ctx.Values.global.imageRegistry -}}
+{{ printf "%s/contractum/%s:%s%s" $ctx.Values.global.imageRegistry $name $tag $suffix }}
+{{- else -}}
+{{ printf "contractum/%s:%s%s" $name $tag $suffix }}
+{{- end -}}
+{{- end -}}
+
+{{/* The platform version the containers report (DC_VERSION): the tag an operator set, else the
+chart's appVersion. The images hold no version of their own. */}}
+{{- define "dc.version" -}}
+{{ .Values.global.imageTag | default .Chart.AppVersion }}
 {{- end -}}
 
 {{- define "dc.labels" -}}
@@ -51,6 +64,8 @@ securityContext:
 
 {{/* Environment shared by every Python service (x-app-env in compose.yaml). */}}
 {{- define "dc.appEnv" -}}
+- name: DC_VERSION
+  value: {{ include "dc.version" . | quote }}
 - name: DC_NATS_URL
   value: {{ .Values.nats.url | quote }}
 - name: DC_AUTH_IDENTITY_INTERNAL_URL

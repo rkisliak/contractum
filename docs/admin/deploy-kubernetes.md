@@ -98,10 +98,17 @@ helm install dc oci://ghcr.io/rkisliak/charts/contractum --version 1.0.0 \
   -n contractum -f values-prod.yaml
 ```
 
+A published chart pins every platform image to the digest that was tested: each image reference is
+`<tag>@<digest>` (the digests are in `global.imageDigests`), so the cluster runs exactly the images
+that passed the release's end-to-end and security tests. The stable images are those same tested
+images with a new tag, not a rebuild.
+
 The chart in a source checkout carries placeholder versions: its default image tag is `dev`, the
-tag of images you build locally. To install a released version from a checkout, set
-`global.imageTag` (for example `--set global.imageTag=1.0.0`). Every resource carries the label
-`app.kubernetes.io/version` with the chart's app version.
+tag of images you build locally, and it pins no digests. To install a released version from a
+checkout, set `global.imageTag` (for example `--set global.imageTag=1.0.0`). An explicit
+`global.imageTag` always renders the tag alone, without a digest, so your tag is never paired with
+the digest of another build. It is also the version the platform reports. Every resource carries
+the label `app.kubernetes.io/version` with the chart's app version.
 
 Every image and the chart archive carry SLSA build provenance, and the images an SBOM. Check
 them before you use them:
@@ -112,20 +119,31 @@ gh release download v1.0.0 --repo rkisliak/contractum --pattern 'contractum-*.tg
 gh attestation verify contractum-1.0.0.tgz --repo rkisliak/contractum
 ```
 
-To run from your own registry, mirror the release images (for example with `crane copy` or
-`docker buildx imagetools create`) or build them yourself, and set `global.imageRegistry` to your
-registry. The image names below it stay `contractum/<component>:<tag>`.
+To run from your own registry, mirror the release images and set `global.imageRegistry` to your
+registry. The image names below it stay `contractum/<component>:<tag>`. Mirror them with
+`docker buildx imagetools create`, which copies the image by digest and keeps the digest the chart
+pins, for example:
+
+```bash
+docker buildx imagetools create --tag myregistry.azurecr.io/contractum/identity:1.0.0 \
+  ghcr.io/rkisliak/contractum/identity@sha256:<digest>
+```
+
+A copy tool that changes the digest (a rebuild, or a tool that rewrites the manifest) leaves the
+published chart pointing at a digest your registry does not hold. In that case set
+`global.imageTag` to your tag, which renders the tag alone.
 
 ### Build and push the images yourself
 
-From the repository root, with `REG` your registry and `TAG` your version. Pass the same
-`VERSION`, `GIT_SHA` and `BUILD_TIME` to every image: the web app's **Versions** dialog and the
-`/version` routes show them, and the images carry them as OCI labels. Without them a build
-reports `dev`.
+From the repository root, with `REG` your registry and `TAG` your version. Pass the same `GIT_SHA`
+and `BUILD_TIME` to every image: the web app's **Versions** dialog and the `/version` routes show
+the commit and build time, and the images carry them as OCI labels. Without them a build reports
+`dev`. The images hold no version: the chart gives every container the version it reports (the
+`global.imageTag` you set, otherwise the chart's app version).
 
 ```bash
 REG=myregistry.azurecr.io TAG=1.0.0
-ARGS="--build-arg VERSION=$TAG --build-arg GIT_SHA=$(git rev-parse --short=12 HEAD) \
+ARGS="--build-arg GIT_SHA=$(git rev-parse --short=12 HEAD) \
   --build-arg BUILD_TIME=$(git log -1 --format=%cI HEAD)"
 for svc in identity contracts validation audit mail; do
   docker build -f infra/docker/service.Dockerfile --build-arg PACKAGE=dc-$svc $ARGS \

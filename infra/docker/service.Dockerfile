@@ -48,16 +48,14 @@ RUN apt-get update \
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 # Build identity served by GET /api/v1/<module>/version (dc_core.app.service_version): the
-# platform version (the Release workflow passes the released version; "dev" for any other build),
-# the 12-character commit and the commit time. Last, so a new version, commit or build time only
-# rebuilds this metadata layer.
+# 12-character commit and the commit time. The image holds no release version, so one build can be
+# tested and then released unchanged: the platform version arrives at startup through DC_VERSION
+# ("dev" without it). Last, so a new commit or build time only rebuilds this metadata layer.
 ARG PACKAGE
-ARG VERSION=dev
 ARG GIT_SHA=dev
 ARG BUILD_TIME=dev
-ENV DC_VERSION=$VERSION DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
+ENV DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
 LABEL org.opencontainers.image.title="contractum ${PACKAGE}" \
-      org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.created="${BUILD_TIME}" \
       org.opencontainers.image.source="https://github.com/rkisliak/contractum"

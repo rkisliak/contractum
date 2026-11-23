@@ -1,8 +1,9 @@
 """``GET /api/v1/<module>/version`` through the gateway: public, cacheable build identity.
 
-Every routed service answers without a token with its package version, the git commit and build
-time baked into the image (``"dev"`` for a local build), so ``test_zz_operation_coverage.py``
-counts the four operations as exercised. Mail is not routed and has no version route.
+Every routed service answers without a token with the platform version given at startup
+(``"dev"`` for a local stack), the git commit and build time baked into the image, so
+``test_zz_operation_coverage.py`` counts the four operations as exercised. Mail is not routed and
+has no version route.
 """
 
 from __future__ import annotations

@@ -47,6 +47,8 @@ def tree(tmp_path_factory: pytest.TempPathFactory) -> Path:
     (root / "ui" / ".nvmrc").write_text(nvmrc + "\n", encoding="utf-8")
     _stub(root / "scripts" / "e2e-ui.sh")
     _stub(root / "scripts" / "e2e.sh")
+    (root / "scripts" / "release").mkdir()
+    _stub(root / "scripts" / "release" / "tested_images.sh")
     _stub(root / "bin" / "uv")
     _stub(root / "bin" / "docker")
     _stub(root / "bin" / "pnpm", 'if [ "$1" = "--version" ]; then echo 12.17.0; fi\n')
@@ -54,16 +56,20 @@ def tree(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return root
 
 
-def _run(tree: Path, part: str, *, full: bool, ui_e2e_args: str = "") -> list[str]:
-    log = tree / f"log-{part}-{full}-{len(ui_e2e_args)}.txt"
+def _run(
+    tree: Path, part: str, *, full: bool, ui_e2e_args: str = "", release: bool = False
+) -> list[str]:
+    log = tree / f"log-{part}-{full}-{len(ui_e2e_args)}-{release}.txt"
     log.unlink(missing_ok=True)
-    env = {k: v for k, v in os.environ.items() if not k.startswith("CI")}
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("CI", "DC_RELEASE"))}
     env.update(
         PATH=f"{tree / 'bin'}{os.pathsep}{os.environ['PATH']}",
         CI_LOG=str(log),
         CI_PART=part,
         CI_UI_E2E_ARGS=ui_e2e_args,
     )
+    if release:
+        env["DC_RELEASE_IMAGES"] = ".release-images/release-images.json"
     if part == "all":
         env["CI_E2E"] = "1"
     if full:
@@ -167,3 +173,132 @@ def test_the_ui_e2e_matrix_runs_every_playwright_project_and_shard() -> None:
     uploads = [step for step in job["steps"] if "upload-artifact" in step.get("uses", "")]
     assert uploads
     assert all("${{ matrix.part }}" in step["with"]["name"] for step in uploads)
+
+
+# --- the release images: the same gate, started without a build ------------------------------
+
+
+@pytest.mark.parametrize("part", ["ui-e2e", "py-e2e"])
+def test_the_cold_start_builds_from_source_unless_release_images_are_given(
+    tree: Path, part: str
+) -> None:
+    commands = _run(tree, part, full=False)
+    assert "docker compose down -v --remove-orphans" in commands
+    assert "docker compose up -d --build --wait --wait-timeout 300" in commands
+    assert not [line for line in commands if "tested_images.sh" in line]
+    assert not [line for line in commands if "--no-build" in line]
+
+
+@pytest.mark.parametrize("part", ["ui-e2e", "py-e2e"])
+def test_release_images_start_the_stack_without_a_build_and_prove_it_runs_them(
+    tree: Path, part: str
+) -> None:
+    commands = _run(tree, part, full=False, release=True)
+    start = commands.index("docker compose down -v --remove-orphans")
+    assert commands[start + 1] == "docker compose up -d --no-build --wait --wait-timeout 300"
+    assert commands[start + 2] == "tested_images.sh verify-stack"
+    assert not [line for line in commands if "--build" in line.replace("--no-build", "")]
+    # The tests start only after the stack was proven to run the release images.
+    runner = "e2e-ui.sh " if part == "ui-e2e" else "e2e.sh tests/e2e"
+    assert commands.index(runner) > start + 2
+
+
+def test_the_whole_gate_in_release_mode_runs_the_same_steps_apart_from_the_start(
+    tree: Path,
+) -> None:
+    plain = _run(tree, "all", full=False)
+    release = _run(tree, "all", full=False, release=True)
+    swapped = [line for line in release if line not in {"tested_images.sh verify-stack"}]
+    assert [
+        "docker compose up -d --build --wait --wait-timeout 300"
+        if line == "docker compose up -d --no-build --wait --wait-timeout 300"
+        else line
+        for line in swapped
+    ] == plain
+
+
+@pytest.fixture(scope="module")
+def runners(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A scratch copy of the two warm-stack runner scripts with logging stand-ins."""
+    root = tmp_path_factory.mktemp("runners")
+    (root / "scripts").mkdir()
+    (root / "bin").mkdir()
+    for name in ("e2e.sh", "e2e-ui.sh"):
+        (root / "scripts" / name).write_text(
+            (ROOT / "scripts" / name).read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    (root / "scripts" / "e2e-runner-env.sh").write_text("", encoding="utf-8")
+    _stub(root / "bin" / "docker")
+    _stub(root / "bin" / "git", "echo abc123def456\n")
+    return root
+
+
+def _runner(
+    runners: Path, script: str, args: str, *, release: bool, performance: bool = False
+) -> list[str]:
+    log = runners / f"log-{script}-{release}-{performance}.txt"
+    log.unlink(missing_ok=True)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("CI", "DC_"))}
+    env.update(PATH=f"{runners / 'bin'}{os.pathsep}{os.environ['PATH']}", CI_LOG=str(log))
+    env["RUNNER_ARGS"] = args
+    if release:
+        env["DC_RELEASE_IMAGES"] = ".release-images/release-images.json"
+    if performance:
+        env["DC_PERFORMANCE"] = "1"
+    subprocess.run(
+        ["/bin/bash", "-c", "exec bash scripts/$RUNNER_SCRIPT $RUNNER_ARGS"],
+        env={**env, "RUNNER_SCRIPT": script},
+        check=True,
+        cwd=runners,
+    )
+    return [
+        line for line in log.read_text(encoding="utf-8").splitlines() if not line.startswith("git ")
+    ]
+
+
+COMPOSE = "docker compose"
+TEST = "docker compose -f compose.yaml -f compose.test.yaml --profile test"
+PYTEST = "pytest -m e2e and not performance -q -o asyncio_default_test_loop_scope=session"
+
+
+def test_the_py_runner_builds_everything_unless_release_images_are_given(runners: Path) -> None:
+    commands = _runner(runners, "e2e.sh", "tests/e2e", release=False)
+    assert commands == [
+        f"{COMPOSE} up -d --build --wait --wait-timeout 300",
+        f"{TEST} run --rm --build e2e {PYTEST} tests/e2e",
+    ]
+
+
+def test_the_py_runner_builds_only_its_runner_with_release_images(runners: Path) -> None:
+    commands = _runner(runners, "e2e.sh", "tests/e2e", release=True)
+    assert commands == [
+        f"{COMPOSE} up -d --no-build --wait --wait-timeout 300",
+        f"{TEST} build e2e",
+        f"{TEST} run --rm e2e {PYTEST} tests/e2e",
+    ]
+    # `run --build` may rebuild the services the runner depends on and replace the tested images.
+    assert not [line for line in commands if "--build" in line]
+
+
+def test_the_py_runner_keeps_the_performance_marker_in_both_modes(runners: Path) -> None:
+    for release in (False, True):
+        commands = _runner(runners, "e2e.sh", "tests/e2e", release=release, performance=True)
+        assert "pytest -m e2e -q" in commands[-1]
+
+
+def test_the_ui_runner_builds_everything_unless_release_images_are_given(runners: Path) -> None:
+    commands = _runner(runners, "e2e-ui.sh", "ui/e2e/smoke.spec.ts -g axe", release=False)
+    assert commands == [
+        f"{COMPOSE} up -d --build --wait --wait-timeout 300",
+        f"{TEST} run --rm --build ui-e2e pnpm exec playwright test e2e/smoke.spec.ts -g axe",
+    ]
+
+
+def test_the_ui_runner_builds_only_its_runner_with_release_images(runners: Path) -> None:
+    commands = _runner(runners, "e2e-ui.sh", "--project=volume", release=True)
+    assert commands == [
+        f"{COMPOSE} up -d --no-build --wait --wait-timeout 300",
+        f"{TEST} build ui-e2e",
+        f"{TEST} run --rm ui-e2e pnpm exec playwright test --project=volume",
+    ]
+    assert not [line for line in commands if "--build" in line]

@@ -187,6 +187,8 @@ def test_pre_release_plans_the_next_candidate_of_the_head() -> None:
         "sha": "h" * 40,
         "previous": "v1.2.0",
         "prerelease": "true",
+        "candidate": "",
+        "image-version": "1.3.0-rc.2",
     }
 
 
@@ -216,6 +218,8 @@ def test_promote_releases_the_commit_of_the_newest_candidate() -> None:
         "sha": "2" * 40,
         "previous": "v1.2.0",
         "prerelease": "false",
+        "candidate": "v1.3.0-rc.2",
+        "image-version": "1.3.0-rc.2",
     }
 
 
@@ -353,6 +357,7 @@ def _outputs(done: subprocess.CompletedProcess[str]) -> dict[str, str]:
 def test_the_scripts_walk_a_release_from_candidate_to_stable(repo: Path, tmp_path: Path) -> None:
     first = _outputs(_run("next_version.py", repo, "--mode", "pre-release"))
     assert (first["tag"], first["previous"]) == ("v1.0.0-rc.1", "")
+    assert (first["candidate"], first["image-version"]) == ("", "1.0.0-rc.1")
     _git(repo, "tag", "-a", first["tag"], "-m", first["tag"], first["sha"])
     again = _run("next_version.py", repo, "--mode", "pre-release")
     assert again.returncode == 1
@@ -369,6 +374,8 @@ def test_the_scripts_walk_a_release_from_candidate_to_stable(repo: Path, tmp_pat
         "sha": first["sha"],
         "previous": "",
         "prerelease": "false",
+        "candidate": "v1.0.0-rc.1",
+        "image-version": "1.0.0-rc.1",
     }
     assert "tag=v1.0.0" in output.read_text(encoding="utf-8").splitlines()
     _git(repo, "tag", "v1.0.0", promoted["sha"])  # lightweight, as gh release create makes it

@@ -1,7 +1,9 @@
 #!/bin/sh
 # Renders the runtime files nginx serves and includes (D-UI-08-05, D-UI-08-07). Runs from
 # /docker-entrypoint.d as the unprivileged user; output goes to ${DC_UI_RUNTIME_DIR:-/tmp/ui}:
-#   config.json         public identifiers only (there is no secret in this container)
+#   config.json         public identifiers only (there is no secret in this container), and the
+#                       platform version from DC_UI_VERSION ("dev" when none is given): the image
+#                       holds no version, so one build can be tested and then released unchanged
 #   headers.conf        security headers for every page and asset (frame-ancestors 'none', COOP)
 #   headers-bridge.conf the same set for /redirect.html: frame-ancestors 'self', no COOP (A-4, A-7)
 #
@@ -20,6 +22,7 @@ PROTOCOL="${DC_UI_ENTRA_PROTOCOL:-aad}"
 CLIENT_ID="${DC_UI_ENTRA_CLIENT_ID:-}"
 AUTHORITY="${DC_UI_ENTRA_AUTHORITY:-}"
 SCOPES="${DC_UI_ENTRA_SCOPES:-openid profile offline_access}"
+VERSION="${DC_UI_VERSION:-dev}"
 
 NL='
 '
@@ -40,6 +43,7 @@ case "$LOCAL_LOGIN" in true | false) ;; *) fail DC_UI_LOCAL_LOGIN_ENABLED ;; esa
 case "$PROTOCOL" in aad | oidc) ;; *) fail DC_UI_ENTRA_PROTOCOL ;; esac
 matches "$API_BASE" '^/([A-Za-z0-9_-][A-Za-z0-9/_-]*)?$' || fail DC_UI_API_BASE
 matches "$SCOPES" '^[A-Za-z0-9 ._:/-]*$' || fail DC_UI_ENTRA_SCOPES
+matches "$VERSION" '^[A-Za-z0-9_][A-Za-z0-9_.+-]{0,127}$' || fail DC_UI_VERSION
 [ -z "$CLIENT_ID" ] || matches "$CLIENT_ID" '^[A-Za-z0-9._-]{1,128}$' || fail DC_UI_ENTRA_CLIENT_ID
 [ -z "$AUTHORITY" ] || matches "$AUTHORITY" \
   '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~%/-]*)?$' || fail DC_UI_ENTRA_AUTHORITY
@@ -73,8 +77,9 @@ write_headers() {
 }
 
 mkdir -p "$DIR"
-printf '{"entraEnabled":%s,"entraClientId":"%s","entraAuthority":"%s","entraScopes":"%s","entraProtocol":"%s","localLoginEnabled":%s,"apiBase":"%s"}\n' \
+printf '{"entraEnabled":%s,"entraClientId":"%s","entraAuthority":"%s","entraScopes":"%s","entraProtocol":"%s","localLoginEnabled":%s,"apiBase":"%s","version":"%s"}\n' \
   "$ENTRA_ENABLED" "$CLIENT_ID" "$AUTHORITY" "$SCOPES" "$PROTOCOL" "$LOCAL_LOGIN" "$API_BASE" \
+  "$VERSION" \
   > "$DIR/config.json"
 write_headers "$DIR/headers.conf" "'none'" yes
 write_headers "$DIR/headers-bridge.conf" "'self'" no

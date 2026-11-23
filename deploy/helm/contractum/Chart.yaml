@@ -4,8 +4,11 @@ description: "Contractum: data contract governance (identity, contracts, validat
 type: application
 # Placeholders: the Release workflow (.github/workflows/release.yml) packages the chart with
 # `helm package --version <v> --app-version <v>`, so a published chart and its default image tag
-# always carry the released platform version. From a source checkout the default image tag is
-# "dev", the tag of locally built images; set global.imageTag to install a released version.
+# always carry the released platform version, and it fills global.imageDigests with the digests
+# that were tested. The images hold no version: the chart gives every container the version it
+# reports (global.imageTag, else appVersion). From a source checkout the default image tag is
+# "dev", the tag of locally built images, with no digests; set global.imageTag to install a
+# released version.
 version: 0.0.0
 appVersion: "dev"
 kubeVersion: ">=1.28.0-0"

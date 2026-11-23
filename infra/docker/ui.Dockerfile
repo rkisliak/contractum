@@ -23,13 +23,12 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-# Build identity shown in the UI's "Versions" dialog (vite.config.ts `__DC_BUILD__`): the platform
-# version (the Release workflow passes the released version; "dev" otherwise), the 12-character
-# commit and the commit time.
-ARG VERSION=dev
+# Build identity shown in the UI's "Versions" dialog (vite.config.ts `__DC_BUILD__`): the
+# 12-character commit and the commit time. The bundle holds no release version: the platform
+# version arrives at startup (DC_UI_VERSION, written into config.json by the entrypoint).
 ARG GIT_SHA=dev
 ARG BUILD_TIME=dev
-ENV VERSION=$VERSION GIT_SHA=$GIT_SHA BUILD_TIME=$BUILD_TIME
+ENV GIT_SHA=$GIT_SHA BUILD_TIME=$BUILD_TIME
 RUN pnpm build
 
 # The static gate (D-UI-08-31): scripts/ci.sh runs `docker build --target ci` when the host's Node
@@ -54,11 +53,12 @@ RUN apk upgrade --no-cache
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=0755 nginx/40-ui-config.sh /docker-entrypoint.d/40-ui-config.sh
-ARG VERSION=dev
 ARG GIT_SHA=dev
 ARG BUILD_TIME=dev
+# The nginx base image labels itself with its own nginx version, which a Dockerfile cannot delete;
+# an empty value stops it from passing for the platform version.
 LABEL org.opencontainers.image.title="contractum ui" \
-      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.version="" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.created="${BUILD_TIME}" \
       org.opencontainers.image.source="https://github.com/rkisliak/contractum"

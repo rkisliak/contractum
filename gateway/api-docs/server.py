@@ -52,7 +52,8 @@ MERGED_PATH = "/api/v1/openapi.json"
 DOCS_PATH = "/api/v1/docs"
 DOCS_PREFIX = DOCS_PATH + "/"
 VERSION_PATH = DOCS_PREFIX + "version"
-# Build arguments the image bakes in (infra/docker/api-docs.Dockerfile); "dev" otherwise. The same
+# DC_GIT_SHA and DC_BUILD_TIME are baked into the image (infra/docker/api-docs.Dockerfile);
+# DC_VERSION is supplied when the container starts. "dev" for any that is unset. The same
 # variables and answer shape as the services' GET /api/v1/<module>/version (dc_core.app).
 BUILD_ENV = (("version", "DC_VERSION"), ("commit", "DC_GIT_SHA"), ("built_at", "DC_BUILD_TIME"))
 HERE = Path(__file__).resolve().parent

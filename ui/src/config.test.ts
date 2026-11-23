@@ -27,6 +27,7 @@ describe("loadRuntimeConfig", () => {
     await expect(loadRuntimeConfig(fetchImpl)).resolves.toEqual({
       ...valid,
       entraScopes: ["openid", "profile", "api://x/.default"],
+      version: "dev",
     });
     expect(fetchImpl).toHaveBeenCalledWith("/config.json", {
       cache: "no-store",
@@ -87,6 +88,39 @@ describe("loadRuntimeConfig", () => {
   ])("rejects when %s has the wrong type", async (key, value) => {
     await expect(
       loadRuntimeConfig(respond({ ...valid, [key]: value })),
+    ).rejects.toBeInstanceOf(RuntimeConfigError);
+  });
+
+  it.each(["1.4.0", "1.4.0-rc.1", "dev", "9.9.9-rc.12", "1.0.0+build.5"])(
+    "returns the platform version %s the entrypoint wrote",
+    async (version) => {
+      const config = await loadRuntimeConfig(respond({ ...valid, version }));
+      expect(config.version).toBe(version);
+    },
+  );
+
+  it("reads dev when the config has no version key", async () => {
+    const config = await loadRuntimeConfig(respond(valid));
+    expect(config.version).toBe("dev");
+  });
+
+  it.each([
+    7,
+    null,
+    true,
+    ["1.0.0"],
+    "",
+    "1.0 0",
+    '1"',
+    "1;2",
+    "$host",
+    "-1.0.0",
+    ".1",
+    "1\n2",
+    "1".repeat(129),
+  ])("rejects the version %j", async (version) => {
+    await expect(
+      loadRuntimeConfig(respond({ ...valid, version })),
     ).rejects.toBeInstanceOf(RuntimeConfigError);
   });
 

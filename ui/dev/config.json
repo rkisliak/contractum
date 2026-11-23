@@ -5,5 +5,6 @@
   "entraScopes": "openid profile",
   "entraProtocol": "oidc",
   "localLoginEnabled": true,
-  "apiBase": "/api/v1"
+  "apiBase": "/api/v1",
+  "version": "dev"
 }

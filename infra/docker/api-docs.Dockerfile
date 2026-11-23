@@ -23,15 +23,14 @@ RUN mkdir -p /opt/swagger \
  && rm /tmp/swagger.tgz \
  && echo "swagger-ui-dist 5.35.0" > /opt/swagger/VERSION
 COPY gateway/api-docs/ /opt/api-docs/
-# Build identity served by GET /api/v1/docs/version (server.py): the platform version (the
-# Release workflow passes the released version; "dev" otherwise), the 12-character commit and the
-# commit time. Last, so a new version only rebuilds this metadata layer.
-ARG VERSION=dev
+# Build identity served by GET /api/v1/docs/version (server.py): the 12-character commit and the
+# commit time. The image holds no release version, so one build can be tested and then released
+# unchanged: the platform version arrives at startup through DC_VERSION ("dev" without it). Last,
+# so a new commit only rebuilds this metadata layer.
 ARG GIT_SHA=dev
 ARG BUILD_TIME=dev
-ENV DC_VERSION=$VERSION DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
+ENV DC_GIT_SHA=$GIT_SHA DC_BUILD_TIME=$BUILD_TIME
 LABEL org.opencontainers.image.title="contractum api-docs" \
-      org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.created="${BUILD_TIME}" \
       org.opencontainers.image.source="https://github.com/rkisliak/contractum" \

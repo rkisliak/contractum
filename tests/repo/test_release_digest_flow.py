@@ -71,6 +71,12 @@ def write_json(path: Path, data: object) -> Path:
     return path
 
 
+@pytest.fixture(autouse=True)
+def outside_github_actions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The error prefix depends on GITHUB_ACTIONS, so each test sets it instead of inheriting it."""
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
 def run(argv: list[str], capsys: pytest.CaptureFixture[str]) -> tuple[int, str, str]:
     code = ri.main(argv)
     out = capsys.readouterr()

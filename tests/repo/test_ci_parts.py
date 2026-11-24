@@ -302,3 +302,16 @@ def test_the_ui_runner_builds_only_its_runner_with_release_images(runners: Path)
         f"{TEST} run --rm ui-e2e pnpm exec playwright test --project=volume",
     ]
     assert not [line for line in commands if "--build" in line]
+
+
+def test_operation_coverage_downloads_each_ui_part_to_its_own_folder() -> None:
+    """The UI parts share file names, so a merged download can corrupt the API call records."""
+    downloads = [
+        step["with"]
+        for step in _jobs()["operation-coverage"]["steps"]
+        if "download-artifact" in step.get("uses", "")
+        and "ui-api-calls" in step.get("with", {}).get("pattern", "")
+    ]
+    assert len(downloads) == 1
+    assert "merge-multiple" not in downloads[0]
+    assert downloads[0]["path"] == "ui/test-results"

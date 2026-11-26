@@ -156,7 +156,7 @@ ui:
 # Disable it to use your own ingress; docs/admin/deploy-kubernetes.md lists what it must keep.
 gateway:
   enabled: true
-  image: traefik:v3.7.19
+  image: traefik:v3.8.0
   replicas: 1
   service:
     type: LoadBalancer            # ClusterIP behind your own load balancer or ingress

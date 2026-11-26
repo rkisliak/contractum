@@ -413,6 +413,13 @@ wrapper action wraps a scanner.
 Trivy misconfiguration findings are reported but not gated. Fix each one at its root; never
 dismiss or ignore it.
 
+The image builds upgrade the OS packages of each base image (`apt-get upgrade`, or `apk upgrade`
+for the UI). The build cache must never supply that step, or a new Debian or Alpine security fix
+would only reach the scanned images when a Dockerfile or base image changes. So the Dockerfiles
+declare `ARG OS_PACKAGES_REFRESH`, and every cached build in `ci.yml`, `security.yml` and
+`sdk.yml` passes the run id as its value. The release builds use no cache at all. Local builds
+leave it empty and may reuse the cached step.
+
 `infra/trivy` holds data for Trivy's misconfiguration checks, passed with `--config-data
 infra/trivy`. It is configuration, not an ignore list: `ksv0125.trusted_registries` names the
 registry hosts that KSV-0125 trusts, `ghcr.io`, where the release images live. The check matches

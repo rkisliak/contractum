@@ -40,7 +40,12 @@ FROM python:3.13-slim-trixie
 # packages first, and drop pip. The services never run pip, and the urllib3, msgpack and
 # setuptools copies vendored inside it carry HIGH advisories (the app venv has its own, locked,
 # dependencies). The pip that is removed is the base image's, called by absolute path.
-RUN apt-get update \
+# The OS upgrade must never come from the build cache, or a new Debian/Alpine security fix only
+# lands when this file or the base image changes. CI passes a new OS_PACKAGES_REFRESH on every
+# run (the run id); local builds leave it empty and may reuse the cached layer.
+ARG OS_PACKAGES_REFRESH=
+RUN echo "OS packages refresh: ${OS_PACKAGES_REFRESH:-cached}" \
+ && apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/* \
  && /usr/local/bin/python -m pip uninstall -y pip \

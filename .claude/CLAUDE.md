@@ -35,7 +35,7 @@ A central data-contract service for a large company with many data-engineering t
 | 6 | **Hand-roll hierarchical RBAC in Postgres** (`ltree` path + role-assignment table) behind an `Authorizer` interface. Do not run OpenFGA, SpiceDB or Cerbos in v1. | MEDIUM-HIGH |
 | 7 | Tokens: **PyJWT + async JWKS cache** with an issuer registry. The local IdP issues its own JWTs with a JWKS endpoint. Entra uses standard OIDC validation plus Graph for the group-overage case. Opaque PATs and API keys are resolved via identity introspection. | HIGH |
 | 8 | Audit and events: **transactional outbox in each service DB -> NATS JetStream -> audit consumer**, with idempotent inserts keyed on `event_id`. | MEDIUM |
-| 9 | Gateway: **Traefik v3.7**, file-provider config only. OpenAPI aggregation is a small separate merge step, not a Traefik feature. | HIGH (Traefik), MEDIUM (aggregation approach) |
+| 9 | Gateway: **Traefik v3.8**, file-provider config only. OpenAPI aggregation is a small separate merge step, not a Traefik feature. | HIGH (Traefik), MEDIUM (aggregation approach) |
 | 10 | Tests: **pytest 9 + pytest-asyncio + testcontainers + `navikt/mock-oauth2-server`** for compose and e2e. An in-process fake issuer (RSA key + JWKS) covers unit tests. **Schemathesis** and **Hypothesis** are added. | HIGH |
 
 ## Recommended Stack
@@ -152,7 +152,7 @@ A central data-contract service for a large company with many data-engineering t
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| **Traefik** | **v3.7** (v3.7.19) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
+| **Traefik** | **v3.8** (v3.8.0) | Reverse proxy, TLS, CORS, rate limit | Config-only (static `traefik.yml` + file-provider `dynamic/*.yml`). Built-in `rateLimit`, `headers` (CORS) and `stripPrefix` middlewares, file-based TLS certificates (for enterprise CA certs) with ACME optional, health checks, and a dashboard. It does no authentication, which keeps the "gateway is replaceable" rule trivial. | HIGH |
 - Option chosen (MEDIUM): a ~100-line Python script, run at image build or container start, fetches each service's `/openapi.json`, prefixes paths under `/api/v1/<module>`, merges `components` (fail loudly on schema-name collisions), and writes one `openapi.json`. A static-file container serves it with Swagger UI or Scalar at `/api/v1/docs`, routed by Traefik.
 - To avoid component-name collisions, give Pydantic models module-unique names (`IdentityUserOut`, `ContractVersionOut`) and keep `separate_input_output_schemas` consistent across services.
 - `root_path` as a `FastAPI()` argument is **deprecated** (0.146). Mount each service's routes under their real prefix (`/api/v1/<module>`) in the app, or use `fastapi run --root-path`. Do not depend on a stripPrefix plus `root_path` combination. Keep real routes prefixed so the services stay gateway-independent.
@@ -164,7 +164,7 @@ A central data-contract service for a large company with many data-engineering t
 | pytest | 9.2.0 | Test runner | | HIGH |
 | pytest-asyncio | 1.5.0 | Async tests | Use `asyncio_mode = "auto"` with a session-scoped loop for DB fixtures. | HIGH |
 | testcontainers | 4.15.0 | Real Postgres 18, NATS, mock IdP in tests | Prefer **real Postgres** over SQLite (ltree, JSONB, `SKIP LOCKED` are Postgres-specific). Use one container per session and a template DB or transaction rollback per test. | HIGH |
-| **navikt/mock-oauth2-server** | **7.0.1** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
+| **navikt/mock-oauth2-server** | **7.0.2** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
 | In-process fake issuer | (own, about 60 lines) | Unit tests | Generate an RSA key, serve a JWKS through `respx`, mint tokens with PyJWT. Fast, no container, and covers expired, wrong-aud, wrong-iss and overage cases deterministically. | HIGH |
 | respx | 0.23.1 | httpx mocking | Graph and JWKS stubs. | HIGH |
 | Hypothesis | 6.170.15 | Property tests | RBAC inheritance equivalence, diff-classifier invariants, normalise/denormalise round-trips. | HIGH |
@@ -256,9 +256,9 @@ A central data-contract service for a large company with many data-engineering t
 
 #   nats:       nats:2.15   (command: ["-js", "-sd", "/data"] + volume)
 
-#   gateway:    traefik:v3.7
+#   gateway:    traefik:v3.8
 
-#   dev IdP:    ghcr.io/navikt/mock-oauth2-server:7.0.1
+#   dev IdP:    ghcr.io/navikt/mock-oauth2-server:7.0.2
 
 ## Stack Patterns by Variant
 

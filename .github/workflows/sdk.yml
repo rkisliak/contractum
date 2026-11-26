@@ -291,7 +291,10 @@ jobs:
           file: clients/python/Dockerfile
           push: false
           load: true
-          build-args: VERSION=0.0.0-rc.1
+          # A new OS_PACKAGES_REFRESH every run: the OS upgrade layer is never served from the cache.
+          build-args: |
+            VERSION=0.0.0-rc.1
+            OS_PACKAGES_REFRESH=${{ github.run_id }}
           tags: contractum-cli:test
           cache-from: type=gha,scope=img-contractum-cli
           cache-to: type=gha,mode=max,scope=img-contractum-cli

@@ -38,7 +38,7 @@ and `scripts/e2e.sh` wait for the whole stack (`docker compose up --wait`).
 
 ![Diagram: 1. The gateway](../../images/diagrams/06-platform-and-operations-1.png)
 
-Traefik v3.7 is configured by files only: `gateway/traefik.yml` (static) and
+Traefik v3.8 is configured by files only: `gateway/traefik.yml` (static) and
 `gateway/dynamic/*.yml` (routers, middlewares, TLS).
 
 ### Routers

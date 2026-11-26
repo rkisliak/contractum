@@ -184,7 +184,7 @@ class AuditConsumer:
         sub = await self._subscription()
         try:
             msgs = await sub.fetch(self._batch, timeout=timeout_s)
-        except (nats.errors.TimeoutError, FetchTimeoutError):
+        except nats.errors.TimeoutError, FetchTimeoutError:
             return 0  # an empty fetch is normal
         for msg in msgs:
             await self._process(msg)

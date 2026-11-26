@@ -137,7 +137,7 @@ def _raw_request_sync(target: bytes, *, method: str = "GET") -> RawResponse:
         while True:
             try:
                 chunk = tls.recv(65536)
-            except (ssl.SSLError, ConnectionResetError):
+            except ssl.SSLError, ConnectionResetError:
                 break
             if not chunk:
                 break
@@ -175,7 +175,7 @@ def _post_reading_while_sending_sync(
                     chunk = tls.recv(65536)
                 except ssl.SSLWantReadError:
                     chunk = None
-                except (ssl.SSLError, ConnectionResetError):
+                except ssl.SSLError, ConnectionResetError:
                     break
                 if chunk == b"":
                     closed = True
@@ -186,7 +186,7 @@ def _post_reading_while_sending_sync(
                     sent += tls.send(pending[sent : sent + 65536])
                 except ssl.SSLWantWriteError:
                     pass
-                except (ssl.SSLError, ConnectionResetError, BrokenPipeError):
+                except ssl.SSLError, ConnectionResetError, BrokenPipeError:
                     sent = len(pending)  # peer reset: stop writing, keep draining what arrived
             if sent >= len(pending) and b"\r\n\r\n" in received and not readable:
                 break

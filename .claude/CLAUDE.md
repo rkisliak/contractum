@@ -44,9 +44,9 @@ A central data-contract service for a large company with many data-engineering t
 
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
-| Python | **3.13** (3.14 also viable) | Runtime | Every native dependency in this stack ships cp314 manylinux wheels (checked: asyncpg, pydantic-core, cryptography, argon2-cffi-bindings, psycopg-binary, jsonschema-rs, cel-expr-python, common-expression-language). 3.13 is the conservative pick; moving to 3.14 is a one-line change when wanted. SQLAlchemy 2.1, pydantic-settings and cel/jsonpath libs need >=3.11. | HIGH |
+| Python | **3.14** (`>=3.14,<3.15`) | Runtime | Every native dependency in this stack ships cp314 manylinux wheels (checked: asyncpg, pydantic-core, cryptography, argon2-cffi-bindings, psycopg-binary, jsonschema-rs, cel-expr-python, common-expression-language). 3.15 is blocked only by `cel-expr-python` 0.1.4, which ships no cp315 wheel and no sdist (checked 2026-11-26); lift the `<3.15` cap when it does. SQLAlchemy 2.1, pydantic-settings and cel/jsonpath libs need >=3.11. | HIGH |
 | uv | **0.13.7** | Package manager, workspaces, lockfile | One `uv.lock` for all services means one resolved FastAPI/Pydantic/SQLAlchemy and no version drift between services. `uv sync --package <svc> --frozen --no-editable --no-dev` gives small per-service images. | HIGH |
-| Docker base image | `python:3.13-slim-trixie` | Service images | **Use glibc/Debian, not Alpine.** `cel-expr-python` and `jsonschema-rs` ship manylinux wheels only (see Pitfalls). | HIGH |
+| Docker base image | `python:3.14-slim-trixie` | Service images | **Use glibc/Debian, not Alpine.** `cel-expr-python` and `jsonschema-rs` ship manylinux wheels only (see Pitfalls). | HIGH |
 | Docker Compose | v2 (Docker 29.x) | Orchestration | Project constraint. Use `depends_on: condition: service_healthy` and a one-shot `migrate` job per service. | HIGH |
 
 # root pyproject.toml
@@ -225,7 +225,7 @@ A central data-contract service for a large company with many data-engineering t
 | JSON-Logic (`json-logic` etc.) | Abandoned or tiny ports, no type checking, no cost limits. | CEL |
 | Any Python-expression evaluator (`simpleeval`, `asteval`, `eval`) | Code-execution attack surface. This contradicts the "declarative only" security constraint. | CEL |
 | Oso library | Last release Jan 2024, vendor moved to a hosted product (MEDIUM). | Hand-rolled RBAC, or OpenFGA if an engine is needed |
-| Alpine base images | `cel-expr-python` and `jsonschema-rs` wheels target manylinux (glibc). Building on musl means compiling C++ or Rust from source. | `python:3.13-slim-trixie` |
+| Alpine base images | `cel-expr-python` and `jsonschema-rs` wheels target manylinux (glibc). Building on musl means compiling C++ or Rust from source. | `python:3.14-slim-trixie` |
 | Floating FastAPI version (`fastapi>=`, `fastapi[standard]` unpinned) | 0.143-0.162 shipped breaking changes in about 3 weeks. | `fastapi==0.165.0` with a deliberate upgrade phase |
 | `FastAPI(root_path=...)` | Deprecated in 0.146. | Real route prefix, or `fastapi run --root-path` |
 | `ORJSONResponse`/`UJSONResponse` | Unneeded: Pydantic v2 serialises in Rust. | Default responses |

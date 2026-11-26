@@ -151,7 +151,7 @@ def _json_spans(text: str, fields: list[str]) -> dict[str, tuple[int, int, str]]
                     raise _not_editable(key)
                 found[key] = (index, end, '"')
             index = end
-    except (ValueError, IndexError):
+    except ValueError, IndexError:
         raise _not_editable(fields[0]) from None
     for field in fields:
         if field not in found:
@@ -162,7 +162,7 @@ def _json_spans(text: str, fields: list[str]) -> dict[str, tuple[int, int, str]]
 def _strict_load(text: str) -> object:
     try:
         return load_yaml(text)
-    except (ValueError, yaml.YAMLError):
+    except ValueError, yaml.YAMLError:
         return None
 
 
@@ -247,7 +247,7 @@ class OdcsAdapter:
         loader = load_json if is_json else load_yaml
         try:
             source = loader(text)
-        except (ValueError, yaml.YAMLError):
+        except ValueError, yaml.YAMLError:
             raise _not_editable("version") from None
         if not isinstance(source, dict):
             raise _not_editable("version")
@@ -279,7 +279,7 @@ class OdcsAdapter:
 
         try:
             result = loader(edited)
-        except (ValueError, yaml.YAMLError):
+        except ValueError, yaml.YAMLError:
             raise _not_editable(fields[0]) from None
         if result != {**source, **changes}:
             raise _not_editable(fields[0])

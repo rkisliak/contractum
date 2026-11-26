@@ -90,7 +90,7 @@ def _read_text(relative: str) -> str | None:
         return None
     try:
         return path.read_text(encoding="utf-8")
-    except (UnicodeDecodeError, OSError):
+    except UnicodeDecodeError, OSError:
         return None  # binary
 
 

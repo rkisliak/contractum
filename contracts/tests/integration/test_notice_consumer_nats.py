@@ -629,7 +629,7 @@ async def refused(connection: Connection, call: Callable[[], Awaitable[Any]], su
     except APIError as exc:
         assert exc.code != 404, f"{subject}: not a refusal, {exc}"
         return f"api error {exc.code}/{exc.err_code}: {exc.description}"
-    except (nats.errors.TimeoutError, TimeoutError):
+    except nats.errors.TimeoutError, TimeoutError:
         for _ in range(30):
             hits = connection.violations(since, subject)
             if hits:

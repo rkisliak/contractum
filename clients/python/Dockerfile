@@ -7,7 +7,7 @@
 # CI ran. pandas and polars are left out because the CLI reads files itself; dataframe users run
 # the library in their own image. No credential is ever baked in: pass CONTRACTUM_URL and
 # CONTRACTUM_TOKEN at run time (environment variables or mounts).
-FROM python:3.13-slim-trixie AS builder
+FROM python:3.14-slim-trixie AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
@@ -16,7 +16,7 @@ COPY src src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-editable --extra delta --extra sql
 
-FROM python:3.13-slim-trixie
+FROM python:3.14-slim-trixie
 # Security: the base tag lags the Debian security archive, so upgrade the OS packages first, and
 # drop pip (the copies of urllib3, msgpack and setuptools vendored inside it carry advisories).
 # The pip that is removed is the base image's, called by absolute path; the app venv has none.

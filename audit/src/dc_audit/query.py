@@ -93,7 +93,7 @@ def decode_cursor(raw: str) -> tuple[datetime, int]:
         row_id = int(number)
         if encode_cursor(at, row_id) != raw:
             raise ValueError("not the canonical cursor")
-    except (ValueError, binascii.Error, UnicodeError):
+    except ValueError, binascii.Error, UnicodeError:
         raise _invalid("/query/cursor", "cursor is not valid") from None
     return at, row_id
 

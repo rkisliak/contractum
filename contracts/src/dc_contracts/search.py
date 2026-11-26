@@ -78,7 +78,7 @@ def decode_cursor(raw: str) -> uuid.UUID:
         value = uuid.UUID(text)
         if encode_cursor(value) != raw:  # also rejects stray characters and non-canonical forms
             raise ValueError("not the canonical cursor")
-    except (ValueError, binascii.Error, UnicodeError):
+    except ValueError, binascii.Error, UnicodeError:
         raise _invalid("/query/cursor", "cursor is not valid") from None
     return value
 

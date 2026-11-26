@@ -7,7 +7,7 @@
 # BuildKit against the pinned sha256 before use. It is unpacked with tar, never `npm install`,
 # so no install script (of the package or its dependency) ever runs. Upgrade: bump the version
 # in the URL and VERSION line and replace the checksum with the new tarball's sha256.
-FROM python:3.13-slim-trixie
+FROM python:3.14-slim-trixie
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 DC_API_DOCS_SWAGGER_DIR=/opt/swagger
 # Security (quick 261120-pn7): upgrade the OS packages (the base tag lags the Debian security
 # archive) and drop pip, whose vendored urllib3, msgpack and setuptools carry HIGH advisories. The

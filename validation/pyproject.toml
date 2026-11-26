@@ -2,7 +2,7 @@
 name = "dc-validation"
 version = "0.1.0"
 description = "Validation service: governance rule evaluation"
-requires-python = ">=3.13,<3.15"
+requires-python = ">=3.14,<3.15"
 dependencies = [
   "dc-core",
   "dc-auth",

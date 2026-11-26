@@ -2,7 +2,7 @@
 name = "dc-core"
 version = "0.1.0"
 description = "Shared platform core: settings, DB, outbox, problem details, HTTP factory, logging"
-requires-python = ">=3.13,<3.15"
+requires-python = ">=3.14,<3.15"
 dependencies = [
   "fastapi==0.165.0",
   "pydantic==2.14.4",

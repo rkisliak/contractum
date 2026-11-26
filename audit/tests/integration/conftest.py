@@ -12,6 +12,7 @@ from typing import Any
 
 import nats
 import pytest
+import pytest_asyncio
 import uuid_utils.compat as uuid_compat
 from dc_audit.consumer import AuditConsumer
 from dc_audit.migrate import SCRIPT_LOCATION, VERSION_TABLE
@@ -146,7 +147,10 @@ def eventually() -> Callable[..., Awaitable[Any]]:
     return _eventually
 
 
-@pytest.fixture
+# The tasks are created in the test's event loop, so the teardown that cancels and awaits them must
+# run in that loop too, not in the session loop the other fixtures default to. Python 3.14's
+# asyncio.gather refuses tasks of another loop; earlier versions skipped the await silently.
+@pytest_asyncio.fixture(loop_scope="function")
 async def run_consumer() -> AsyncIterator[Callable[[AuditConsumer], asyncio.Task[None]]]:
     """Start ``consumer.run()`` in the background; cancelled and awaited on teardown."""
     tasks: list[asyncio.Task[None]] = []

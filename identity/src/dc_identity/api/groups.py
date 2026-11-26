@@ -263,7 +263,7 @@ def _decode_member_cursor(cursor: str) -> tuple[str, str]:
         member_type, member_id = (
             base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8").split("\x1f", 1)
         )
-    except (ValueError, binascii.Error, UnicodeError):
+    except ValueError, binascii.Error, UnicodeError:
         raise ProblemError(
             422,
             "validation-error",

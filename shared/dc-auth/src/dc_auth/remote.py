@@ -188,7 +188,7 @@ class RemoteAuthorizer:
             try:
                 raw = await self._post(_RESOLVE_PATH, payload.model_dump_json())
                 answer = PrincipalResolveOut.model_validate_json(raw)
-            except (AuthorizerUnavailable, ValidationError):
+            except AuthorizerUnavailable, ValidationError:
                 _log.warning("principal_resolve_unverifiable")
             for names, answered, target in (
                 (chunk_users, answer.users if answer else {}, out.users),

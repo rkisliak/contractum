@@ -2,7 +2,7 @@
 name = "dc-auth"
 version = "0.1.0"
 description = "Shared authentication: issuer registry, JWKS cache, Principal, route policies"
-requires-python = ">=3.13,<3.15"
+requires-python = ">=3.14,<3.15"
 dependencies = [
   "dc-core",
   "pyjwt[crypto]==2.15.1",

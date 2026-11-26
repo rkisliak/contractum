@@ -110,10 +110,10 @@ jobs:
           version: "0.13.7"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
-      - name: Install Python 3.13
-        run: uv python install 3.13
+      - name: Install Python 3.14
+        run: uv python install 3.14
       - name: uv sync --frozen
-        run: uv sync --frozen --all-extras --python 3.13
+        run: uv sync --frozen --all-extras --python 3.14
       - name: Unit tests
         run: uv run --no-sync pytest -m unit -q
 
@@ -178,10 +178,10 @@ jobs:
           version: "0.13.7"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
-      - name: Install Python 3.13
-        run: uv python install 3.13
+      - name: Install Python 3.14
+        run: uv python install 3.14
       - name: uv sync --frozen
-        run: uv sync --frozen --all-extras --python 3.13
+        run: uv sync --frozen --all-extras --python 3.14
       - name: Erase old coverage data
         run: uv run --no-sync coverage erase
       - name: Unit tests under coverage
@@ -215,10 +215,10 @@ jobs:
           version: "0.13.7"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
-      - name: Install Python 3.13
-        run: uv python install 3.13
+      - name: Install Python 3.14
+        run: uv python install 3.14
       - name: uv sync --frozen
-        run: uv sync --frozen --all-extras --python 3.13
+        run: uv sync --frozen --all-extras --python 3.14
       # compose.test.yaml bind-mounts ./ui/test-results (the source is not created), and a
       # runner-owned .dev makes dev-init chown its mirror files to the runner user.
       - name: Prepare bind-mount directories

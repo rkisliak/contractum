@@ -34,7 +34,7 @@ class PasswordRules:
     require_symbol: bool = False
 
     @classmethod
-    def default(cls) -> "PasswordRules":
+    def default(cls) -> PasswordRules:
         return cls()
 
     def describe(self) -> list[str]:

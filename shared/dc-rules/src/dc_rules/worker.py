@@ -249,7 +249,7 @@ def serve(
             continue
         try:
             job = _JOB_ADAPTER.validate_python(json.loads(line))
-        except (ValueError, ValidationError):
+        except ValueError, ValidationError:
             # Nothing to attribute the answer to: end the job, the parent marks every unit.
             _emit(lines_out, EndMarker())
             continue
@@ -315,17 +315,17 @@ def _apply_limits(memory_limit_bytes: int, cpu_limit_s: int) -> Callable[[], Non
         # RLIMIT_AS is enforced on Linux only (macOS accepts the call and ignores it).
         try:
             resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
-        except (ValueError, OSError):
+        except ValueError, OSError:
             pass
     try:
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    except (ValueError, OSError):
+    except ValueError, OSError:
         pass
 
     try:
         _, hard = resource.getrlimit(resource.RLIMIT_CPU)
         resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit_s, hard))
-    except (ValueError, OSError):
+    except ValueError, OSError:
         return lambda: None
 
     def rearm() -> None:
@@ -335,7 +335,7 @@ def _apply_limits(memory_limit_bytes: int, cpu_limit_s: int) -> Callable[[], Non
             soft = min(soft, hard)
         try:
             resource.setrlimit(resource.RLIMIT_CPU, (soft, hard))
-        except (ValueError, OSError):
+        except ValueError, OSError:
             pass
 
     return rearm

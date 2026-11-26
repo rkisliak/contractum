@@ -152,7 +152,7 @@ def decode_diff_cursor(raw: str) -> int:
         offset = int(text[1:])
         if encode_diff_cursor(offset) != raw:
             raise ValueError("not the canonical cursor")
-    except (ValueError, binascii.Error, UnicodeError):
+    except ValueError, binascii.Error, UnicodeError:
         raise ProblemError(
             422,
             "validation-error",

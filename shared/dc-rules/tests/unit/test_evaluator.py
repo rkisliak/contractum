@@ -332,7 +332,7 @@ def test_the_package_root_does_not_load_the_cel_engine() -> None:
 def test_the_engine_version_names_both_engines_with_their_pins() -> None:
     version = engine_version()
     assert "cel-expr-python 0.1.4" in version
-    assert "python-jsonpath 2.2.2" in version
+    assert "python-jsonpath 2.3.0" in version
 
 
 # --- normalisation (iterative, never mutates) ---------------------------------------------------

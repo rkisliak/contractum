@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python from .python-version
@@ -83,7 +83,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python ${{ matrix.python }}
@@ -107,7 +107,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python 3.14
@@ -129,7 +129,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python 3.11
@@ -151,7 +151,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python 3.14
@@ -175,7 +175,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python 3.14
@@ -212,7 +212,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Install Python 3.14
@@ -278,7 +278,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: clients/python/uv.lock
       - name: Build and check the release files (version 0.0.0rc1)

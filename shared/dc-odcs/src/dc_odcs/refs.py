@@ -24,12 +24,12 @@ from typing import Any, Literal
 MAX_REFS = 1000
 
 # The longest version text contracts and validation exchange: a baseline's ``semver`` and a
-# link's pinned version (CR-02, WR-01). Contracts accepts any strict SemVer as a document
-# ``version`` (build metadata has no length limit) and links of up to this many characters, so a
-# pinned version always fits; contracts drops a longer baseline ``semver`` (display only:
-# validation then derives it from the baseline document). Both services import this one value,
-# so their caps cannot drift apart.
-MAX_VERSION_CHARS = 2048
+# link's pinned version (CR-02, WR-01). It equals the 255-character limit of the ``semver``
+# library (3.2.0 and later), which every version string is parsed with: a document ``version`` or
+# a pinned version longer than this is not a valid version anywhere in the platform. Contracts
+# drops a longer baseline ``semver`` (display only: validation then derives it from the baseline
+# document). Both services import this one value, so their caps cannot drift apart.
+MAX_VERSION_CHARS = 255
 
 RefKind = Literal["contract_uuid", "odcs_id"]
 

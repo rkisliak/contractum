@@ -43,7 +43,7 @@ jobs:
         run: docker run --rm -v "$PWD:/workdir:ro" davidanson/markdownlint-cli2:v0.24.2@sha256:c768e94d8bb161c449bde28f60656929ca1f02c3010a405f65c9cac71563a889
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -76,7 +76,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -112,7 +112,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version

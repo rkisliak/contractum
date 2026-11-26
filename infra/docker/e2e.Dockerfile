@@ -6,7 +6,7 @@
 # host, and add the group that owns the Docker socket (the outage tests) and the group 10001 that
 # may read the e2e secrets (scripts/e2e-runner-env.sh). It never runs as root.
 FROM python:3.14-slim-trixie
-COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.10 /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml uv.lock ./

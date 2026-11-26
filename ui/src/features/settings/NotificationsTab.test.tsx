@@ -11,6 +11,11 @@ import { makeFolder, makeMe, renderApp, rootFolder } from "@/test/renderApp";
 import { problem, settingsSequence } from "@/test/settings-fixtures";
 import { humanSeconds } from "./NotificationsTab";
 
+/** A regex that matches when the text contains `text` (toHaveAccessibleDescription takes a string or RegExp). */
+function containing(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+}
+
 afterEach(() => {
   tokenStore.clear();
   window.sessionStorage.clear();
@@ -774,7 +779,7 @@ describe("the Notifications tab, stored values and refusals", () => {
     expect(await screen.findByText("Not a field here.")).toBeVisible();
     for (const [label, detail] of fields) {
       expect(screen.getByLabelText(label)).toHaveAccessibleDescription(
-        expect.stringContaining(detail),
+        containing(detail),
       );
     }
   });

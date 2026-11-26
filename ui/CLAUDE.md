@@ -562,7 +562,7 @@ check (`node scripts/check-pin-age.mjs`).
 | Tool                 | Pin                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------- |
 | Node                 | 26.13.1 (`.nvmrc`, `engines.node`, Dockerfile `FROM`); no corepack on Node 26 (A-6)   |
-| pnpm                 | 12.17.0 (`packageManager`; installed with `npm i -g pnpm@12.17.0`, never on the host) |
+| pnpm                 | 12.22.0 (`packageManager`; installed with `npm i -g pnpm@12.22.0`, never on the host) |
 | nginx runtime        | `nginxinc/nginx-unprivileged:1.31.7-alpine-slim`                                      |
 | Playwright runner    | `mcr.microsoft.com/playwright:v1.65.1-noble` (equals `@playwright/test`)              |
 | monaco-editor        | 0.57.0 (installed with the contract screens)                                          |
@@ -576,7 +576,7 @@ Runtime dependencies (`dependencies`):
 
 | Package                         | Version  |
 | ------------------------------- | -------- |
-| `@azure/msal-browser`           | 5.29.0   |
+| `@azure/msal-browser`           | 5.30.0   |
 | `@fontsource-variable/inter`    | 5.3.0    |
 | `@monaco-editor/react`          | 4.7.0    |
 | `@radix-ui/react-alert-dialog`  | 1.2.1    |
@@ -586,10 +586,10 @@ Runtime dependencies (`dependencies`):
 | `@radix-ui/react-tabs`          | 1.2.1    |
 | `@radix-ui/react-toast`         | 1.3.1    |
 | `@radix-ui/react-tooltip`       | 1.4.1    |
-| `@tanstack/react-query`         | 5.107.1  |
+| `@tanstack/react-query`         | 5.108.2  |
 | `@tanstack/react-router`        | 1.170.46 |
 | `jsonc-parser`                  | 3.3.1    |
-| `lucide-react`                  | 1.70.0   |
+| `lucide-react`                  | 1.77.0   |
 | `monaco-editor`                 | 0.57.0   |
 | `openapi-fetch`                 | 0.17.0   |
 | `react`                         | 19.3.1   |
@@ -605,26 +605,26 @@ Tooling (`devDependencies`):
 | `@playwright/test`            | 1.65.1  |
 | `@tanstack/router-plugin`     | 1.169.0 |
 | `@testing-library/dom`        | 10.4.2  |
-| `@testing-library/jest-dom`   | 7.0.1   |
+| `@testing-library/jest-dom`   | 8.0.0   |
 | `@testing-library/react`      | 16.3.3  |
-| `@testing-library/user-event` | 14.6.8  |
+| `@testing-library/user-event` | 14.6.13 |
 | `@types/node`                 | 26.6.6  |
 | `@types/react`                | 19.3.0  |
 | `@types/react-dom`            | 19.3.0  |
-| `@vitejs/plugin-react`        | 6.2.1   |
+| `@vitejs/plugin-react`        | 6.3.0   |
 | `eslint`                      | 10.15.0 |
 | `eslint-plugin-jsx-a11y`      | 6.10.2  |
 | `eslint-plugin-react-hooks`   | 7.1.1   |
 | `globals`                     | 17.14.0 |
 | `jsdom`                       | 31.0.1  |
-| `msw`                         | 3.0.4   |
+| `msw`                         | 3.0.7   |
 | `openapi-typescript`          | 7.13.0  |
-| `prettier`                    | 3.9.10  |
-| `stylelint`                   | 18.0.0  |
+| `prettier`                    | 3.10.1  |
+| `stylelint`                   | 18.1.0  |
 | `typescript`                  | 6.0.3   |
 | `typescript-eslint`           | 8.73.0  |
-| `vite`                        | 8.3.6   |
-| `vitest`                      | 5.1.0   |
+| `vite`                        | 8.3.8   |
+| `vitest`                      | 5.1.1   |
 
 ## Known exceptions
 
@@ -638,7 +638,7 @@ Tooling (`devDependencies`):
 - **TypeScript stays on 6.x** (A-5): 7.x ships no JavaScript compiler API, so `openapi-typescript` (and
   `typescript-eslint`, peer `<6.1.0`) cannot run on it.
 - **Node tooling runs in a container on this host**: the host has no pnpm and none may be installed globally. Use
-  `node:26.13.1-trixie-slim` with `npm i -g pnpm@12.17.0`, named volumes for `node_modules` and the pnpm store, or the
+  `node:26.13.1-trixie-slim` with `npm i -g pnpm@12.22.0`, named volumes for `node_modules` and the pnpm store, or the
   Docker `ci` stage once it exists.
 
 ## URL scheme (D-UI-08-23)

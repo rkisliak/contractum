@@ -64,7 +64,7 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -86,7 +86,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -125,7 +125,7 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -147,7 +147,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -183,8 +183,8 @@ jobs:
             echo "node $(node --version) is not the pinned $want_node" >&2
             exit 1
           fi
-          if [ "$(pnpm --version)" != "12.17.0" ]; then
-            echo "pnpm $(pnpm --version) is not the pinned 12.17.0" >&2
+          if [ "$(pnpm --version)" != "12.22.0" ]; then
+            echo "pnpm $(pnpm --version) is not the pinned 12.22.0" >&2
             exit 1
           fi
       - name: pnpm install --frozen-lockfile

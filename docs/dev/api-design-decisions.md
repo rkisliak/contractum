@@ -644,7 +644,7 @@ envelope), only after the policy has passed.
 with a JSON pointer otherwise). Two optional members request a compatibility check, see
 "Compatibility and the native findings": `baseline` (`{"version_id": "...", "semver": "1.0.0",
 "media_type": "application/yaml", "document_b64": "..."}`, the previously published version, with
-`semver` optional, limited to plain version characters and at most `MAX_VERSION_CHARS` (2,048,
+`semver` optional, limited to plain version characters and at most `MAX_VERSION_CHARS` (255,
 `dc_odcs`, shared with contracts) characters; contracts sends `null` for a longer one and validation
 derives it from the baseline document, so a long published version never refuses a run) and `stable_major_floor` (an integer, the highest
 stable major published so far, `null` while only prereleases exist). `version` is `"latest"` or an exact version number; at most
@@ -733,7 +733,7 @@ and new document; `before` and `after` are set only for a small allow-list of st
 length, range and size bounds, `enum` and a server's `type`), strings cut at 200 characters, and
 are `null` for everything else: descriptions, examples, quality SQL and other free text never enter
 a report. `declared_version` and `baseline.semver` are shown only when they are plain version
-characters, at most 2,048 (`MAX_VERSION_CHARS`).
+characters, at most 255 (`MAX_VERSION_CHARS`).
 
 Two **native findings** belong to the platform, not to a rule set: `source` is `native`, `mode`
 `enforce`, `severity` `error`, `blocking` true, and `rule_set` has every member `null`. They are

@@ -247,7 +247,10 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           target: ${{ matrix.target }}
-          build-args: ${{ matrix.build-args }}
+          # A new value every run: the OS upgrade layer is never served from the cache.
+          build-args: |
+            ${{ matrix.build-args }}
+            OS_PACKAGES_REFRESH=${{ github.run_id }}
           push: false
           cache-from: type=gha,scope=img-${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=img-${{ matrix.name }}

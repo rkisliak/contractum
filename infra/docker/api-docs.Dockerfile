@@ -12,7 +12,12 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 DC_API_DOCS_SWAGGER_DIR=/opt/sw
 # Security (quick 261120-pn7): upgrade the OS packages (the base tag lags the Debian security
 # archive) and drop pip, whose vendored urllib3, msgpack and setuptools carry HIGH advisories. The
 # server is standard-library only and never runs pip.
-RUN apt-get update \
+# The OS upgrade must never come from the build cache, or a new Debian/Alpine security fix only
+# lands when this file or the base image changes. CI passes a new OS_PACKAGES_REFRESH on every
+# run (the run id); local builds leave it empty and may reuse the cached layer.
+ARG OS_PACKAGES_REFRESH=
+RUN echo "OS packages refresh: ${OS_PACKAGES_REFRESH:-cached}" \
+ && apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/* \
  && /usr/local/bin/python -m pip uninstall -y pip

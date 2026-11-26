@@ -1,4 +1,4 @@
-# gateway (Traefik v3.7 configuration plus `problem-responder` and `api-docs`)
+# gateway (Traefik v3.8 configuration plus `problem-responder` and `api-docs`)
 
 The public entry point: TLS, CORS, rate limits, body cap and routing. It is deliberately thin and
 replaceable; it performs no authentication, and no security control may live only here.

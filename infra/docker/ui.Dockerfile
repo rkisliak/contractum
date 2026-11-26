@@ -49,7 +49,12 @@ FROM nginxinc/nginx-unprivileged:1.31.7-alpine-slim AS runtime
 # Security (quick 261120-pn7): the pinned nginx tag lags the Alpine security archive (musl, zlib,
 # openssl), so upgrade the packages as root, then drop to the image's own unprivileged user below.
 USER root
-RUN apk upgrade --no-cache
+# The OS upgrade must never come from the build cache, or a new Debian/Alpine security fix only
+# lands when this file or the base image changes. CI passes a new OS_PACKAGES_REFRESH on every
+# run (the run id); local builds leave it empty and may reuse the cached layer.
+ARG OS_PACKAGES_REFRESH=
+RUN echo "OS packages refresh: ${OS_PACKAGES_REFRESH:-cached}" \
+ && apk upgrade --no-cache
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=0755 nginx/40-ui-config.sh /docker-entrypoint.d/40-ui-config.sh

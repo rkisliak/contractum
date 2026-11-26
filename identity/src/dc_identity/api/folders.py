@@ -191,7 +191,7 @@ def _decode_cursor(cursor: str) -> uuid.UUID:
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
         return uuid.UUID(base64.urlsafe_b64decode(padded.encode("ascii")).decode("ascii"))
-    except (ValueError, binascii.Error, UnicodeError):
+    except ValueError, binascii.Error, UnicodeError:
         raise ProblemError(
             422,
             "validation-error",

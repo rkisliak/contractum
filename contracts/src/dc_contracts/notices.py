@@ -304,7 +304,7 @@ def _uuid_field(mapping: Mapping[str, Any], key: str, what: str) -> uuid.UUID:
     """``mapping[key]`` as a UUID, or ``InvalidNoticeEvent`` (acknowledged once, never retried)."""
     try:
         return uuid.UUID(str(mapping[key]))
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         raise InvalidNoticeEvent(f"the event does not carry a valid {what} id") from None
 
 
@@ -418,7 +418,7 @@ async def _subscription_removed(
         card_id = uuid.UUID(envelope.aggregate_id)
         contract_id = uuid.UUID(str(after["contract_id"]))
         version_id = uuid.UUID(str(after["version_id"]))
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         raise InvalidNoticeEvent(
             "the removal event does not name its card, contract and version"
         ) from None
@@ -681,7 +681,7 @@ async def _unpublish_blocked(
         return []
     try:
         version_id = uuid.UUID(str(after["version_id"]))
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         raise InvalidNoticeEvent("the blocked event does not name its version") from None
     contract_id = _contract_id(envelope)
     recent = {

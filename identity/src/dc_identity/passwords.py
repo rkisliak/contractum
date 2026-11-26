@@ -31,7 +31,7 @@ class PasswordService:
             return await asyncio.to_thread(
                 self._hasher.verify, password_hash, normalize_password(password)
             )
-        except (VerificationError, InvalidHashError):
+        except VerificationError, InvalidHashError:
             return False
 
     async def matches_secret(self, secret: str, candidate: str) -> bool:
@@ -45,7 +45,7 @@ class PasswordService:
         secret_hash = await asyncio.to_thread(self._hasher.hash, secret)
         try:
             return await asyncio.to_thread(self._hasher.verify, secret_hash, candidate)
-        except (VerificationError, InvalidHashError):
+        except VerificationError, InvalidHashError:
             return False
 
     def needs_rehash(self, password_hash: str) -> bool:

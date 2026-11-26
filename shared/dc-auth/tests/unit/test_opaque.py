@@ -344,7 +344,7 @@ async def test_the_token_is_never_logged(handler: Any, caplog: pytest.LogCapture
     with structlog.testing.capture_logs() as captured:
         try:
             await resolver.resolve(TOKEN)
-        except (ValueError, ProblemError):
+        except ValueError, ProblemError:
             pass
     await http.aclose()
     assert SECRET not in json.dumps(captured, default=str)

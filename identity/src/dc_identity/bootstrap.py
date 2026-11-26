@@ -60,7 +60,7 @@ def read_bootstrap_secret(path: Path) -> tuple[str | None, SecretProblem | None]
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, "missing"
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None, "unreadable"
     secret = raw.removesuffix("\n").removesuffix("\r")
     if len(secret) < MIN_SECRET_LENGTH:
@@ -185,7 +185,7 @@ def read_notifier_credential(path: Path) -> tuple[tuple[str, str] | None, Notifi
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, "missing"
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None, "unreadable"
     line = raw.removesuffix("\n").removesuffix("\r")
     public_id, separator, secret_hash = line.partition(":")

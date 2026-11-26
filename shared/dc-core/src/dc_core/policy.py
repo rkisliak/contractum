@@ -78,10 +78,10 @@ def _callable_has_policy(call: Callable[..., Any] | None, seen: set[int]) -> boo
         return True
     try:
         sig = inspect.signature(call, eval_str=True)
-    except (TypeError, ValueError, NameError):
+    except TypeError, ValueError, NameError:
         try:
             sig = inspect.signature(call)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return False
     for param in sig.parameters.values():
         candidates = _depends_in(param.annotation)

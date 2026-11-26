@@ -164,7 +164,7 @@ class NulGuardRoute(APIRoute):
                 if _needs_walk(raw):
                     try:
                         data = await request.json()  # cached: FastAPI's own read reuses it
-                    except (JSONDecodeError, UnicodeDecodeError):
+                    except JSONDecodeError, UnicodeDecodeError:
                         data = None  # FastAPI renders its own 422 for undecodable JSON
                     found = find_unstorable(data)
                     if found is not None:

@@ -110,7 +110,7 @@ async def send(
         return MailSendOut(accepted=0, refused=len(recipients), deferred=_deferred(exc.recipients))
     except smtplib.SMTPResponseException as exc:
         raise SmtpUnavailable(f"smtp-{exc.smtp_code}") from None
-    except (smtplib.SMTPException, OSError):
+    except smtplib.SMTPException, OSError:
         raise SmtpUnavailable("smtp-error") from None
     return MailSendOut(
         accepted=len(recipients) - len(refused),

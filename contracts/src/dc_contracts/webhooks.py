@@ -165,7 +165,7 @@ async def check_resolved_host(host: str, port: int, settings: WebhookUrlSettings
         # Bounded: an authoritative server that never answers must not pin the caller (WR-02).
         async with asyncio.timeout(settings.webhook_timeout_s):
             addresses = await _resolve(host, port)
-    except (OSError, UnicodeError, TimeoutError):
+    except OSError, UnicodeError, TimeoutError:
         raise InvalidWebhookUrl("dns-error") from None
     if not addresses:
         raise InvalidWebhookUrl("dns-error")
@@ -344,7 +344,7 @@ async def send_webhook(
                 # The body is never read: close the response right here, so the timeout scope
                 # holds an explicit await point and the connection is released at once.
                 await response.aclose()
-    except (TimeoutError, httpx.TimeoutException):
+    except TimeoutError, httpx.TimeoutException:
         return DeliveryOutcome(False, None, "timeout")
     except httpx.InvalidURL:
         return DeliveryOutcome(False, None, "invalid-url")

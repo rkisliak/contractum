@@ -108,7 +108,7 @@ def _cpu_seconds(pid: int) -> float | None:
         fields = raw[raw.rindex(")") + 2 :].split()
         ticks = int(fields[11])
         return ticks / os.sysconf("SC_CLK_TCK")
-    except (OSError, ValueError, IndexError, AttributeError):
+    except OSError, ValueError, IndexError, AttributeError:
         return None
 
 
@@ -338,7 +338,7 @@ class Sandbox:
         try:
             proc.stdin.write(json.dumps(job.model_dump(mode="json")).encode() + b"\n")
             await proc.stdin.drain()
-        except (BrokenPipeError, ConnectionResetError):
+        except BrokenPipeError, ConnectionResetError:
             return await fail("engine_error")
 
         # The clock of the line being waited for: wall time and the worker's CPU time since the
@@ -395,7 +395,7 @@ class Sandbox:
                     return "ok"
                 else:
                     raise ValueError("unknown marker")
-            except (ValueError, TypeError, AttributeError):
+            except ValueError, TypeError, AttributeError:
                 return await fail("engine_error")
 
     @staticmethod
@@ -475,7 +475,7 @@ class Sandbox:
                 proc.stdout.readline(), self._settings.worker_ready_timeout_s
             )
             ready = WorkerReady.model_validate_json(line)
-        except (TimeoutError, ValueError):
+        except TimeoutError, ValueError:
             await self._discard(worker)
             _log.warning("rule_worker_not_ready", returncode=proc.returncode)
             raise SandboxUnavailable("a rule worker did not become ready") from None

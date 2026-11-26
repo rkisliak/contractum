@@ -8,7 +8,7 @@
 #
 # Two-step install (research Pattern 11): third-party dependencies first (cached while the lock
 # and member manifests are unchanged), then the workspace packages as non-editable wheels.
-FROM python:3.13-slim-trixie AS builder
+FROM python:3.14-slim-trixie AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
@@ -35,7 +35,7 @@ COPY mail mail
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --package "$PACKAGE" --no-editable --no-dev
 
-FROM python:3.13-slim-trixie
+FROM python:3.14-slim-trixie
 # Security (quick 261120-pn7): the base tag lags the Debian security archive, so upgrade the OS
 # packages first, and drop pip. The services never run pip, and the urllib3, msgpack and
 # setuptools copies vendored inside it carry HIGH advisories (the app venv has its own, locked,

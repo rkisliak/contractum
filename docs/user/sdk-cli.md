@@ -372,7 +372,7 @@ jobs:
 
 ```yaml
 contract-test:
-  image: python:3.13-slim
+  image: python:3.14-slim
   variables:
     WHEEL: https://github.com/rkisliak/contractum/releases/download/v1.0.0/contractum-1.0.0-py3-none-any.whl
   script:

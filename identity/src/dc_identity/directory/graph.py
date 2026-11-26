@@ -180,7 +180,7 @@ class GraphTokenProvider:
             body = response.json()
             access = body["access_token"]
             expires_in = float(body.get("expires_in", 0))
-        except (ValueError, KeyError, TypeError, AttributeError):
+        except ValueError, KeyError, TypeError, AttributeError:
             raise DirectoryUnavailable("the Graph token response was unusable") from None
         if not isinstance(access, str) or not access:
             raise DirectoryUnavailable("the Graph token response carried no access token")
@@ -560,7 +560,7 @@ class GraphDirectoryClient:
         if status == 200:
             try:
                 return "ok" if isinstance(response.json().get("value"), list) else "graph-error"
-            except (ValueError, AttributeError):
+            except ValueError, AttributeError:
                 return "graph-error"
         if status == 429:
             return "graph-throttled"

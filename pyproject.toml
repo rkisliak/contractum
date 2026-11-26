@@ -71,7 +71,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py314"
 line-length = 100
 extend-exclude = ["clients"]
 
@@ -84,7 +84,7 @@ select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
 
 [tool.mypy]
 strict = true
-python_version = "3.13"
+python_version = "3.14"
 plugins = ["pydantic.mypy"]
 
 # types-PyYAML is deliberately not in the lock (no package beyond the approved set); PyYAML is

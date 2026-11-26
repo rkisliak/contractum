@@ -430,7 +430,7 @@ async def import_settings(
     raw = await read_body_capped(request, IMPORT_MAX_BYTES, detail="The file is too large.")
     try:
         document = load_json(raw.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):  # JSON errors and NestingTooDeepError are ValueErrors
+    except ValueError, UnicodeDecodeError:  # JSON errors and NestingTooDeepError are ValueErrors
         raise _import_invalid("", "The file is not valid JSON.") from None
     try:
         incoming = parse_export(document)
@@ -646,7 +646,7 @@ async def _ask(
         if response.status_code != 200:
             raise ValueError
         about = ServiceAboutOut.model_validate(response.json())
-    except (httpx.HTTPError, ValueError, TypeError):
+    except httpx.HTTPError, ValueError, TypeError:
         return IdentityAboutServiceOut(
             service=service,
             status="unreachable",

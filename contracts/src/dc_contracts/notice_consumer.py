@@ -46,7 +46,7 @@ def _event_id(data: bytes) -> str | None:
     """The envelope's event id when the payload parses far enough to name one."""
     try:
         value = json.loads(data).get("event_id")
-    except (ValueError, AttributeError):
+    except ValueError, AttributeError:
         return None
     return value if isinstance(value, str) else None
 
@@ -108,7 +108,7 @@ class NoticeConsumer:
         sub = await self._subscription()
         try:
             msgs = await sub.fetch(self._settings.notice_consumer_batch, timeout=timeout_s)
-        except (nats.errors.TimeoutError, FetchTimeoutError):
+        except nats.errors.TimeoutError, FetchTimeoutError:
             return 0  # an empty fetch is normal
         for msg in msgs:
             await self._process(msg)

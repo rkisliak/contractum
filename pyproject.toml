@@ -30,14 +30,14 @@ dev = [
   "pytest-asyncio==1.5.0",
   "testcontainers==4.15.0",
   "respx==0.23.1",
-  "hypothesis==6.170.16",
+  "hypothesis==6.170.17",
   "ruff==0.17.6",
   "mypy==2.4.1",
   "import-linter==2.17",
   "httpx==0.28.1",
   "schemathesis==4.33.4",
   "pytest-cov==7.1.0",
-  "coverage==7.17.3",
+  "coverage==7.17.5",
 ]
 # Docs site build and spell check (zensical + mkdocstrings for the site, typos for the docs CI job).
 # Not part of any default sync: run it with `uv run --group docs ...`.

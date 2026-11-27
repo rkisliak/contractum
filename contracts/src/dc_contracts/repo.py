@@ -169,22 +169,3 @@ async def search_contract_page(
         has_more=len(fetched) > filters.limit,
         last_sort_key=str(kept[-1][3]) if kept else None,
     )
-
-
-async def search_contracts(
-    session: AsyncSession,
-    filters: ContractSearchFilters,
-    *,
-    metadata_scope: FolderScope,
-    content_scope: FolderScope,
-    published_scope: FolderScope | None = None,
-) -> tuple[list[tuple[Contract, ContractVersion, bool]], bool]:
-    """:func:`search_contract_page` as ``(rows, has_more)``, for callers that need no sort key."""
-    page = await search_contract_page(
-        session,
-        filters,
-        metadata_scope=metadata_scope,
-        content_scope=content_scope,
-        published_scope=published_scope,
-    )
-    return page.rows, page.has_more

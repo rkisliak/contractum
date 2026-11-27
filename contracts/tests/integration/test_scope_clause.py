@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 from dc_auth.authorizer import FolderScope
-from dc_contracts.repo import search_contracts
+from dc_contracts.repo import search_contract_page
 from dc_contracts.search import ContractSearchFilters
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -29,12 +29,12 @@ async def _odcs_ids(db_url: str, scope: FolderScope) -> list[str]:
     engine = create_async_engine(db_url)
     try:
         async with async_sessionmaker(engine)() as session:
-            rows, _ = await search_contracts(
+            page = await search_contract_page(
                 session, ContractSearchFilters(), metadata_scope=scope, content_scope=scope
             )
     finally:
         await engine.dispose()
-    return [contract.odcs_id for contract, _, _ in rows]
+    return [contract.odcs_id for contract, _, _ in page.rows]
 
 
 async def test_excluded_subtree_is_hidden_and_exact_folder_ids_add_back(
@@ -86,11 +86,11 @@ async def test_empty_scope_issues_no_query(make_stack: StackFactory) -> None:
                 raise AssertionError("an empty scope must not reach the database")
 
         empty = FolderScope(all=False, excluded_subtrees=frozenset({uuid.uuid4()}))
-        rows, more = await search_contracts(
+        page = await search_contract_page(
             Exploding(),  # type: ignore[arg-type]
             ContractSearchFilters(),
             metadata_scope=empty,
             content_scope=empty,
         )
-        assert (rows, more) == ([], False)
+        assert (page.rows, page.has_more, page.last_sort_key) == ([], False, None)
         assert stack.contracts_db_url

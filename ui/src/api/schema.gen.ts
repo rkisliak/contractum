@@ -3963,8 +3963,16 @@ export interface components {
              */
             version_id: string;
         };
-        /** ContractVersionSummaryOut */
+        /**
+         * ContractVersionSummaryOut
+         * @description A contract's head version.
+         *
+         *     ``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,
+         *     and returned to metadata-only callers too.
+         */
         ContractVersionSummaryOut: {
+            /** Deprecated */
+            deprecated: boolean;
             /** Number */
             number: number;
             /** State */

@@ -62,7 +62,7 @@ const contract = {
   content_redacted: false,
   template: null,
   origin: null,
-  version: { number: 2, state: "draft" },
+  version: { number: 2, state: "draft", deprecated: false },
   latest_version: { version_id: "v-1", semver: "1.0.0" },
   created_by: "local:admin",
   created_at: "2026-11-01T10:00:00Z",
@@ -526,7 +526,7 @@ describe("new contract", () => {
             return HttpResponse.json(
               {
                 contract,
-                version: { number: 1, state: "draft" },
+                version: { number: 1, state: "draft", deprecated: false },
                 draft: { id: "d-1", revision: 1, etag: '"r1"' },
                 structural_validation: {
                   valid: true,
@@ -608,7 +608,7 @@ describe("the ODCS id bound on new contract", () => {
 describe("new contract in any folder", () => {
   const created = {
     contract,
-    version: { number: 1, state: "draft" },
+    version: { number: 1, state: "draft", deprecated: false },
     draft: { id: "d-1", revision: 1, etag: '"r1"' },
     structural_validation: { valid: true, error_count: 0, errors: [] },
     validation: { status: "unavailable" },

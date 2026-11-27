@@ -53,7 +53,7 @@ function contract(n: number) {
     content_redacted: false,
     template: null,
     origin: null,
-    version: { number: 1, state: "latest" },
+    version: { number: 1, state: "latest", deprecated: false },
     latest_version: n === 1 ? { version_id: "v1", semver: "1.0.0" } : null,
     created_by: "local:admin",
     created_at: "2026-11-01T10:00:00Z",

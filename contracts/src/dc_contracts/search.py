@@ -3,6 +3,9 @@
 One statement per request, every value a bound parameter (T-01-49). Ordering is by ``contract.id``
 (a uuidv7: unique and time ordered), so equal names never tie and a page sequence stays stable
 while new contracts are inserted: new rows have a larger id and only ever appear after the cursor.
+``sort=name`` orders by a bounded, lower-cased display name and then the id; its cursor carries
+both, so the server never reads the cursor's contract to position a page (it would be an oracle
+for contracts the caller cannot see).
 
 There is deliberately no total or count anywhere in this module: a count leaks the existence of
 contracts the caller cannot see (research, Search section).
@@ -14,7 +17,7 @@ import base64
 import binascii
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from dc_auth.authorizer import FolderScope
 from dc_core.problems import ProblemError
@@ -30,6 +33,7 @@ from sqlalchemy import (
     or_,
     select,
     true,
+    tuple_,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -40,6 +44,13 @@ from dc_contracts.models import Contract, ContractVersion
 MAX_Q_LENGTH = 200
 MAX_LIMIT = 100
 DEFAULT_LIMIT = 50
+# The name sort key is cut to this many characters, so a name cursor stays short and decodable
+# however long a name is (names are unbounded). Contracts whose keys share their first 128
+# characters keep contract id order among themselves.
+NAME_KEY_CHARS = 128
+MAX_CURSOR_CHARS = 1024
+_NAME_CURSOR_PREFIX = "n:"
+_UUID_CHARS = 36
 
 
 def _invalid(pointer: str, detail: str) -> ProblemError:
@@ -83,6 +94,51 @@ def decode_cursor(raw: str) -> uuid.UUID:
     return value
 
 
+def name_sort_key() -> ColumnElement[str]:
+    """The ``sort=name`` key: the lower-cased display name, bounded to ``NAME_KEY_CHARS``.
+
+    An empty name falls back to the odcs id, so a row sorts where its visible label sorts.
+    """
+    return func.left(
+        func.lower(func.coalesce(func.nullif(ContractVersion.name, ""), Contract.odcs_id)),
+        NAME_KEY_CHARS,
+    )
+
+
+def encode_name_cursor(key: str, contract_id: uuid.UUID) -> str:
+    """Opaque ``sort=name`` cursor: base64url (no padding) of ``n:<uuid>:<key>``."""
+    raw = f"{_NAME_CURSOR_PREFIX}{contract_id}:{key}".encode()
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def decode_name_cursor(raw: str) -> tuple[str, uuid.UUID]:
+    """Inverse of :func:`encode_name_cursor`: ``(key, contract id)``. Anything else is a 422.
+
+    Strict: a raw length cap, strict base64 and UTF-8, the ``n:`` prefix, a canonical uuid, a key
+    of at most ``NAME_KEY_CHARS`` characters without NUL (PostgreSQL cannot bind it), and the
+    canonical re-encoding, so one position has exactly one cursor.
+    """
+    try:
+        if len(raw) > MAX_CURSOR_CHARS:
+            raise ValueError("cursor too long")
+        padded = raw + "=" * (-len(raw) % 4)
+        text = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True).decode(
+            "utf-8", errors="strict"
+        )
+        id_end = len(_NAME_CURSOR_PREFIX) + _UUID_CHARS
+        if not text.startswith(_NAME_CURSOR_PREFIX) or text[id_end : id_end + 1] != ":":
+            raise ValueError("not a name cursor")
+        value = uuid.UUID(text[len(_NAME_CURSOR_PREFIX) : id_end])
+        key = text[id_end + 1 :]
+        if len(key) > NAME_KEY_CHARS or "\x00" in key:
+            raise ValueError("key out of bounds")
+        if encode_name_cursor(key, value) != raw:
+            raise ValueError("not the canonical cursor")
+    except ValueError, binascii.Error, UnicodeError:
+        raise _invalid("/query/cursor", "cursor is not valid") from None
+    return key, value
+
+
 def reject_nul(**values: str | list[str] | None) -> None:
     """422 for a NUL character in any text filter: PostgreSQL cannot bind it in a text value."""
     for name, value in values.items():
@@ -103,6 +159,9 @@ class ContractSearchFilters:
     q: str | None = None
     limit: int = DEFAULT_LIMIT
     cursor: uuid.UUID | None = None
+    sort: Literal["id", "name"] = "id"
+    # The sort key of the page's last row, supplied with a ``sort=name`` cursor.
+    cursor_key: str | None = None
 
 
 def _uuid_array(ids: frozenset[uuid.UUID]) -> ColumnElement[list[uuid.UUID]]:
@@ -160,7 +219,7 @@ def build_search_query(
     content_scope: FolderScope,
     *,
     published_scope: FolderScope | None = None,
-) -> Select[Contract, ContractVersion, bool] | None:
+) -> Select[Contract, ContractVersion, bool, str] | None:
     """The list/search statement, or ``None`` when the caller may see nothing (no query at all).
 
     ``metadata_scope`` (``contract:read-metadata``) and ``published_scope``
@@ -196,7 +255,12 @@ def build_search_query(
     readable = [clause for clause in (content, published) if clause is not None]
     content_clause: ColumnElement[bool] = or_(*readable) if readable else false()
     visible = or_(*clauses)
-    stmt = select(Contract, ContractVersion, content_clause.label("content_visible")).join(
+    stmt = select(
+        Contract,
+        ContractVersion,
+        content_clause.label("content_visible"),
+        name_sort_key().label("sort_key"),
+    ).join(
         ContractVersion,
         (ContractVersion.contract_id == Contract.id) & (ContractVersion.id == head_version_id()),
     )
@@ -228,22 +292,35 @@ def build_search_query(
                 and_(content_clause, ContractVersion.description_text.ilike(pattern, escape="\\")),
             )
         )
+    # limit + 1: the extra row only says "there is a next page"; it is never returned.
+    if filters.sort == "name":
+        if filters.cursor is not None and filters.cursor_key is not None:
+            # Both halves come from the caller's cursor; the cursor's contract is never read.
+            stmt = stmt.where(
+                tuple_(name_sort_key(), Contract.id)
+                > tuple_(literal(filters.cursor_key), literal(filters.cursor))
+            )
+        return stmt.order_by(name_sort_key(), Contract.id).limit(filters.limit + 1)
     if filters.cursor is not None:
         stmt = stmt.where(Contract.id > filters.cursor)
-    # limit + 1: the extra row only says "there is a next page"; it is never returned.
     return stmt.order_by(Contract.id).limit(filters.limit + 1)
 
 
 __all__ = [
     "DEFAULT_LIMIT",
+    "MAX_CURSOR_CHARS",
     "MAX_LIMIT",
     "MAX_Q_LENGTH",
+    "NAME_KEY_CHARS",
     "ContractSearchFilters",
     "build_search_query",
     "decode_cursor",
+    "decode_name_cursor",
     "encode_cursor",
+    "encode_name_cursor",
     "head_version_id",
     "like_escape",
+    "name_sort_key",
     "reject_nul",
     "scope_clause",
 ]

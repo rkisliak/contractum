@@ -76,7 +76,7 @@ export type FolderContractsState =
 
 /**
  * The tree query for one folder (D-02): its own contracts only (`include_subtree=false`), at most
- * one page, in the server's order. Its key starts with "contracts", so a contract write refreshes
+ * one page, in the server's name order (`sort=name`). Its key starts with "contracts", so a contract write refreshes
  * it; it cannot share the count column's entry, which asks for the subtree.
  */
 export function folderContractsOptions(api: ApiClient, folderId: string) {
@@ -88,6 +88,7 @@ export function folderContractsOptions(api: ApiClient, folderId: string) {
           query: {
             folder_id: folderId,
             include_subtree: false,
+            sort: "name",
             limit: FOLDER_TREE_PAGE,
           },
         },

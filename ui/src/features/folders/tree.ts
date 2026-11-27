@@ -173,26 +173,62 @@ export function rowLabel(row: TreeRow): string {
   return "";
 }
 
-// RED stubs: the real helpers arrive in the GREEN commit.
-export function isFocusableRow(_row: TreeRow): boolean {
-  return false;
+/** Loading and empty rows only report a state; every other row can hold the keyboard focus. */
+export function isFocusableRow(row: TreeRow): boolean {
+  return row.kind !== "loading" && row.kind !== "empty";
 }
+
+/**
+ * The key of the folder row one step up: a contract or state row belongs to its folder, a folder
+ * row to its parent folder when that parent's row is visible (otherwise there is nowhere to go).
+ */
 export function parentFolderKey(
-  _row: TreeRow,
-  _rows: readonly TreeRow[],
+  row: TreeRow,
+  rows: readonly TreeRow[],
 ): string | null {
-  return null;
+  if (row.kind !== "folder") return `f:${row.folderId}`;
+  const parentId = row.node.folder.parent_id;
+  if (parentId === null) return null;
+  const key = `f:${parentId}`;
+  return rows.some((candidate) => candidate.key === key) ? key : null;
 }
+
+/**
+ * The first focusable row directly under a folder row (one level deeper, before the next row at
+ * the folder's own level or above), or null when it has none: a folder whose only child row is
+ * loading or empty, a closed one, or one that is not in `rows`.
+ */
 export function firstChildKey(
-  _folderKey: string,
-  _rows: readonly TreeRow[],
+  folderKey: string,
+  rows: readonly TreeRow[],
 ): string | null {
+  const start = rows.findIndex((row) => row.key === folderKey);
+  const folder = rows[start];
+  if (folder === undefined) return null;
+  for (const row of rows.slice(start + 1)) {
+    if (row.depth <= folder.depth) return null;
+    if (row.depth === folder.depth + 1 && isFocusableRow(row)) return row.key;
+  }
   return null;
 }
+
+/**
+ * Type-ahead: the key of the next focusable row after `fromIndex` (wrapping, and ending on the
+ * starting row itself) whose label starts with `char`, ignoring case; null when none does.
+ */
 export function typeAheadKey(
-  _rows: readonly TreeRow[],
-  _fromIndex: number,
-  _char: string,
+  rows: readonly TreeRow[],
+  fromIndex: number,
+  char: string,
 ): string | null {
-  return null;
+  const wanted = char.toLowerCase();
+  const ordered = [
+    ...rows.slice(fromIndex + 1),
+    ...rows.slice(0, fromIndex + 1),
+  ];
+  const match = ordered.find(
+    (row) =>
+      isFocusableRow(row) && rowLabel(row).toLowerCase().startsWith(wanted),
+  );
+  return match?.key ?? null;
 }

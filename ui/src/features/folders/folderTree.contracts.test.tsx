@@ -479,3 +479,281 @@ describe("narrow tree: the lifecycle badge moves into the name cell", () => {
     expect(folderRow.querySelector("[data-narrow-inline]")).toBeNull();
   });
 });
+
+describe("tree keyboard model over every row kind (TREE-03, D-11)", () => {
+  const beta = makeFolder({
+    id: "beta-id",
+    display_name: "Beta",
+    path: "beta",
+  });
+  const orgs = [rootFolder, acme, beta];
+  const rootItems = [
+    makeContract({ id: "c-orders", name: "Orders" }),
+    makeContract({ id: "c-feed", name: "Payments feed" }),
+  ];
+  const rootAnswer = (folderId: string): Answer => ({
+    items: folderId === ROOT_ID ? rootItems : [],
+  });
+
+  const rowNamed = (name: string | RegExp) => screen.getByRole("row", { name });
+  const orders = () => rowNamed(/^Orders,/);
+  const feed = () => rowNamed(/^Payments feed,/);
+  const tabStops = () =>
+    screen
+      .getAllByRole("row")
+      .filter((row) => row.getAttribute("tabindex") === "0");
+  const focus = (element: HTMLElement) => {
+    act(() => {
+      element.focus();
+    });
+  };
+
+  it("moves Down and Up through folder and contract rows and skips an empty row", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    // Acme is a leaf folder with no contracts: its list is empty, so its state row is skipped.
+    await user.click(rowNamed("Acme"));
+    await screen.findByText("No contracts");
+    expect(rowNamed("Acme")).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(rowNamed("Beta")).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(orders()).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(feed()).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(feed()).toHaveFocus();
+    await user.keyboard("{ArrowUp}{ArrowUp}");
+    expect(rowNamed("Beta")).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(rowNamed("Acme")).toHaveFocus();
+  });
+
+  it("gives a contract row no aria-expanded and keeps exactly one tab stop", async () => {
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    expect(orders()).not.toHaveAttribute("aria-expanded");
+    expect(tabStops()).toEqual([rowNamed("Root")]);
+    focus(orders());
+    expect(tabStops()).toEqual([orders()]);
+    focus(feed());
+    expect(tabStops()).toEqual([feed()]);
+  });
+
+  it("does nothing on Right over a contract row, and Left goes to its folder, then collapses it", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    const before = screen.getAllByRole("row").length;
+    focus(orders());
+    await user.keyboard("{ArrowRight}");
+    expect(orders()).toHaveFocus();
+    expect(screen.getAllByRole("row")).toHaveLength(before);
+    await user.keyboard("{ArrowLeft}");
+    expect(rowNamed("Root")).toHaveFocus();
+    expect(rowNamed("Root")).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("{ArrowLeft}");
+    expect(rowNamed("Root")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("row", { name: /^Orders,/ })).toBeNull();
+    // Right opens it again and, on an open folder, enters it at its first child row.
+    await user.keyboard("{ArrowRight}");
+    expect(rowNamed("Root")).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("{ArrowRight}");
+    expect(rowNamed("Acme")).toHaveFocus();
+  });
+
+  it("jumps with Home and End over focusable rows and matches contract names by type-ahead", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    focus(rowNamed("Root"));
+    await user.keyboard("{End}");
+    expect(feed()).toHaveFocus();
+    await user.keyboard("{Home}");
+    expect(rowNamed("Root")).toHaveFocus();
+    await user.keyboard("o");
+    expect(orders()).toHaveFocus();
+    expect(tabStops()).toEqual([orders()]);
+    await user.keyboard("p");
+    expect(feed()).toHaveFocus();
+    await user.keyboard("b");
+    expect(rowNamed("Beta")).toHaveFocus();
+    await user.keyboard("z");
+    expect(rowNamed("Beta")).toHaveFocus();
+    expect(tabStops()).toHaveLength(1);
+  });
+
+  it("falls back to the folder row as the tab stop when the focused contract row disappears", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    focus(orders());
+    const toggle = rowNamed("Root").querySelector("[data-tree-toggle]");
+    await user.click(toggle as Element);
+    expect(rowNamed("Root")).toHaveAttribute("aria-expanded", "false");
+    expect(tabStops()).toEqual([rowNamed("Root")]);
+    expect(rowNamed("Root")).toHaveFocus();
+  });
+
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+  ])("opens the contract on %s", async (_name, key) => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    const { router } = renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    focus(orders());
+    await user.keyboard(key);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/contracts/c-orders");
+    });
+  });
+
+  it("opens the contract on a click anywhere on the row, and the name stays a real link", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    const { router } = renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    const link = await screen.findByRole("link", { name: "Orders" });
+    expect(link).toHaveAttribute("href", "/contracts/c-orders");
+    const cells = within(orders()).getAllByRole("gridcell");
+    await user.click(cells[1] as HTMLElement);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/contracts/c-orders");
+    });
+  });
+
+  it("enters the matching list on Enter over the overflow row and does nothing on Right", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(() => ({
+      items: [makeContract({ id: "c-1", name: "Orders" })],
+      next_cursor: "more-cursor-1",
+    }));
+    const { router } = renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    const overflow = (
+      await screen.findByRole("link", { name: "More contracts — open folder" })
+    ).closest<HTMLElement>('[role="row"]') as HTMLElement;
+    focus(overflow);
+    expect(tabStops()).toEqual([overflow]);
+    await user.keyboard("{ArrowRight}");
+    expect(overflow).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/folders/${ROOT_ID}/contracts`,
+      );
+    });
+    expect(router.state.location.search).toEqual({ subtree: false });
+  });
+
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+  ])(
+    "retries only that folder on %s over the error row",
+    async (_name, key) => {
+      const user = userEvent.setup();
+      const tree = scripted((folderId, nth) =>
+        folderId === ROOT_ID && nth === 1
+          ? { status: 500 }
+          : { items: [makeContract({ id: "c-1", name: "Orders" })] },
+      );
+      renderApp("/folders?contracts=true", {
+        folders: orgs,
+        handlers: tree.handlers,
+      });
+
+      const errorRow = (
+        await screen.findByText("Could not load contracts.")
+      ).closest<HTMLElement>('[role="row"]') as HTMLElement;
+      await user.keyboard("{End}");
+      focus(errorRow);
+      expect(tabStops()).toEqual([errorRow]);
+      await user.keyboard("{ArrowRight}");
+      expect(errorRow).toHaveFocus();
+      expect(tree.callsFor(ROOT_ID)).toBe(1);
+      await user.keyboard(key);
+      await screen.findByRole("link", { name: "Orders" });
+      expect(tree.callsFor(ROOT_ID)).toBe(2);
+      expect(tree.calls).toHaveLength(2);
+      // Focus is not lost to the page when the error row is replaced: it lands on the folder row.
+      expect(rowNamed("Root")).toHaveFocus();
+    },
+  );
+
+  it("makes the Retry button tabbable only while its row holds the tab stop", async () => {
+    const tree = scripted(() => ({ status: 500 }));
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    const retry = await screen.findByRole("button", { name: "Retry loading" });
+    expect(retry).toHaveAttribute("tabindex", "-1");
+    focus(retry.closest<HTMLElement>('[role="row"]') as HTMLElement);
+    expect(retry).toHaveAttribute("tabindex", "0");
+  });
+
+  it("does not move focus when a finished load inserts rows", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tree = scripted(async (folderId) => {
+      if (folderId === ROOT_ID) await gate;
+      return rootAnswer(folderId);
+    });
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByText("Loading contracts");
+    focus(rowNamed("Beta"));
+    await act(async () => {
+      release();
+      await gate;
+    });
+    await screen.findByRole("link", { name: "Orders" });
+    expect(rowNamed("Beta")).toHaveFocus();
+    expect(tabStops()).toEqual([rowNamed("Beta")]);
+  });
+});

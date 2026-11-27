@@ -4,3 +4,6 @@
 /** The info notice on the Overview of a contract the caller may see the metadata of only (D-12). */
 export const metadataOnlyNotice =
   "You can see this contract's metadata only. Its content and versions are not available at your access level.";
+
+/** Shown in place of a fact the API redacted for a metadata-only caller (null there means hidden, not empty). */
+export const redactedFact = "Not available at your access level";

@@ -28,6 +28,44 @@ describe("search params written back by a route", () => {
     });
   });
 
+  it("writes contracts=true for the tree switch and drops it when it goes off", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/folders");
+    const toggle = await screen.findByLabelText("Show contracts in tree");
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ contracts: true });
+    });
+    await user.click(screen.getByLabelText("Show contracts in tree"));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
+  });
+
+  it("keeps each folder switch when the other one changes", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/folders?archived=true");
+    await user.click(await screen.findByLabelText("Show contracts in tree"));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({
+        archived: true,
+        contracts: true,
+      });
+    });
+    await user.click(screen.getByLabelText("Show archived"));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ contracts: true });
+    });
+  });
+
+  it("renders the tree switch checked from contracts=true", async () => {
+    renderApp("/folders?contracts=true");
+    expect(
+      await screen.findByLabelText("Show contracts in tree"),
+    ).toBeChecked();
+  });
+
   it("keeps the open card tab in the URL, and none for Overview", async () => {
     const user = userEvent.setup();
     const { router } = renderApp("/cards/card-1?tab=members", {

@@ -15,6 +15,7 @@ from contextlib import AbstractAsyncContextManager
 from typing import Any
 
 import pytest
+from dc_odcs import MAX_VERSION_CHARS
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope="session")]
 
@@ -334,23 +335,20 @@ async def test_a_long_build_metadata_baseline_does_not_block_the_next_save_or_pu
         assert last_publish_request(stack)["baseline"]["semver"] == LONG_BUILD
 
 
-async def test_a_baseline_version_above_the_wire_cap_is_sent_without_its_semver(
+async def test_a_version_at_the_cap_publishes_and_one_character_more_is_invalid(
     make_stack: MakeStack,
 ) -> None:
-    huge = "1.0.1+" + "b" * 2100
+    # MAX_VERSION_CHARS is the semver library's own limit, so a longer version is not a version.
+    at_cap = "1.0.1+" + "b" * (MAX_VERSION_CHARS - 6)
+    over_cap = "1.0.2+" + "b" * (MAX_VERSION_CHARS - 5)
     async with make_stack() as stack:
         chain = await stack.chain()
         odcs_id = new_id()
         contract = await publish_first(stack, chain.team, odcs_id, ("id",))
-        # A draft can only start from a version of at most 300 characters, so the huge version is
-        # published second (from 1.0.0) and becomes the baseline of the third publish.
-        second = await publish_next(stack, contract, odcs_id, huge, ("id",), base="1.0.0")
-        assert second.status_code == 201, second.text
 
-        response = await publish_next(
-            stack, contract, odcs_id, "1.1.0", ("id", "name"), base="1.0.0"
-        )
+        kept = await publish_next(stack, contract, odcs_id, at_cap, ("id",), base="1.0.0")
+        refused = await publish_next(stack, contract, odcs_id, over_cap, ("id",), base="1.0.0")
 
-        assert response.status_code == 201, response.text
-        sent = last_publish_request(stack)["baseline"]
-        assert sent["semver"] is None and sent["document_b64"]
+        assert kept.status_code == 201, kept.text
+        assert refused.status_code == 422, refused.text
+        assert refused.json()["type"] == "urn:dc:problem:invalid-version"

@@ -64,7 +64,7 @@ jobs:
       # misconfiguration checks read (the trusted image registries of KSV-0125), not ignores.
       - name: Trivy filesystem scan (SARIF)
         run: trivy fs --scanners vuln,secret,misconfig --config-data infra/trivy --format sarif --output trivy-fs.sarif --exit-code 0 --ignorefile .trivyignore .
-      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         if: always() && hashFiles('trivy-fs.sarif') != ''
         with:
           sarif_file: trivy-fs.sarif
@@ -183,7 +183,7 @@ jobs:
         env:
           IMAGE: contractum-ci/${{ matrix.name }}:scan
         run: trivy image --scanners vuln,secret --ignore-unfixed --format sarif --output trivy-image.sarif --exit-code 0 "$IMAGE"
-      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         if: always() && hashFiles('trivy-image.sarif') != ''
         with:
           sarif_file: trivy-image.sarif
@@ -219,12 +219,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           languages: ${{ matrix.language }}
           build-mode: none
           queries: security-extended
-      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           category: /language:${{ matrix.language }}
 
@@ -256,7 +256,7 @@ jobs:
           "$RUNNER_TEMP/gitleaks-bin/gitleaks" version
       - name: gitleaks (full history, redacted, gate on findings)
         run: gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts="--all" --report-format sarif --report-path gitleaks.sarif --exit-code 1 .
-      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         if: always() && hashFiles('gitleaks.sarif') != ''
         with:
           sarif_file: gitleaks.sarif
@@ -275,7 +275,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
@@ -352,7 +352,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
-          version: "0.13.7"
+          version: "0.13.10"
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install Python from .python-version
@@ -403,7 +403,7 @@ jobs:
       - name: UI unit tests with coverage (ui/coverage/lcov.info)
         run: pnpm --dir ui exec vitest run --coverage
       - name: SonarQube Cloud scan
-        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 # v8.5.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:

@@ -139,7 +139,7 @@ only these libraries.
   `bounds.py`; the golden corpus and the rule-table completeness gate are in `tests/unit`, the
   datacontract-cli oracle is opt-in and never in the lock), `element_refs.py`, `refs.py`
   (`extract_contract_refs`: `distinct="target"` for the reference index, `distinct="raw"` for
-  link facts so each link string gets a fact, IN-04; `MAX_VERSION_CHARS` = 2048, the one cap on version text that
+  link facts so each link string gets a fact, IN-04; `MAX_VERSION_CHARS` = 255 (the `semver` library's own limit), the one cap on version text that
   contracts and validation exchange: a baseline's `semver` and a link's pinned version; both
   services import it, never a literal).
 - `dc-auth/src/dc_auth/roles.py` permissions added in Phase 6: `ruleset:dry-run` (Policy Manager,

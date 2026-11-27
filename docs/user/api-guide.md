@@ -165,8 +165,8 @@ A contract has drafts and published versions.
 - A **draft** is editable. Only readers, editors and admins of the folder see drafts.
 - **Publishing** a draft turns it into a version. A published version is immutable: its bytes never
   change again.
-- The document's top-level `version` must be a quoted SemVer 2.0.0 string, such as `"1.4.0"`, and
-  higher than every earlier version of the contract. A version number is never reused.
+- The document's top-level `version` must be a quoted SemVer 2.0.0 string of at most 255 characters,
+  such as `"1.4.0"`, and higher than every earlier version of the contract. A version number is never reused.
 
 Every published version has a status, computed on every read:
 
@@ -369,7 +369,7 @@ can return.
 | `urn:dc:problem:malformed-document` | 422 | The document is not valid YAML or JSON. |
 | `urn:dc:problem:unsupported-odcs-version` | 422 | The document's `apiVersion` is not a supported ODCS version. |
 | `urn:dc:problem:odcs-id-mismatch` | 422 | The document `id` must stay the contract's ODCS id. The body names both ids. |
-| `urn:dc:problem:invalid-version` | 422 | The document `version` is not a quoted SemVer 2.0.0 string. |
+| `urn:dc:problem:invalid-version` | 422 | The document `version` is not a quoted SemVer 2.0.0 string of at most 255 characters. |
 | `urn:dc:problem:semver-conflict` | 409 | The version is not higher than every existing version. The body names `highest_semver`. |
 | `urn:dc:problem:draft-already-published` | 409 | This draft was already published. The body names `version_id`. |
 | `urn:dc:problem:draft-limit-reached` | 409 | The contract holds the maximum number of drafts. Publish or discard one. |

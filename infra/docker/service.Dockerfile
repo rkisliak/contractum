@@ -9,7 +9,7 @@
 # Two-step install (research Pattern 11): third-party dependencies first (cached while the lock
 # and member manifests are unchanged), then the workspace packages as non-editable wheels.
 FROM python:3.14-slim-trixie AS builder
-COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.10 /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
 ARG PACKAGE

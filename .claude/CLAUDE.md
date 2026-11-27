@@ -45,7 +45,7 @@ A central data-contract service for a large company with many data-engineering t
 | Technology | Version | Purpose | Why | Confidence |
 |------------|---------|---------|-----|------------|
 | Python | **3.14** (`>=3.14,<3.15`) | Runtime | Every native dependency in this stack ships cp314 manylinux wheels (checked: asyncpg, pydantic-core, cryptography, argon2-cffi-bindings, psycopg-binary, jsonschema-rs, cel-expr-python, common-expression-language). 3.15 is blocked only by `cel-expr-python` 0.1.4, which ships no cp315 wheel and no sdist (checked 2026-11-26); lift the `<3.15` cap when it does. SQLAlchemy 2.1, pydantic-settings and cel/jsonpath libs need >=3.11. | HIGH |
-| uv | **0.13.7** | Package manager, workspaces, lockfile | One `uv.lock` for all services means one resolved FastAPI/Pydantic/SQLAlchemy and no version drift between services. `uv sync --package <svc> --frozen --no-editable --no-dev` gives small per-service images. | HIGH |
+| uv | **0.13.10** | Package manager, workspaces, lockfile | One `uv.lock` for all services means one resolved FastAPI/Pydantic/SQLAlchemy and no version drift between services. `uv sync --package <svc> --frozen --no-editable --no-dev` gives small per-service images. | HIGH |
 | Docker base image | `python:3.14-slim-trixie` | Service images | **Use glibc/Debian, not Alpine.** `cel-expr-python` and `jsonschema-rs` ship manylinux wheels only (see Pitfalls). | HIGH |
 | Docker Compose | v2 (Docker 29.x) | Orchestration | Project constraint. Use `depends_on: condition: service_healthy` and a one-shot `migrate` job per service. | HIGH |
 

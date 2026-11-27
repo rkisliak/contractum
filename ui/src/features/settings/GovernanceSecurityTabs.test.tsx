@@ -14,6 +14,11 @@ import {
   settingsSequence,
 } from "@/test/settings-fixtures";
 
+/** A regex that matches when the text contains `text` (toHaveAccessibleDescription takes a string or RegExp). */
+function containing(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+}
+
 afterEach(() => {
   tokenStore.clear();
   window.sessionStorage.clear();
@@ -408,7 +413,7 @@ describe("the Governance tab, more states", () => {
     expect(await screen.findByText("Not a governance field.")).toBeVisible();
     expect(
       screen.getByLabelText("Grace period (days)"),
-    ).toHaveAccessibleDescription(expect.stringContaining("Too long a grace."));
+    ).toHaveAccessibleDescription(containing("Too long a grace."));
   });
 
   it("shows a server failure in the alert without touching the fields", async () => {
@@ -751,7 +756,7 @@ describe("the Sign-in & security tab", () => {
     await actor.click(save());
     expect(await screen.findByText("Not a security field.")).toBeVisible();
     expect(screen.getByLabelText("Local sign-in")).toHaveAccessibleDescription(
-      expect.stringContaining("Keep one method on."),
+      containing("Keep one method on."),
     );
   });
 

@@ -28,7 +28,7 @@ export function principalOf(token: string): string | null {
     if (typeof claims !== "object" || claims === null) return null;
     const { iss, sub } = claims as { iss?: unknown; sub?: unknown };
     return typeof iss === "string" && typeof sub === "string"
-      ? `${iss}|${sub}`
+      ? JSON.stringify([iss, sub])
       : null;
   } catch {
     return null;

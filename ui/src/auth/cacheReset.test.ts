@@ -153,4 +153,13 @@ describe("clearCacheOnSessionChange", () => {
     expect(client.getQueryData(["folders"])).toEqual(["reader's folders"]);
     stop();
   });
+
+  it("does not confuse two principals whose issuer and subject join to the same text", () => {
+    tokenStore.set(jwt({ iss: "a|b", sub: "c" }), 900);
+    const client = seeded();
+    const stop = clearCacheOnSessionChange(client);
+    tokenStore.set(jwt({ iss: "a", sub: "b|c" }), 900);
+    expect(client.getQueryData(["folders"])).toBeUndefined();
+    stop();
+  });
 });

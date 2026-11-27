@@ -404,6 +404,22 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   does not invalidate: the header navigates to the parent (`/folders` for a ROOT parent) first and then calls `settle`. The
   tree rows deliberately have no delete action: a per-row state would need one deletion check per visible row, each
   fanning out to identity, contracts and validation), `FolderOverview`,
+  **"Show contracts in tree"** (`/folders?contracts=true`, off by default, next to `archived`; the `showContracts`
+  FolderTree prop): `folderContractsOptions(api, folderId)` (key `["contracts","folder-tree",id]`, `include_subtree=false`,
+  `sort=name`, `limit` 100, `staleTime` 30 s) and `useFolderContractQueries` make one list call per visible expanded
+  folder and none per contract. `tree.ts` `visibleRows` emits the `TreeRow` union (`folder`, `contract`, `overflow`,
+  `loading`, `error`, `empty`) with unique key prefixes `f:`, `c:`, `o:`, `l:`, `e:`, `n:`; subfolders come first, then the
+  contracts in the server's order (never re-sorted), then one state row. `headBadges(row)` in
+  `features/contracts/versionStatus.tsx` is the only lifecycle mapping of a list row (Draft, Preview, Latest, Unpublished,
+  Deprecated); `contractVersionSlot` and `contractRowLabel` (`versionSlot.ts`) build the version cell and the row's accessible
+  name. FolderTree hooks: `contractLabel`, `renderContract` and `narrowInline` (a column whose badge is repeated in the name
+  cell, hidden by CSS outside the narrow container query). The overflow row reads "More contracts — open folder" (no count:
+  the list API has no total) and links to `/folders/{id}/contracts?subtree=false`. **Recorded exception:** a per-folder
+  tree error is an inline row with **Retry loading**, not a `ProblemAlert` (like the member count's "Not available"), so
+  one failing folder does not replace the whole tree. A metadata-only contract (`content_redacted`, the Policy Manager)
+  opens the normal page with an info notice and only the Overview and Rule sets tabs (`contractAccess` in
+  `ContractLayout.tsx`). `clearCacheOnSessionChange` clears the query cache when the token's principal (`principalOf`:
+  issuer and subject) changes, not only on sign-out, so a tree never shows another principal's contracts.
   `FolderContracts` (`/folders/$folderId/contracts`, `?q=&subtree=`), `FolderChildren` (`/folders/$folderId/folders`),
   `CreateFolderDialog` and `RenameFolderDialog`. **Folder tabs registry:** `tabs.ts` `FOLDER_TABS` (`{ id, label,
 segment, visible?(folder), requires? }`, `tabVisible(tab, folder, caps)`: `requires` is any-of at the folder and

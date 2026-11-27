@@ -19,6 +19,17 @@ The UI follows your system theme (light or dark) and works on a phone.
   links to the main areas.
 - **Folders** shows the folder tree you can see: Root, then Organization, Project and Team. A folder
   page has tabs for its contracts, sub-folders, templates, rule sets, subscribers and access.
+  - Tick **Show contracts in tree** (next to **Show archived**, off by default, and kept in the
+    page address so a link keeps it) to list each expanded folder's own contracts under its
+    sub-folders. Contracts are sorted by name. Each row shows the contract's lifecycle badge
+    (Draft, Preview, Latest, Unpublished or Deprecated) and its latest version, or "Not published"
+    before the first publish. Open a contract by clicking its row or pressing Enter on it.
+  - A folder shows its first 100 contracts, then a **More contracts — open folder** row that opens
+    the folder's **Contracts** tab. The row carries no count, because the server does not report
+    how many contracts a folder holds.
+  - The tree only shows contracts you can open from the **Contracts** list.
+  - The Folders page loads at most 2,000 folders. When it stops, a note says so. Open a folder to
+    see everything inside it, including contracts in folders the tree did not load.
 - **Contracts** lists every contract you can see, across all folders, with filters for text, ODCS
   status and domain. The **Search contracts** box in the top bar works from any page.
 - **Subscriptions** lists the [subscriber cards](subscriptions.md) you can see. A card records which
@@ -87,6 +98,8 @@ date), **Unpublish version** and **Republish version**.
 
 The Policy Manager role is given at a folder and covers everything below it. It reads contract
 metadata but not contract content.
+A contract you can see as metadata only opens with a notice and without the **Document**,
+**Versions** and **Diff** tabs.
 
 ![The rule set editor with a rule's JSONPath target and CEL condition](../images/ui/rule-set-editor.png)
 

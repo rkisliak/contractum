@@ -185,6 +185,9 @@ An owner can also act on a published version:
 - **Unpublish** hides a version from everyone except owners. The current Latest cannot be
   unpublished. **Republish** brings it back as a Preview or older version.
 
+Each row of the contract list carries `version.deprecated`. It is true when the row's version is
+deprecated: the Latest, or the newest draft before the first publish.
+
 To fetch a version, use `latest` or an exact SemVer as `{ref}`:
 
 ```text
@@ -244,6 +247,12 @@ Long lists are paged with a cursor:
   page. It is `null` on the last page.
 - The cursor is opaque. Do not build or change it. An invalid cursor is 422 `validation-error`.
 - Lists carry no total count.
+- `GET /api/v1/contracts/contracts` takes `sort=id` (the default, creation order) or `sort=name`.
+  `sort=name` orders by the contract's name ignoring case, then by its ODCS id when it has no name,
+  then by its id. Only the first 128 characters of a name take part, so names that match that far
+  keep creation order.
+- A cursor belongs to the sort it came from. Pass it back with the same `sort`; a cursor with
+  another sort is 422 `validation-error`.
 
 ## Request IDs and limits
 

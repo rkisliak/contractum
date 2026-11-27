@@ -41,10 +41,12 @@ describe("clearCacheOnSessionChange", () => {
   });
 
   it("keeps the cache across a token refresh of the same session", () => {
-    tokenStore.set("token-1", 900);
+    // A refresh re-issues a readable token for the same principal; an opaque replacement is
+    // unknown and drops the cache (see the fail-closed cases below).
+    tokenStore.set(jwt({ iss: "https://idp", sub: "reader", jti: "1" }), 900);
     const client = seeded();
     const stop = clearCacheOnSessionChange(client);
-    tokenStore.set("token-2", 900);
+    tokenStore.set(jwt({ iss: "https://idp", sub: "reader", jti: "2" }), 900);
     expect(client.getQueryData(["folders"])).toEqual(["reader's folders"]);
     stop();
   });
@@ -118,14 +120,37 @@ describe("clearCacheOnSessionChange", () => {
     stop();
   });
 
-  it("keeps the cache between two unreadable tokens and drops it once one names a principal", () => {
+  it("fails closed: a replaced token whose principal cannot be read drops the cache", () => {
+    tokenStore.set("opaque-1", 900);
+    const client = seeded();
+    client.setQueryData(["contracts", "folder-tree", "f1"], ["Orders"]);
+    const stop = clearCacheOnSessionChange(client);
+    tokenStore.set("opaque-2", 900);
+    expect(client.getQueryData(["folders"])).toBeUndefined();
+    expect(
+      client.getQueryData(["contracts", "folder-tree", "f1"]),
+    ).toBeUndefined();
+    stop();
+  });
+
+  it("drops the cache when a readable token replaces an opaque one and the other way round", () => {
     tokenStore.set("opaque-1", 900);
     const client = seeded();
     const stop = clearCacheOnSessionChange(client);
-    tokenStore.set("opaque-2", 900);
-    expect(client.getQueryData(["folders"])).toEqual(["reader's folders"]);
     tokenStore.set(jwt({ iss: "https://idp", sub: "reader" }), 900);
     expect(client.getQueryData(["folders"])).toBeUndefined();
+    client.setQueryData(["folders"], ["reader's folders"]);
+    tokenStore.set("opaque-2", 900);
+    expect(client.getQueryData(["folders"])).toBeUndefined();
+    stop();
+  });
+
+  it("keeps the cache when the same unreadable token is set again", () => {
+    tokenStore.set("opaque-1", 900);
+    const client = seeded();
+    const stop = clearCacheOnSessionChange(client);
+    tokenStore.set("opaque-1", 900);
+    expect(client.getQueryData(["folders"])).toEqual(["reader's folders"]);
     stop();
   });
 });

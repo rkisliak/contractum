@@ -2,7 +2,9 @@
 // or ends (sign-in, sign-out, expiry, sign-out in another tab) or the access token starts naming
 // a different principal (another issuer or subject, for example a sign-in that replaces the token
 // without a sign-out in between), every cached query is dropped, so the next user's screens fetch
-// with their own token. A token refresh for the same principal keeps the cache (D-05).
+// with their own token. A token refresh for the same principal keeps the cache (D-05). It fails
+// closed: a replaced token whose principal cannot be read (an opaque token) is unknown, so it drops
+// the cache like a different principal.
 import type { QueryClient } from "@tanstack/react-query";
 import { tokenStore } from "./tokenStore";
 
@@ -33,21 +35,28 @@ export function principalOf(token: string): string | null {
   }
 }
 
-function principalNow(): string | null {
-  const stored = tokenStore.get();
-  return stored === null ? null : principalOf(stored.token);
+function tokenNow(): string | null {
+  return tokenStore.get()?.token ?? null;
 }
 
 export function clearCacheOnSessionChange(
   queryClient: QueryClient,
 ): () => void {
   let signedIn = tokenStore.get() !== null;
-  let principal = principalNow();
+  let token = tokenNow();
+  let principal = token === null ? null : principalOf(token);
   return tokenStore.subscribe(() => {
     const now = tokenStore.get() !== null;
-    const nowPrincipal = principalNow();
-    const changed = now !== signedIn || (now && nowPrincipal !== principal);
+    const nowToken = tokenNow();
+    const nowPrincipal = nowToken === null ? null : principalOf(nowToken);
+    // Two readable principals are compared by principal (a refresh keeps the cache); when either
+    // side cannot be read, any change of the token string is treated as a different principal.
+    const unreadable = nowPrincipal === null || principal === null;
+    const changed =
+      now !== signedIn ||
+      (now && (unreadable ? nowToken !== token : nowPrincipal !== principal));
     signedIn = now;
+    token = nowToken;
     principal = nowPrincipal;
     if (!changed) return;
     void queryClient.cancelQueries();

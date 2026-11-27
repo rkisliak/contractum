@@ -1,7 +1,13 @@
 // "Show contracts in tree" on /folders, through the real router: with the box ticked every
 // expanded folder lists its own contracts (one list call per folder, include_subtree=false) as
 // links; unticked the screen makes no tree call and a leaf folder has no chevron.
-import { act, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { tokenStore } from "@/auth/tokenStore";
@@ -602,6 +608,30 @@ describe("tree keyboard model over every row kind (TREE-03, D-11)", () => {
     await user.keyboard("z");
     expect(rowNamed("Beta")).toHaveFocus();
     expect(tabStops()).toHaveLength(1);
+  });
+
+  it("leaves Ctrl, Meta and Alt shortcuts to the browser instead of treating them as type-ahead", async () => {
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    focus(rowNamed("Root"));
+    for (const modifier of ["ctrlKey", "metaKey", "altKey"] as const) {
+      // fireEvent returns false when the handler called preventDefault.
+      const notPrevented = fireEvent.keyDown(rowNamed("Root"), {
+        key: "o",
+        [modifier]: true,
+      });
+      expect(notPrevented).toBe(true);
+      expect(rowNamed("Root")).toHaveFocus();
+    }
+    // A plain letter is still type-ahead and is handled.
+    const plain = fireEvent.keyDown(rowNamed("Root"), { key: "o" });
+    expect(plain).toBe(false);
+    expect(orders()).toHaveFocus();
   });
 
   it("falls back to the folder row as the tab stop when the focused contract row disappears", async () => {

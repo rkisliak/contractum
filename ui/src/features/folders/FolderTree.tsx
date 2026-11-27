@@ -315,7 +315,10 @@ export function FolderTree({
         else if (row.kind === "error") retryFolder(row.folderId);
         break;
       default:
-        if (event.key.length === 1 && /\S/.test(event.key)) {
+        // Ctrl, Meta and Alt chords are browser and assistive-technology shortcuts, never type-ahead.
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          handled = false;
+        } else if (event.key.length === 1 && /\S/.test(event.key)) {
           const index = rows.findIndex(
             (candidate) => candidate.key === row.key,
           );

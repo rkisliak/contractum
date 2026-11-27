@@ -71,9 +71,9 @@ describe("contractRowLabel", () => {
     ).toBe("urn:y, Unpublished, not published");
   });
 
-  it("says not published for a Preview without a Latest", () => {
+  it("says no Latest version, not not published, for a Preview without a Latest", () => {
     expect(contractRowLabel(row("published"))).toBe(
-      "Orders, Preview, not published",
+      "Orders, Preview, no Latest version",
     );
   });
 });

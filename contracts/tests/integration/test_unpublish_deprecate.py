@@ -623,3 +623,94 @@ async def test_deprecate_denies_a_team_reader_consumers_and_archived_folders(
         assert response.status_code == 409, response.text
         assert response.json()["type"] == "urn:dc:problem:folder-archived"
         assert invariant(stack.contracts_db_url) == []
+
+
+LIST = "/api/v1/contracts/contracts"
+
+
+async def list_row(stack: Any, team: str, contract: str, token: str) -> dict[str, Any]:
+    """The contract's row in the per-folder tree list (D-06: the badge reads the row itself)."""
+    response = await stack.client.get(
+        LIST,
+        params={"folder_id": team, "include_subtree": "false", "sort": "name"},
+        headers=bearer(token),
+    )
+    assert response.status_code == 200, response.text
+    rows = [item for item in response.json()["items"] if item["id"] == contract]
+    assert len(rows) == 1, response.text
+    return dict(rows[0])
+
+
+async def test_the_list_row_and_metadata_report_deprecated_for_a_deprecated_head(
+    make_stack: MakeStack,
+) -> None:
+    async with make_stack() as stack:
+        chain = await stack.chain()
+        contract, _odcs = await three_versions(stack, chain.team)
+        admin = stack.admin_token
+        assert (await list_row(stack, chain.team, contract, admin))["version"][
+            "deprecated"
+        ] is False
+
+        flagged = await deprecate(stack, contract, "1.0.0", today() + timedelta(days=30))
+        assert flagged.status_code == 200, flagged.text
+        assert flagged.json()["status"] == "latest"
+
+        row = await list_row(stack, chain.team, contract, admin)
+        assert row["version"]["deprecated"] is True
+        metadata = await stack.client.get(base(contract), headers=bearer(admin))
+        assert metadata.status_code == 200, metadata.text
+        assert metadata.json()["version"]["deprecated"] is True
+
+
+async def test_deprecating_an_older_version_leaves_the_head_row_false(
+    make_stack: MakeStack,
+) -> None:
+    async with make_stack() as stack:
+        chain = await stack.chain()
+        contract, _odcs = await three_versions(stack, chain.team)
+        admin = stack.admin_token
+        promoted = await stack.client.post(
+            action_url(contract, "1.2.0", "promote"), headers=bearer(admin)
+        )
+        assert promoted.status_code == 200, promoted.text
+
+        older = await deprecate(stack, contract, "1.0.0", today() + timedelta(days=30))
+        assert older.status_code == 200, older.text
+        assert older.json()["status"] == "older"
+
+        row = await list_row(stack, chain.team, contract, admin)
+        assert row["version"]["deprecated"] is False
+        metadata = await stack.client.get(base(contract), headers=bearer(admin))
+        assert metadata.json()["version"]["deprecated"] is False
+
+
+async def test_a_new_contract_reports_deprecated_false_in_create_and_list(
+    make_stack: MakeStack,
+) -> None:
+    async with make_stack() as stack:
+        chain = await stack.chain()
+        created = await stack.post(chain.team, doc(new_odcs_id()))
+        assert created.status_code == 201, created.text
+        body = created.json()
+        assert body["version"]["deprecated"] is False
+        assert body["contract"]["version"]["deprecated"] is False
+        row = await list_row(stack, chain.team, body["contract"]["id"], stack.admin_token)
+        assert row["version"]["deprecated"] is False
+
+
+async def test_a_policy_manager_row_carries_deprecated_but_no_content(
+    make_stack: MakeStack,
+) -> None:
+    async with make_stack() as stack:
+        chain = await stack.chain()
+        contract, _odcs = await three_versions(stack, chain.team)
+        flagged = await deprecate(stack, contract, "1.0.0", today() + timedelta(days=30))
+        assert flagged.status_code == 200, flagged.text
+        manager = stack.policy_manager(chain.org)
+
+        row = await list_row(stack, chain.team, contract, manager)
+        assert row["version"]["deprecated"] is True
+        assert row["content_redacted"] is True
+        assert row["domain"] is None
+        assert row["tags"] is None

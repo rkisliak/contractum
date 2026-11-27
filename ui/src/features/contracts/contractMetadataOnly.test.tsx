@@ -2,7 +2,7 @@
 // role, D-12, TREE-03, Pitfall 4): an info notice instead of an error, no tab or link that needs
 // content or published reads, and no request the caller's role refuses. Team readers and consumers
 // keep what they had.
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { tokenStore } from "@/auth/tokenStore";
 import {
@@ -105,15 +105,13 @@ describe("a metadata-only caller (Policy Manager)", () => {
   it("says redacted fields are not available at the access level, never that they are not set", async () => {
     open(POLICY_MANAGER, true);
     await screen.findByText(NOTICE);
-    const facts = within(screen.getByText("ODCS id").closest("dl")!);
+    const cellOf = (label: string) =>
+      screen.getByText(label, { selector: "dt" }).nextElementSibling;
     for (const label of ["Domain", "Tags", "ODCS apiVersion"]) {
-      const cell = facts.getByText(label).nextElementSibling;
-      expect(cell?.textContent).toBe(REDACTED_FACT);
+      expect(cellOf(label)?.textContent).toBe(REDACTED_FACT);
     }
     // Fields the caller does read keep their own wording.
-    expect(facts.getByText("ODCS status").nextElementSibling?.textContent).toBe(
-      "active",
-    );
+    expect(cellOf("ODCS status")?.textContent).toBe("active");
     expect(screen.queryByText("Not set")).toBeNull();
   });
 

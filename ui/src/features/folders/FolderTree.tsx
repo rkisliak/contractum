@@ -5,8 +5,15 @@
 // carries aria-current="page" and its ancestors are expanded.
 // With `showContracts` every expanded folder also lists its own contracts (one list call per
 // expanded folder) as treegrid rows below its subfolders; each is a real link to the contract.
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, FileText, Folder as FolderIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  ChevronRight,
+  FileText,
+  Folder as FolderIcon,
+} from "lucide-react";
 import {
   useId,
   useMemo,
@@ -18,6 +25,7 @@ import {
 } from "react";
 import type { ContractSummary, Folder } from "@/api/types";
 import { Badge } from "@/components/Badge";
+import { Button } from "@/components/Button";
 import { Identifier } from "@/components/Identifier";
 import { Skeleton } from "@/components/states";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
@@ -96,6 +104,7 @@ export function FolderTree({
   contractLabel,
 }: FolderTreeProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const treeId = useId();
   const roots = useMemo(() => buildFolderTree(folders), [folders]);
   // ROOT starts open, so the organizations are visible under it.
@@ -172,6 +181,15 @@ export function FolderTree({
       if (willOpen) next.add(folderId);
       else next.delete(folderId);
       return next;
+    });
+  }
+
+  // Retry refetches exactly one folder's tree query (D-15): other folders and the page-level
+  // folder list are untouched.
+  function retryFolder(folderId: string) {
+    void queryClient.refetchQueries({
+      queryKey: ["contracts", "folder-tree", folderId],
+      exact: true,
     });
   }
 
@@ -369,6 +387,9 @@ export function FolderTree({
     const rowId = `${treeId}-${row.key}`;
     const displayName = contractDisplayName(contract);
     const named = contract.name !== null && contract.name !== "";
+    const inlineColumns = cols.filter(
+      (column) => column.narrowInline && column.renderContract !== undefined,
+    );
     return (
       <div
         key={row.key}
@@ -402,6 +423,17 @@ export function FolderTree({
               {named ? displayName : <Identifier value={displayName} />}
             </Link>
           </span>
+          {inlineColumns.length > 0 ? (
+            // Shown only when the tree is narrow and the collapsible column dropped: the state it
+            // carries (the lifecycle badge) then sits in the name cell instead of being lost.
+            <span className={styles.narrowInline} data-narrow-inline="">
+              {inlineColumns.map((column) => (
+                <span key={column.id} className={styles.narrowInlineItem}>
+                  {column.renderContract?.(contract)}
+                </span>
+              ))}
+            </span>
+          ) : null}
         </span>
         {cols.map((column) => (
           <span
@@ -423,32 +455,109 @@ export function FolderTree({
     );
   }
 
-  // Loading, empty, error and overflow rows trail the contracts of one folder. Loading and empty
-  // are not focusable; error and overflow are plain text for now.
+  // Loading, empty, error and overflow rows trail the contracts of one folder (UI-SPEC Row type
+  // table). Loading and empty only report a state and are not focusable; error and overflow are
+  // treegrid rows. The error row is inline copy with a Retry (not a ProblemAlert: a block alert
+  // would break the 40px row geometry; recorded exception to the ui-frontend skill rule 3).
   function renderStateRow(
     row: Exclude<TreeRow, { kind: "folder" | "contract" }>,
   ) {
+    const geometry = cx(styles.gridRow, styles.stateRow);
+    const nameCell = (content: ReactNode) => (
+      <span role="gridcell" className={styles.row} style={indent(row.depth)}>
+        <span className={cx(styles.toggle, styles.leaf)} aria-hidden="true" />
+        {content}
+      </span>
+    );
+    if (row.kind === "loading") {
+      return (
+        <div
+          key={row.key}
+          role="row"
+          aria-level={row.depth + 1}
+          aria-busy="true"
+          className={geometry}
+        >
+          {nameCell(<Skeleton label="contracts" />)}
+        </div>
+      );
+    }
+    if (row.kind === "empty") {
+      return (
+        <div
+          key={row.key}
+          role="row"
+          aria-level={row.depth + 1}
+          className={geometry}
+        >
+          {nameCell(<span className={styles.muted}>{treeCopy.empty}</span>)}
+        </div>
+      );
+    }
+    if (row.kind === "error") {
+      return (
+        <div
+          key={row.key}
+          id={`${treeId}-${row.key}`}
+          role="row"
+          aria-level={row.depth + 1}
+          tabIndex={-1}
+          className={cx(geometry, styles.item)}
+        >
+          {nameCell(
+            <>
+              <AlertTriangle
+                size={14}
+                strokeWidth={2}
+                aria-hidden="true"
+                className={styles.errorIcon}
+              />
+              <span className={styles.label}>{treeCopy.error}</span>
+              <Button
+                variant="secondary"
+                size="small"
+                tabIndex={-1}
+                onClick={() => {
+                  retryFolder(row.folderId);
+                }}
+              >
+                {treeCopy.retry}
+              </Button>
+            </>,
+          )}
+        </div>
+      );
+    }
     return (
       <div
         key={row.key}
+        id={`${treeId}-${row.key}`}
         role="row"
         aria-level={row.depth + 1}
-        className={cx(styles.gridRow, styles.stateRow)}
+        tabIndex={-1}
+        className={cx(geometry, styles.item)}
       >
-        <span role="gridcell" className={styles.row} style={indent(row.depth)}>
-          <span className={cx(styles.toggle, styles.leaf)} aria-hidden="true" />
-          {row.kind === "loading" ? (
-            <Skeleton label="contracts" />
-          ) : (
-            <span className={styles.muted}>
-              {row.kind === "empty"
-                ? treeCopy.empty
-                : row.kind === "error"
-                  ? treeCopy.error
-                  : treeCopy.overflow}
+        {nameCell(
+          <>
+            <span className={styles.label}>
+              <Link
+                to="/folders/$folderId/contracts"
+                params={{ folderId: row.folderId }}
+                search={{ subtree: false }}
+                tabIndex={-1}
+                className={styles.contractLink}
+              >
+                {treeCopy.overflow}
+              </Link>
             </span>
-          )}
-        </span>
+            <ArrowRight
+              size={14}
+              strokeWidth={2}
+              aria-hidden="true"
+              className={styles.overflowIcon}
+            />
+          </>,
+        )}
       </div>
     );
   }

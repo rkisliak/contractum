@@ -80,28 +80,36 @@ async function contractRow(id: string): Promise<HTMLElement> {
   return screen.findByRole("row", { name: label });
 }
 
+// A contract row carries its badges twice: in the Kind column and, hidden unless the tree is
+// narrow, in the name cell (narrowInline). These tests read the Kind column's copy.
+function kindCell(row: HTMLElement): HTMLElement {
+  return within(row).getAllByRole("gridcell")[1] as HTMLElement;
+}
+
 describe("a contract row in the folder tree", () => {
   it("shows the Latest badge and its semver", async () => {
     renderTree();
     const row = await contractRow("c-latest");
-    expect(within(row).getByText("Latest")).toBeInTheDocument();
+    expect(within(kindCell(row)).getByText("Latest")).toBeInTheDocument();
     expect(within(row).getByText("1.2.0")).toBeInTheDocument();
-    expect(within(row).queryByText("Deprecated")).not.toBeInTheDocument();
+    expect(
+      within(kindCell(row)).queryByText("Deprecated"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows Draft and Not published for a draft", async () => {
     renderTree();
     const row = await contractRow("c-draft");
-    expect(within(row).getByText("Draft")).toBeInTheDocument();
+    expect(within(kindCell(row)).getByText("Draft")).toBeInTheDocument();
     expect(within(row).getByText("Not published")).toBeInTheDocument();
-    expect(within(row).queryByText("Older")).not.toBeInTheDocument();
+    expect(within(kindCell(row)).queryByText("Older")).not.toBeInTheDocument();
   });
 
   it("shows Latest and Deprecated for a deprecated Latest", async () => {
     renderTree();
     const row = await contractRow("c-deprecated");
-    expect(within(row).getByText("Latest")).toBeInTheDocument();
-    expect(within(row).getByText("Deprecated")).toBeInTheDocument();
+    expect(within(kindCell(row)).getByText("Latest")).toBeInTheDocument();
+    expect(within(kindCell(row)).getByText("Deprecated")).toBeInTheDocument();
     expect(within(row).getByText("2.0.0")).toBeInTheDocument();
   });
 
@@ -109,7 +117,7 @@ describe("a contract row in the folder tree", () => {
     renderTree();
     const row = await contractRow("c-nameless");
     expect(within(row).getByText("urn:acme:nameless")).toBeInTheDocument();
-    expect(within(row).getByText("Draft")).toBeInTheDocument();
+    expect(within(kindCell(row)).getByText("Draft")).toBeInTheDocument();
   });
 
   it("names each row with its display name, badges and version", async () => {

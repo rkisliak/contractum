@@ -185,6 +185,30 @@
   gap: var(--spacing-1);
 }
 
+.errorIcon {
+  flex-shrink: 0;
+  color: var(--color-fg-danger);
+}
+
+.overflowIcon {
+  color: var(--color-body);
+}
+
+/* The collapsible Kind column's content, moved into the name cell of a contract row when the tree
+   is narrow. Hidden by default (the wide tree shows the column); shown by the container query. */
+.narrowInline {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.narrowInlineItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
 @container (max-width: 36rem) {
   .gridRow {
     grid-template-columns: var(--tree-cols-narrow);
@@ -192,5 +216,9 @@
 
   [data-collapsible] {
     display: none;
+  }
+
+  .narrowInline {
+    display: inline-flex;
   }
 }

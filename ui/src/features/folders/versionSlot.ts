@@ -21,13 +21,26 @@ export function contractVersionSlot(contract: ContractSummary): {
   return { text: treeCopy.notPublished, muted: true };
 }
 
-/** "{name}, {badge labels}, version {semver}" or "{name}, {badge labels}, not published". */
+/** "No Latest version" to "no Latest version": only the first letter drops, "Latest" stays a name. */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/**
+ * "{name}, {badge labels}, version {semver}", "..., no Latest version" for a published head that
+ * has no Latest (a Preview), or "..., not published" for a head that was never published or is
+ * unpublished. It matches what the visible version slot says.
+ */
 export function contractRowLabel(contract: ContractSummary): string {
   const badges = headBadges(contract)
     .map((badge) => badge.label)
     .join(", ");
   const versionText = contract.latest_version
     ? `version ${contract.latest_version.semver}`
-    : treeCopy.notPublished.toLowerCase();
+    : lowerFirst(
+        contract.version.state === "published"
+          ? treeCopy.noLatest
+          : treeCopy.notPublished,
+      );
   return treeCopy.rowName(contractDisplayName(contract), badges, versionText);
 }

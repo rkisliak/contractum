@@ -20,6 +20,8 @@ import { Tooltip } from "@/components/Tooltip";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
 import { childKindOf, kindLabel } from "@/features/access/roles";
 import { useCapabilities } from "@/features/access/useCapabilities";
+import { headBadges } from "@/features/contracts/versionStatus";
+import { cx } from "@/lib/cx";
 import { problemOf } from "@/lib/unexpected";
 import {
   CONTRACT_COUNT_PAGE,
@@ -31,6 +33,7 @@ import { folderCopy, treeCopy } from "./copy";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { FolderTree, type TreeColumn } from "./FolderTree";
 import { folderName, type FolderNode } from "./tree";
+import { contractRowLabel, contractVersionSlot } from "./versionSlot";
 import styles from "./FolderPages.module.css";
 
 type CreateTarget = { parent: Folder; childKind: string };
@@ -124,6 +127,7 @@ export function FoldersPage({
               label="All folders"
               showContracts={showContracts}
               columns={FOLDER_COLUMNS}
+              contractLabel={contractRowLabel}
               actionsColumn={{ header: "Actions", width: "4.5rem" }}
               renderActions={(node, tabbable) => (
                 <FolderRowActions
@@ -156,13 +160,25 @@ const FOLDER_COLUMNS: TreeColumn[] = [
   {
     id: "kind",
     header: "Kind",
-    width: "7.5rem",
+    width: "13rem",
     collapsible: true,
     render: (node) => (
       <Badge intent="neutral">
         {node.folder.kind === "root" ? "Platform" : kindLabel(node.folder.kind)}
       </Badge>
     ),
+    // A contract row's lifecycle badge(s): text plus icon, from the one mapping (D-08). Under a
+    // narrow tree they move into the name cell, so the state is never lost.
+    renderContract: (contract) => (
+      <span className={styles.badges}>
+        {headBadges(contract).map((badge) => (
+          <Badge key={badge.key} intent={badge.intent} icon={badge.icon}>
+            {badge.label}
+          </Badge>
+        ))}
+      </span>
+    ),
+    narrowInline: true,
   },
   {
     id: "subfolders",
@@ -183,10 +199,17 @@ const FOLDER_COLUMNS: TreeColumn[] = [
   {
     id: "contracts",
     header: "Contracts",
-    width: "6rem",
+    width: "9rem",
     align: "end",
     collapsible: true,
     render: (node) => <ContractCount node={node} />,
+    // A contract row's Latest semver, or a muted word before the first publish (D-10).
+    renderContract: (contract) => {
+      const slot = contractVersionSlot(contract);
+      return (
+        <span className={cx(slot.muted && styles.mutedSlot)}>{slot.text}</span>
+      );
+    },
   },
 ];
 

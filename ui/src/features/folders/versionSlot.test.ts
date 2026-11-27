@@ -20,7 +20,7 @@ function row(
     latest_version: options.semver
       ? { version_id: `v-${options.semver}`, semver: options.semver }
       : null,
-  }) as ContractSummary;
+  });
 }
 
 describe("contractVersionSlot", () => {

@@ -6,7 +6,7 @@ import type { ContractSummary } from "@/api/types";
 import { tokenStore } from "@/auth/tokenStore";
 import { makeContract } from "@/test/contracts-fixtures";
 import { http, HttpResponse } from "@/test/msw";
-import { renderApp, ROOT_ID, rootFolder } from "@/test/renderApp";
+import { makeFolder, renderApp, ROOT_ID, rootFolder } from "@/test/renderApp";
 import { contractRowLabel } from "./versionSlot";
 
 afterEach(() => {
@@ -52,6 +52,14 @@ const rows = [
   }),
 ];
 
+// The page shows the tree only when there is a folder below ROOT.
+const acme = makeFolder({
+  id: "acme-id",
+  slug: "acme",
+  display_name: "Acme",
+  path: "acme",
+});
+
 function renderTree() {
   const handler = http.get("*/api/v1/contracts/contracts", ({ request }) => {
     const subtree = new URL(request.url).searchParams.get("include_subtree");
@@ -61,7 +69,7 @@ function renderTree() {
     });
   });
   renderApp("/folders?contracts=true", {
-    folders: [rootFolder],
+    folders: [rootFolder, acme],
     handlers: [handler],
   });
 }

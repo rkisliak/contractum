@@ -2766,7 +2766,12 @@
         "type": "object"
       },
       "ContractVersionSummaryOut": {
+        "description": "A contract's head version.\n\n``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,\nand returned to metadata-only callers too.",
         "properties": {
+          "deprecated": {
+            "title": "Deprecated",
+            "type": "boolean"
+          },
           "number": {
             "title": "Number",
             "type": "integer"
@@ -2778,7 +2783,8 @@
         },
         "required": [
           "number",
-          "state"
+          "state",
+          "deprecated"
         ],
         "title": "ContractVersionSummaryOut",
         "type": "object"

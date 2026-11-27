@@ -141,7 +141,7 @@ async def test_float_version_is_stored_and_fetched_unchanged_and_only_reported(
         assert report["valid"] is False
         assert "/version" in [error["pointer"] for error in report["errors"]]
         # The contract is saved anyway (D-19): problems are reported, not repaired or blocked.
-        assert created.json()["version"] == {"number": 1, "state": "draft"}
+        assert created.json()["version"] == {"number": 1, "state": "draft", "deprecated": False}
 
 
 async def test_custom_properties_are_present_in_the_jsonb_copy(

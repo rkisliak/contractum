@@ -110,8 +110,15 @@ _DOCUMENT_MEDIA_TYPES = {media_type: _BINARY for media_type in sorted(ALLOWED_ME
 
 
 class ContractVersionSummaryOut(BaseModel):
+    """A contract's head version.
+
+    ``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,
+    and returned to metadata-only callers too.
+    """
+
     number: int
     state: str
+    deprecated: bool
 
 
 class ContractLatestVersionOut(BaseModel):
@@ -317,7 +324,11 @@ def _metadata(
             if contract.origin_contract_id is not None and contract.origin_version_id is not None
             else None
         ),
-        version=ContractVersionSummaryOut(number=version.version_no, state=version.state),
+        version=ContractVersionSummaryOut(
+            number=version.version_no,
+            state=version.state,
+            deprecated=version.deprecated_at is not None,
+        ),
         latest_version=(
             ContractLatestVersionOut(version_id=version.id, semver=version.semver)
             if contract.latest_version_id == version.id and version.semver is not None
@@ -453,7 +464,11 @@ async def _created_response(
     await uow.commit()
 
     response.headers["Location"] = f"/api/v1/contracts/contracts/{contract.id}"
-    summary = ContractVersionSummaryOut(number=version.version_no, state=version.state)
+    summary = ContractVersionSummaryOut(
+        number=version.version_no,
+        state=version.state,
+        deprecated=version.deprecated_at is not None,
+    )
     validation = await save_mode_embed(request, contract.id, version.id, raw, version.media_type)
     return ContractCreatedOut(
         contract=_metadata(contract, version, content_visible=True),
@@ -801,7 +816,11 @@ async def create_contract_from_version(
         )
 
     response.headers["Location"] = f"/api/v1/contracts/contracts/{contract.id}"
-    summary = ContractVersionSummaryOut(number=version.version_no, state=version.state)
+    summary = ContractVersionSummaryOut(
+        number=version.version_no,
+        state=version.state,
+        deprecated=version.deprecated_at is not None,
+    )
     validation = await save_mode_embed(request, contract.id, version.id, raw, version.media_type)
     return ContractCreatedOut(
         contract=_metadata(contract, version, content_visible=True),

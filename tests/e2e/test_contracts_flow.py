@@ -82,7 +82,7 @@ async def test_admin_stores_a_contract_through_the_gateway_and_fetches_the_same_
     body = created.json()
     contract_id = body["contract"]["id"]
     assert body["contract"]["odcs_id"] == odcs_id
-    assert body["version"] == {"number": 1, "state": "draft"}
+    assert body["version"] == {"number": 1, "state": "draft", "deprecated": False}
     assert body["structural_validation"]["valid"] is True
     assert created.headers["location"] == f"/api/v1/contracts/contracts/{contract_id}"
 

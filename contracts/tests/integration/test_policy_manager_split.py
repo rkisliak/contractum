@@ -104,7 +104,11 @@ async def test_policy_manager_reads_metadata_but_never_content(make_stack: MakeS
         assert body["notation"]
         assert body["name"] == f"Orders {tag}"
         assert body["status"] == "draft"
-        assert body["version"] == {"number": 1, "state": body["version"]["state"]}
+        assert body["version"] == {
+            "number": 1,
+            "state": body["version"]["state"],
+            "deprecated": False,
+        }
         for populated in ("created_by", "created_at", "updated_by", "updated_at"):
             assert body[populated]
         for field in CONTENT_FIELDS:

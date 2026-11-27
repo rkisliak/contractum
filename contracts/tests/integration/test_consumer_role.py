@@ -263,7 +263,7 @@ async def test_consumer_lists_a_contract_only_after_its_first_publish(
         only = editor_items[draft_only]
         assert only["latest_version"] is None
         assert only["name"] == "Only a draft"
-        assert only["version"] == {"number": 1, "state": "draft"}
+        assert only["version"] == {"number": 1, "state": "draft", "deprecated": False}
 
 
 async def test_consumer_list_item_comes_from_the_latest_not_the_newer_draft(
@@ -283,7 +283,7 @@ async def test_consumer_list_item_comes_from_the_latest_not_the_newer_draft(
             "version_id": head.latest_version_id,
             "semver": "1.0.0",
         }
-        assert item["version"] == {"number": 1, "state": "published"}
+        assert item["version"] == {"number": 1, "state": "published", "deprecated": False}
         # draft-derived values are no oracle for the Consumer
         for params in ({"tags": "internal"}, {"q": "secret"}, {"name": "Orders Next secret"}):
             assert head.contract not in await list_items(stack, consumer, **params), params
@@ -302,7 +302,7 @@ async def test_head_row_is_latest_for_editor(make_stack: MakeStack) -> None:
         assert item["name"] == "Orders"
         assert item["tags"] == ["gold"]
         assert item["latest_version"]["semver"] == "1.0.0"
-        assert item["version"] == {"number": 1, "state": "published"}
+        assert item["version"] == {"number": 1, "state": "published", "deprecated": False}
         assert item["content_redacted"] is False
         # filters match head values for the editor too
         for params in ({"tags": "internal"}, {"q": "secret"}):
@@ -314,7 +314,7 @@ async def test_head_row_is_latest_for_editor(make_stack: MakeStack) -> None:
         assert (body["name"], body["tags"], body["version"]) == (
             "Orders",
             ["gold"],
-            {"number": 1, "state": "published"},
+            {"number": 1, "state": "published", "deprecated": False},
         )
 
         drafts = await stack.client.get(
@@ -341,7 +341,7 @@ async def test_head_row_is_latest_for_consumer(make_stack: MakeStack) -> None:
         assert consumer_item["name"] == "Orders"
         assert consumer_item["tags"] == ["gold"]
         assert consumer_item["latest_version"]["semver"] == "1.0.0"
-        assert consumer_item["version"] == {"number": 1, "state": "published"}
+        assert consumer_item["version"] == {"number": 1, "state": "published", "deprecated": False}
         assert consumer_item == editor_item
 
 
@@ -361,7 +361,7 @@ async def test_policy_manager_sees_the_latest_row_redacted_for_a_published_contr
         published = items[head.contract]
         assert published["name"] == "Orders"
         assert published["latest_version"]["semver"] == "1.0.0"
-        assert published["version"] == {"number": 1, "state": "published"}
+        assert published["version"] == {"number": 1, "state": "published", "deprecated": False}
         assert published["content_redacted"] is True
         assert published["tags"] is None
         assert published["domain"] is None
@@ -390,7 +390,7 @@ async def test_consumer_views_a_listed_contract_by_id_through_the_latest(
         assert body["tags"] == ["gold"]
         assert body["content_redacted"] is False
         assert body["latest_version"]["semver"] == "1.0.0"
-        assert body["version"] == {"number": 1, "state": "published"}
+        assert body["version"] == {"number": 1, "state": "published", "deprecated": False}
         assert body == listed
         # the hash is the Latest's, not the newer draft's
         draft = await stack.client.get(
@@ -461,13 +461,17 @@ async def test_policy_manager_and_editor_by_id_keep_their_views(make_stack: Make
         assert redacted.status_code == 200, redacted.text
         assert redacted.json()["content_redacted"] is True
         assert redacted.json()["tags"] is None
-        assert redacted.json()["version"] == {"number": 1, "state": "published"}
+        assert redacted.json()["version"] == {
+            "number": 1,
+            "state": "published",
+            "deprecated": False,
+        }
 
         draft_view = await stack.client.get(f"{CONTRACTS}/{draft_only}", headers=bearer(editor))
         assert draft_view.status_code == 200, draft_view.text
         assert draft_view.json()["name"] == "Only a draft"
         assert draft_view.json()["latest_version"] is None
-        assert draft_view.json()["version"] == {"number": 1, "state": "draft"}
+        assert draft_view.json()["version"] == {"number": 1, "state": "draft", "deprecated": False}
 
         unknown = await stack.client.get(f"{CONTRACTS}/{UNKNOWN}", headers=bearer(outsider))
         hidden = await stack.client.get(f"{CONTRACTS}/{head.contract}", headers=bearer(outsider))

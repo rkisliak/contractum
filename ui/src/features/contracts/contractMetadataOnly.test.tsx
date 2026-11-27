@@ -167,6 +167,56 @@ describe("a metadata-only caller who opens a content route directly", () => {
   });
 });
 
+describe("a metadata-only caller who opens the Overview with another spelling of the id", () => {
+  it("sees the Overview, not only the notice, for an upper-case id in the URL", async () => {
+    renderApp("/contracts/C-1", {
+      folders: contractFolders,
+      permissions: POLICY_MANAGER,
+      handlers: [
+        // The API answers any spelling of the id with the canonical (lower-case) one.
+        http.get("*/api/v1/contracts/contracts/:id", () =>
+          HttpResponse.json(
+            makeContract({ content_redacted: true, ...REDACTED_FIELDS }),
+          ),
+        ),
+      ],
+    });
+    await screen.findByText(NOTICE);
+    // The Overview's facts are on the page, not just the notice.
+    expect(
+      await screen.findByText("ODCS id", { selector: "dt" }),
+    ).toBeVisible();
+  });
+
+  it("still keeps an upper-case id off a content route", async () => {
+    const requested: string[] = [];
+    server.events.on("request:start", ({ request }) => {
+      requested.push(new URL(request.url).pathname);
+    });
+    renderApp("/contracts/C-1/versions", {
+      folders: contractFolders,
+      permissions: POLICY_MANAGER,
+      handlers: [
+        http.get("*/api/v1/contracts/contracts/:id", () =>
+          HttpResponse.json(
+            makeContract({ content_redacted: true, ...REDACTED_FIELDS }),
+          ),
+        ),
+      ],
+    });
+    await screen.findByText(NOTICE);
+    await waitFor(() => {
+      expect(requested.some((path) => /\/contracts\/c-1$/i.test(path))).toBe(
+        true,
+      );
+    });
+    expect(screen.queryByText("ODCS id", { selector: "dt" })).toBeNull();
+    expect(requested.filter((path) => /\/versions(\/|$)/.test(path))).toEqual(
+      [],
+    );
+  });
+});
+
 describe("contractAccess while the capabilities load", () => {
   it("offers a metadata-only caller no content tab (no flash of Drafts or Subscribers)", () => {
     const access = contractAccess(

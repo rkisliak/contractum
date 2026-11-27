@@ -25,10 +25,18 @@ export const contractName = contractDisplayName;
 /**
  * Whether a metadata-only caller may open the page at `pathname`: the Overview and Rule sets
  * answer a metadata read, every other tab needs content or published reads the API refuses.
+ * `bases` are the page's root paths, the API's canonical id and the id as the URL spells it (a
+ * UUID may arrive in another case); a path is compared without case or a trailing slash.
  */
-export function metadataOnlyMayOpen(pathname: string, base: string): boolean {
-  const path = pathname.replace(/\/+$/, "");
-  return path === base || path === `${base}/rule-sets`;
+export function metadataOnlyMayOpen(
+  pathname: string,
+  ...bases: string[]
+): boolean {
+  const path = pathname.replace(/\/+$/, "").toLowerCase();
+  return bases.some((base) => {
+    const root = base.toLowerCase();
+    return path === root || path === `${root}/rule-sets`;
+  });
 }
 
 /**
@@ -144,7 +152,8 @@ export function ContractLayout({
         description={<span>{data.odcs_id}</span>}
       />
       <TabNav label="Contract sections" items={tabs} />
-      {metadataOnly && !metadataOnlyMayOpen(pathname, base) ? (
+      {metadataOnly &&
+      !metadataOnlyMayOpen(pathname, base, `/contracts/${contractId}`) ? (
         // A direct link to a content tab: the child is not mounted, so it sends no refused request.
         <Alert intent="info">{metadataOnlyNotice}</Alert>
       ) : (

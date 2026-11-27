@@ -273,7 +273,18 @@ class FakeContractum:
             and all(tag in c.tags for tag in query.get_list("tags"))
             and (not query.get("q") or query["q"].lower() in f"{c.name} {c.odcs_id}".lower())
         ]
-        start = int(query["cursor"].removeprefix("c")) if query.get("cursor") else 0
+        sort = query.get("sort", "id")
+        if sort not in ("id", "name"):
+            return _problem(422, "validation-error", "Unprocessable Content")
+        if sort == "name":
+            # The server's order: name (ODCS id when empty), case folded, then id.
+            items.sort(key=lambda c: ((c.name or c.odcs_id).lower(), c.contract_id))
+        # A cursor only fits the sort it came from: "c<offset>" for id, "n<offset>" for name.
+        prefix = "n" if sort == "name" else "c"
+        cursor = query.get("cursor")
+        if cursor and not re.fullmatch(f"{prefix}[0-9]+", cursor):
+            return _problem(422, "invalid-cursor", "Unprocessable Content")
+        start = int(cursor.removeprefix(prefix)) if cursor else 0
         size = self.page_size or int(query.get("limit", "50"))
         page = items[start : start + size]
         more = start + size < len(items)
@@ -281,7 +292,7 @@ class FakeContractum:
             200,
             json={
                 "items": [_contract_json(c) for c in page],
-                "next_cursor": f"c{start + size}" if more else None,
+                "next_cursor": f"{prefix}{start + size}" if more else None,
             },
         )
 

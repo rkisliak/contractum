@@ -1,8 +1,11 @@
 // The folder tree-table (D-UI-09-02): the WAI-ARIA treegrid pattern (row focus) with a roving
-// tabindex. Up and Down move through visible rows, Right expands or enters, Left collapses or goes to the parent, Home and
-// End jump, Enter opens the folder, printable keys jump by name (type-ahead). A mouse click on a row
-// expands or collapses it; the row's open action (the arrow) opens it. The current folder
-// carries aria-current="page" and its ancestors are expanded.
+// tabindex over every focusable row (folder, contract, overflow and error rows; loading and empty
+// rows are skipped). Up and Down move through them, Right expands a closed folder or enters an open
+// one, Left collapses an open folder or goes to the parent folder row, Home and End jump, Enter or
+// Space opens the row (a folder, a contract, the overflow list) or retries an error row, printable
+// keys jump by name (type-ahead). A mouse click on a folder row expands or collapses it; its open
+// action (the arrow) opens it. The current folder carries aria-current="page" and its ancestors
+// are expanded.
 // With `showContracts` every expanded folder also lists its own contracts (one list call per
 // expanded folder) as treegrid rows below its subfolders; each is a real link to the contract.
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +22,7 @@ import {
   useMemo,
   useState,
   type CSSProperties,
+  type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -36,7 +40,11 @@ import {
   ancestorIds,
   buildFolderTree,
   contractDisplayName,
+  firstChildKey,
   folderName,
+  isFocusableRow,
+  parentFolderKey,
+  typeAheadKey,
   visibleNodes,
   visibleRows,
   type FolderNode,
@@ -115,7 +123,12 @@ export function FolderTree({
         ...(currentId ? ancestorIds(folders, currentId) : []),
       ]),
   );
-  const [focusedId, setFocusedId] = useState<string | null>(null);
+  // The row last focused, with the folder row that owns it (itself for a folder row), so the tab
+  // stop can fall back to that folder when the row leaves the screen.
+  const [focused, setFocused] = useState<{
+    key: string;
+    ownerKey: string;
+  } | null>(null);
 
   // Keep the current folder reachable: when it changes, expand its ancestors once
   // (state adjusted during render, React's documented pattern, not an effect).
@@ -162,16 +175,42 @@ export function FolderTree({
     walk(roots);
     return info;
   }, [roots]);
-  const tabStop =
-    visible.find((node) => node.folder.id === focusedId)?.folder.id ??
-    visible.find((node) => node.folder.id === currentId)?.folder.id ??
-    visible[0]?.folder.id;
+  const rowKeys = useMemo(() => new Set(rows.map((row) => row.key)), [rows]);
+  const focusableRows = useMemo(() => rows.filter(isFocusableRow), [rows]);
+  // One tab stop for the whole tree: the focused row when it is still on screen, else the folder
+  // row that owned it, else the current folder's row, else the first row.
+  const tabStopKey =
+    (focused && rowKeys.has(focused.key) ? focused.key : undefined) ??
+    (focused && rowKeys.has(focused.ownerKey) ? focused.ownerKey : undefined) ??
+    (currentId && rowKeys.has(`f:${currentId}`)
+      ? `f:${currentId}`
+      : undefined) ??
+    rows[0]?.key;
 
-  const domId = (folderId: string) => `${treeId}-${folderId}`;
+  // Ids are built from the row key with every character outside [A-Za-z0-9_-] replaced, so the
+  // f: and c: prefixes of a folder and a contract can never collide.
+  const domId = (key: string) =>
+    `${treeId}-${key.replace(/[^A-Za-z0-9_-]/g, "_")}`;
 
-  function focusItem(folderId: string) {
-    setFocusedId(folderId);
-    document.getElementById(domId(folderId))?.focus();
+  function rowFocusProps(row: TreeRow) {
+    const ownerKey = row.kind === "folder" ? row.key : `f:${row.folderId}`;
+    return {
+      id: domId(row.key),
+      onFocus: (event: FocusEvent<HTMLElement>) => {
+        if (event.target === event.currentTarget)
+          setFocused({ key: row.key, ownerKey });
+      },
+    };
+  }
+
+  function focusItem(key: string) {
+    const row = rows.find((candidate) => candidate.key === key);
+    if (row === undefined) return;
+    setFocused({
+      key,
+      ownerKey: row.kind === "folder" ? row.key : `f:${row.folderId}`,
+    });
+    document.getElementById(domId(key))?.focus();
   }
 
   function toggle(folderId: string, open?: boolean) {
@@ -187,6 +226,8 @@ export function FolderTree({
   // Retry refetches exactly one folder's tree query (D-15): other folders and the page-level
   // folder list are untouched.
   function retryFolder(folderId: string) {
+    // The error row is replaced by a loading row while it refetches, so focus moves to its folder.
+    focusItem(`f:${folderId}`);
     void queryClient.refetchQueries({
       queryKey: ["contracts", "folder-tree", folderId],
       exact: true,
@@ -194,64 +235,92 @@ export function FolderTree({
   }
 
   function openFolder(folderId: string) {
-    setFocusedId(folderId);
+    setFocused({ key: `f:${folderId}`, ownerKey: `f:${folderId}` });
     void navigate({ to: "/folders/$folderId", params: { folderId } });
     onOpen?.();
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLElement>, node: FolderNode) {
-    // Keys pressed on a row action belong to that action.
+  function openContract(contractId: string) {
+    void navigate({ to: "/contracts/$contractId", params: { contractId } });
+    onOpen?.();
+  }
+
+  function openOverflow(folderId: string) {
+    void navigate({
+      to: "/folders/$folderId/contracts",
+      params: { folderId },
+      search: { subtree: false },
+    });
+    onOpen?.();
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLElement>, row: TreeRow) {
+    // Keys pressed on a row action or the Retry button belong to that control.
     if (event.target !== event.currentTarget) return;
-    const id = node.folder.id;
-    const index = visible.findIndex((candidate) => candidate.folder.id === id);
-    const isOpen = expanded.has(id);
-    const hasChildren = node.children.length > 0;
-    const expandable = showContracts || hasChildren;
+    const position = focusableRows.findIndex(
+      (candidate) => candidate.key === row.key,
+    );
     let handled = true;
     switch (event.key) {
       case "ArrowDown": {
-        const next = visible[index + 1];
-        if (next) focusItem(next.folder.id);
+        const next = focusableRows[position + 1];
+        if (next) focusItem(next.key);
         break;
       }
       case "ArrowUp": {
-        const previous = visible[index - 1];
-        if (previous) focusItem(previous.folder.id);
+        const previous = focusableRows[position - 1];
+        if (previous) focusItem(previous.key);
         break;
       }
       case "ArrowRight":
-        if (expandable && !isOpen) toggle(id, true);
-        else if (hasChildren && node.children[0])
-          focusItem(node.children[0].folder.id);
+        // Only a folder row opens or is entered; contract, overflow and error rows have no children.
+        if (row.kind === "folder") {
+          const expandable = showContracts || row.node.children.length > 0;
+          if (expandable && !expanded.has(row.node.folder.id))
+            toggle(row.node.folder.id, true);
+          else {
+            const child = firstChildKey(row.key, rows);
+            if (child !== null) focusItem(child);
+          }
+        }
         break;
-      case "ArrowLeft":
-        if (expandable && isOpen) toggle(id, false);
-        else if (node.folder.parent_id && expandedParent(node, visible))
-          focusItem(node.folder.parent_id);
+      case "ArrowLeft": {
+        if (
+          row.kind === "folder" &&
+          (showContracts || row.node.children.length > 0) &&
+          expanded.has(row.node.folder.id)
+        ) {
+          toggle(row.node.folder.id, false);
+        } else {
+          const parent = parentFolderKey(row, rows);
+          if (parent !== null) focusItem(parent);
+        }
         break;
-      case "Home":
-        if (visible[0]) focusItem(visible[0].folder.id);
+      }
+      case "Home": {
+        const first = focusableRows[0];
+        if (first) focusItem(first.key);
         break;
+      }
       case "End": {
-        const last = visible.at(-1);
-        if (last) focusItem(last.folder.id);
+        const last = focusableRows.at(-1);
+        if (last) focusItem(last.key);
         break;
       }
       case "Enter":
       case " ":
-        openFolder(id);
+        if (row.kind === "folder") openFolder(row.node.folder.id);
+        else if (row.kind === "contract") openContract(row.contract.id);
+        else if (row.kind === "overflow") openOverflow(row.folderId);
+        else if (row.kind === "error") retryFolder(row.folderId);
         break;
       default:
         if (event.key.length === 1 && /\S/.test(event.key)) {
-          const char = event.key.toLowerCase();
-          const ordered = [
-            ...visible.slice(index + 1),
-            ...visible.slice(0, index + 1),
-          ];
-          const match = ordered.find((candidate) =>
-            folderName(candidate.folder).toLowerCase().startsWith(char),
+          const index = rows.findIndex(
+            (candidate) => candidate.key === row.key,
           );
-          if (match) focusItem(match.folder.id);
+          const match = typeAheadKey(rows, index, event.key);
+          if (match !== null) focusItem(match);
         } else {
           handled = false;
         }
@@ -268,8 +337,19 @@ export function FolderTree({
     if (target.closest("[data-tree-action]")) return;
     // A click anywhere on the row (name, icon, chevron, facts) expands or collapses it; the row's
     // open action (the arrow) and the keyboard (Enter, Space) open the folder.
-    setFocusedId(node.folder.id);
+    setFocused({
+      key: `f:${node.folder.id}`,
+      ownerKey: `f:${node.folder.id}`,
+    });
     if (showContracts || node.children.length > 0) toggle(node.folder.id);
+  }
+
+  // A click on a contract or overflow row opens it, unless it landed on the row's own link (the
+  // link navigates itself, and keeps middle-click and the context menu working).
+  function onOpenClick(event: MouseEvent<HTMLElement>, open: () => void) {
+    event.stopPropagation();
+    if ((event.target as HTMLElement).closest("a, button")) return;
+    open();
   }
 
   // The APG treegrid: a flat list of rows carrying aria-level/setsize/posinset, each with a name
@@ -293,7 +373,8 @@ export function FolderTree({
     return (
       <div
         key={row.key}
-        id={domId(folder.id)}
+        {...rowFocusProps(row)}
+        tabIndex={row.key === tabStopKey ? 0 : -1}
         role="row"
         aria-level={node.depth + 1}
         aria-setsize={sibling?.size}
@@ -301,17 +382,13 @@ export function FolderTree({
         aria-expanded={expandable ? isOpen : undefined}
         aria-selected={current}
         aria-current={current ? "page" : undefined}
-        aria-labelledby={`${domId(folder.id)}-label`}
-        tabIndex={folder.id === tabStop ? 0 : -1}
+        aria-labelledby={`${domId(row.key)}-label`}
         className={cx(styles.gridRow, styles.item, current && styles.current)}
         onKeyDown={(event) => {
-          onKeyDown(event, node);
+          onKeyDown(event, row);
         }}
         onClick={(event) => {
           onClick(event, node);
-        }}
-        onFocus={(event) => {
-          if (event.target === event.currentTarget) setFocusedId(folder.id);
         }}
       >
         <span role="gridcell" className={styles.row} style={indent(node.depth)}>
@@ -335,7 +412,7 @@ export function FolderTree({
             className={styles.folderIcon}
           />
           <span
-            id={`${domId(folder.id)}-label`}
+            id={`${domId(row.key)}-label`}
             className={styles.label}
             title={folderName(folder)}
           >
@@ -373,7 +450,7 @@ export function FolderTree({
             className={cx(styles.cell, styles.end, styles.actions)}
             data-tree-action=""
           >
-            {renderActions(node, folder.id === tabStop)}
+            {renderActions(node, row.key === tabStopKey)}
           </span>
         ) : null}
       </div>
@@ -384,7 +461,7 @@ export function FolderTree({
   // is a real link, so click, middle-click and the context menu all open the contract.
   function renderContractRow(row: Extract<TreeRow, { kind: "contract" }>) {
     const { contract } = row;
-    const rowId = `${treeId}-${row.key}`;
+    const rowId = domId(row.key);
     const displayName = contractDisplayName(contract);
     const named = contract.name !== null && contract.name !== "";
     const inlineColumns = cols.filter(
@@ -393,14 +470,22 @@ export function FolderTree({
     return (
       <div
         key={row.key}
-        id={rowId}
+        {...rowFocusProps(row)}
+        tabIndex={row.key === tabStopKey ? 0 : -1}
         role="row"
         aria-level={row.depth + 1}
         aria-setsize={row.setSize}
         aria-posinset={row.position}
         aria-labelledby={`${rowId}-label`}
-        tabIndex={-1}
         className={cx(styles.gridRow, styles.contractRow)}
+        onKeyDown={(event) => {
+          onKeyDown(event, row);
+        }}
+        onClick={(event) => {
+          onOpenClick(event, () => {
+            openContract(contract.id);
+          });
+        }}
       >
         <span role="gridcell" className={styles.row} style={indent(row.depth)}>
           <span className={cx(styles.toggle, styles.leaf)} aria-hidden="true" />
@@ -498,11 +583,14 @@ export function FolderTree({
       return (
         <div
           key={row.key}
-          id={`${treeId}-${row.key}`}
+          {...rowFocusProps(row)}
+          tabIndex={row.key === tabStopKey ? 0 : -1}
           role="row"
           aria-level={row.depth + 1}
-          tabIndex={-1}
           className={cx(geometry, styles.item)}
+          onKeyDown={(event) => {
+            onKeyDown(event, row);
+          }}
         >
           {nameCell(
             <>
@@ -516,7 +604,7 @@ export function FolderTree({
               <Button
                 variant="secondary"
                 size="small"
-                tabIndex={-1}
+                tabIndex={row.key === tabStopKey ? 0 : -1}
                 onClick={() => {
                   retryFolder(row.folderId);
                 }}
@@ -531,11 +619,19 @@ export function FolderTree({
     return (
       <div
         key={row.key}
-        id={`${treeId}-${row.key}`}
+        {...rowFocusProps(row)}
+        tabIndex={row.key === tabStopKey ? 0 : -1}
         role="row"
         aria-level={row.depth + 1}
-        tabIndex={-1}
         className={cx(geometry, styles.item)}
+        onKeyDown={(event) => {
+          onKeyDown(event, row);
+        }}
+        onClick={(event) => {
+          onOpenClick(event, () => {
+            openOverflow(row.folderId);
+          });
+        }}
       >
         {nameCell(
           <>
@@ -619,11 +715,5 @@ export function FolderTree({
       </div>
       {rows.map(renderRow)}
     </div>
-  );
-}
-
-function expandedParent(node: FolderNode, visible: FolderNode[]): boolean {
-  return visible.some(
-    (candidate) => candidate.folder.id === node.folder.parent_id,
   );
 }

@@ -51,7 +51,10 @@ class ContractMetadataOut:
             template (ContractTemplateOriginOut | None):
             updated_at (datetime.datetime):
             updated_by (str):
-            version (ContractVersionSummaryOut):
+            version (ContractVersionSummaryOut): A contract's head version.
+
+                ``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,
+                and returned to metadata-only callers too.
      """
 
     api_version: None | str

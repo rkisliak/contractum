@@ -130,7 +130,7 @@ def _contract_json(contract: FakeContract) -> dict[str, Any]:
         "template": None,
         "updated_at": _NOW,
         "updated_by": "dana",
-        "version": {"number": len(contract.versions), "state": "published"},
+        "version": {"number": len(contract.versions), "state": "published", "deprecated": False},
     }
 
 

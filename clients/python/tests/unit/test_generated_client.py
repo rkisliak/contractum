@@ -145,6 +145,7 @@ def test_get_contract_and_list_contracts_send_the_documented_requests(
     assert dict(listing.calls.last.request.url.params) == {
         "include_subtree": "false",
         "limit": "50",
+        "sort": "id",
     }
     contract = _api.get_contract(http, CID)
     assert single.call_count == 1

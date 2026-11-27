@@ -20,12 +20,18 @@ T = TypeVar("T", bound="ContractVersionSummaryOut")
 
 @_attrs_define
 class ContractVersionSummaryOut:
-    """ 
+    """ A contract's head version.
+
+    ``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,
+    and returned to metadata-only callers too.
+
         Attributes:
+            deprecated (bool):
             number (int):
             state (str):
      """
 
+    deprecated: bool
     number: int
     state: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -35,6 +41,8 @@ class ContractVersionSummaryOut:
 
 
     def to_dict(self) -> dict[str, Any]:
+        deprecated = self.deprecated
+
         number = self.number
 
         state = self.state
@@ -43,6 +51,7 @@ class ContractVersionSummaryOut:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
+            "deprecated": deprecated,
             "number": number,
             "state": state,
         })
@@ -54,11 +63,14 @@ class ContractVersionSummaryOut:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
+        deprecated = d.pop("deprecated")
+
         number = d.pop("number")
 
         state = d.pop("state")
 
         contract_version_summary_out = cls(
+            deprecated=deprecated,
             number=number,
             state=state,
         )

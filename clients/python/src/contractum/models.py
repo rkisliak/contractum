@@ -101,6 +101,7 @@ class VersionState(_Model):
 
     number: int
     state: str
+    deprecated: bool = False
 
 
 class ContractSummary(_Model):

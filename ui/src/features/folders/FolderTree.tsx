@@ -257,6 +257,9 @@ export function FolderTree({
   function onKeyDown(event: KeyboardEvent<HTMLElement>, row: TreeRow) {
     // Keys pressed on a row action or the Retry button belong to that control.
     if (event.target !== event.currentTarget) return;
+    // Ctrl, Meta and Alt chords (Alt+Arrow is the browser's back and forward) belong to the browser
+    // and assistive technology; the tree's keys are plain or Shift-modified.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const position = focusableRows.findIndex(
       (candidate) => candidate.key === row.key,
     );
@@ -315,10 +318,7 @@ export function FolderTree({
         else if (row.kind === "error") retryFolder(row.folderId);
         break;
       default:
-        // Ctrl, Meta and Alt chords are browser and assistive-technology shortcuts, never type-ahead.
-        if (event.ctrlKey || event.metaKey || event.altKey) {
-          handled = false;
-        } else if (event.key.length === 1 && /\S/.test(event.key)) {
+        if (event.key.length === 1 && /\S/.test(event.key)) {
           const index = rows.findIndex(
             (candidate) => candidate.key === row.key,
           );

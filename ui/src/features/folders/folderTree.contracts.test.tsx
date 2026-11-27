@@ -634,6 +634,45 @@ describe("tree keyboard model over every row kind (TREE-03, D-11)", () => {
     expect(orders()).toHaveFocus();
   });
 
+  it("leaves Alt+Arrow (browser back and forward) and other modified navigation keys to the browser", async () => {
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    focus(rowNamed("Root"));
+    const expanded = rowNamed("Root").getAttribute("aria-expanded");
+    const keys = [
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowDown",
+      "ArrowUp",
+      "Home",
+      "End",
+      "Enter",
+      " ",
+    ];
+    for (const modifier of ["altKey", "ctrlKey", "metaKey"] as const) {
+      for (const key of keys) {
+        // fireEvent returns false when the handler called preventDefault.
+        const notPrevented = fireEvent.keyDown(rowNamed("Root"), {
+          key,
+          [modifier]: true,
+        });
+        expect(notPrevented, `${modifier}+${key}`).toBe(true);
+        expect(rowNamed("Root")).toHaveFocus();
+        expect(rowNamed("Root").getAttribute("aria-expanded")).toBe(expanded);
+      }
+    }
+    // The unmodified keys still drive the model.
+    expect(fireEvent.keyDown(rowNamed("Root"), { key: "ArrowDown" })).toBe(
+      false,
+    );
+    expect(rowNamed("Root")).not.toHaveFocus();
+  });
+
   it("falls back to the folder row as the tab stop when the focused contract row disappears", async () => {
     const user = userEvent.setup();
     const tree = scripted(rootAnswer);

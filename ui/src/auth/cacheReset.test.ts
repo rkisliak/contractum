@@ -111,7 +111,9 @@ describe("clearCacheOnSessionChange", () => {
       "a.b",
       "",
     ]) {
-      expect(() => tokenStore.set(token, 900)).not.toThrow();
+      expect(() => {
+        tokenStore.set(token, 900);
+      }).not.toThrow();
     }
     stop();
   });

@@ -78,6 +78,9 @@ class Contract(ContractsBase, AuditColumnsMixin):
     __table_args__ = (
         UniqueConstraint("organization_id", "odcs_id", name=UNIQUE_ODCS_ID_CONSTRAINT),
         Index("ix_contract_ancestor_ids", "ancestor_ids", postgresql_using="gin"),
+        # The Folders tree lists one folder's own contracts per expanded folder (Phase 16, D-07):
+        # EXPLAIN on 10,000 contracts over 1,000 folders showed a sequential scan without it.
+        Index("ix_contract_folder_id", "folder_id", "id"),
         # Both origin columns are set or both null (CONT-02), and a set pair names a template
         # version that exists: published versions are undeletable (D-38, T-02-52).
         CheckConstraint(

@@ -183,8 +183,8 @@ jobs:
             echo "node $(node --version) is not the pinned $want_node" >&2
             exit 1
           fi
-          if [ "$(pnpm --version)" != "12.22.0" ]; then
-            echo "pnpm $(pnpm --version) is not the pinned 12.22.0" >&2
+          if [ "$(pnpm --version)" != "12.23.0" ]; then
+            echo "pnpm $(pnpm --version) is not the pinned 12.23.0" >&2
             exit 1
           fi
       - name: pnpm install --frozen-lockfile

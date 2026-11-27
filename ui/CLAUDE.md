@@ -578,7 +578,7 @@ check (`node scripts/check-pin-age.mjs`).
 | Tool                 | Pin                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------- |
 | Node                 | 26.13.1 (`.nvmrc`, `engines.node`, Dockerfile `FROM`); no corepack on Node 26 (A-6)   |
-| pnpm                 | 12.22.0 (`packageManager`; installed with `npm i -g pnpm@12.22.0`, never on the host) |
+| pnpm                 | 12.23.0 (`packageManager`; installed with `npm i -g pnpm@12.23.0`, never on the host) |
 | nginx runtime        | `nginxinc/nginx-unprivileged:1.31.7-alpine-slim`                                      |
 | Playwright runner    | `mcr.microsoft.com/playwright:v1.65.1-noble` (equals `@playwright/test`)              |
 | monaco-editor        | 0.57.0 (installed with the contract screens)                                          |
@@ -602,7 +602,7 @@ Runtime dependencies (`dependencies`):
 | `@radix-ui/react-tabs`          | 1.2.1    |
 | `@radix-ui/react-toast`         | 1.3.1    |
 | `@radix-ui/react-tooltip`       | 1.4.1    |
-| `@tanstack/react-query`         | 5.108.2  |
+| `@tanstack/react-query`         | 5.108.3  |
 | `@tanstack/react-router`        | 1.170.46 |
 | `jsonc-parser`                  | 3.3.1    |
 | `lucide-react`                  | 1.77.0   |
@@ -654,7 +654,7 @@ Tooling (`devDependencies`):
 - **TypeScript stays on 6.x** (A-5): 7.x ships no JavaScript compiler API, so `openapi-typescript` (and
   `typescript-eslint`, peer `<6.1.0`) cannot run on it.
 - **Node tooling runs in a container on this host**: the host has no pnpm and none may be installed globally. Use
-  `node:26.13.1-trixie-slim` with `npm i -g pnpm@12.22.0`, named volumes for `node_modules` and the pnpm store, or the
+  `node:26.13.1-trixie-slim` with `npm i -g pnpm@12.23.0`, named volumes for `node_modules` and the pnpm store, or the
   Docker `ci` stage once it exists.
 
 ## URL scheme (D-UI-08-23)

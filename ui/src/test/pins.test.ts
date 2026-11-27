@@ -31,7 +31,7 @@ describe("pinned toolchain", () => {
   });
 
   it("pins pnpm through packageManager", () => {
-    expect(pkg.packageManager).toBe("pnpm@12.22.0");
+    expect(pkg.packageManager).toBe("pnpm@12.23.0");
   });
 
   it("keeps engines.node equal to .nvmrc", () => {

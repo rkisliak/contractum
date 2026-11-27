@@ -4,7 +4,7 @@
 # Compose builds it with `context: ./ui`, `dockerfile: ../infra/docker/ui.Dockerfile`, `target: runtime`;
 # `runtime` stays the last stage, so the default target is unchanged.
 #
-# Pinned: Node 26.13.1 (= ui/.nvmrc and engines.node), pnpm 12.22.0 (= packageManager, installed
+# Pinned: Node 26.13.1 (= ui/.nvmrc and engines.node), pnpm 12.23.0 (= packageManager, installed
 # with npm because Node 26 ships no corepack) and nginxinc/nginx-unprivileged 1.31.7-alpine-slim.
 # The install runs under ui/pnpm-workspace.yaml's supply-chain policy (14-day release age, no
 # exotic subdependencies, strict dependency builds) with a frozen lockfile. Upgrade a pin here,
@@ -16,8 +16,8 @@
 
 FROM node:26.13.1-trixie-slim AS deps
 WORKDIR /app
-RUN npm install --global pnpm@12.22.0 \
- && test "$(pnpm --version)" = "12.22.0"
+RUN npm install --global pnpm@12.23.0 \
+ && test "$(pnpm --version)" = "12.23.0"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .nvmrc ./
 RUN pnpm install --frozen-lockfile
 

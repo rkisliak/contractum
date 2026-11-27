@@ -1,8 +1,10 @@
 // The contract page frame: breadcrumbs (Contracts, the folder chain, the contract), the name as
 // h1 with the Latest semver badge, the ODCS id, and the tab navigation over the child routes
 // (Overview, Document, Drafts, Versions, Diff, Rule sets, Subscribers). A 404 is NotFound.
+import { useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { ContractSummary } from "@/api/types";
+import { Alert } from "@/components/Alert";
 import { Badge } from "@/components/Badge";
 import type { Crumb } from "@/components/Breadcrumb";
 import { NotFound } from "@/components/NotFound";
@@ -15,9 +17,19 @@ import { useFolderList } from "@/features/folders/api";
 import { ancestorIds, contractDisplayName } from "@/features/folders/tree";
 import { isNotFound, problemOf } from "@/lib/unexpected";
 import { useContract } from "./api";
+import { metadataOnlyNotice } from "./copy";
 
 /** The one display rule for a contract's name: its ODCS name, or its id when the name is empty. */
 export const contractName = contractDisplayName;
+
+/**
+ * Whether a metadata-only caller may open the page at `pathname`: the Overview and Rule sets
+ * answer a metadata read, every other tab needs content or published reads the API refuses.
+ */
+export function metadataOnlyMayOpen(pathname: string, base: string): boolean {
+  const path = pathname.replace(/\/+$/, "");
+  return path === base || path === `${base}/rule-sets`;
+}
 
 /**
  * What the caller's role lets the contract page offer. `metadataOnly` is the API's own flag
@@ -32,7 +44,8 @@ export function contractAccess(
 ) {
   const allows = (permission: string) => caps.isPending || caps.can(permission);
   const metadataOnly = contract.content_redacted;
-  const canRead = allows("contract:read");
+  // A metadata-only caller holds no content right, also while the capabilities load.
+  const canRead = !metadataOnly && allows("contract:read");
   return {
     allows,
     metadataOnly,
@@ -69,6 +82,7 @@ export function ContractLayout({
   const contract = useContract(contractId);
   const folderCrumbs = useFolderCrumbs(contract.data?.folder_id);
   const caps = useCapabilities(contract.data?.folder_id ?? null);
+  const pathname = useLocation({ select: (location) => location.pathname });
 
   if (contract.isError) {
     return isNotFound(contract.error) ? (
@@ -130,7 +144,12 @@ export function ContractLayout({
         description={<span>{data.odcs_id}</span>}
       />
       <TabNav label="Contract sections" items={tabs} />
-      {children}
+      {metadataOnly && !metadataOnlyMayOpen(pathname, base) ? (
+        // A direct link to a content tab: the child is not mounted, so it sends no refused request.
+        <Alert intent="info">{metadataOnlyNotice}</Alert>
+      ) : (
+        children
+      )}
     </>
   );
 }

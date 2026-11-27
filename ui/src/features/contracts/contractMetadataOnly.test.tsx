@@ -7,12 +7,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { tokenStore } from "@/auth/tokenStore";
 import {
   CONTRACT_ALL,
+  CONTRACT_API,
   contractFolders,
   contractHandlers,
   makeContract,
 } from "@/test/contracts-fixtures";
-import { server } from "@/test/msw";
+import { http, HttpResponse, server } from "@/test/msw";
 import { renderApp } from "@/test/renderApp";
+import { contractAccess } from "./ContractLayout";
 
 afterEach(() => {
   tokenStore.clear();
@@ -31,17 +33,38 @@ const TEAM_READER = [
 ];
 const CONSUMER = ["contract:read-published", "contract:view"];
 
-function open(permissions: string[], redacted: boolean) {
+// The API nulls the content-derived fields of a metadata-only read (they are redacted, not empty).
+const REDACTED_FIELDS = { domain: null, tags: null, api_version: null };
+
+function open(
+  permissions: string[],
+  redacted: boolean,
+  path = "/contracts/c-1",
+) {
   const requested: string[] = [];
   server.events.on("request:start", ({ request }) => {
     requested.push(new URL(request.url).pathname);
   });
-  renderApp("/contracts/c-1", {
+  renderApp(path, {
     folders: contractFolders,
     permissions,
-    handlers: contractHandlers({
-      contract: makeContract({ content_redacted: redacted }),
-    }),
+    handlers: [
+      // The Rule sets tab answers a metadata read, so a metadata-only caller may open it.
+      http.get(`${CONTRACT_API}/rule-sets`, () =>
+        HttpResponse.json({ items: [], attachments_revision: 1 }),
+      ),
+      http.get(
+        "*/api/v1/validation/folders/ledger-id/available-rule-sets",
+        () => HttpResponse.json({ items: [] }),
+      ),
+      ...contractHandlers({
+        contract: makeContract(
+          redacted
+            ? { content_redacted: true, ...REDACTED_FIELDS }
+            : { content_redacted: false },
+        ),
+      }),
+    ],
   });
   return requested;
 }
@@ -91,6 +114,62 @@ describe("a metadata-only caller (Policy Manager)", () => {
       /\/(versions|document|diff|drafts)(\/|$)/.test(path),
     );
     expect(refused).toEqual([]);
+  });
+});
+
+describe("a metadata-only caller who opens a content route directly", () => {
+  const CONTENT_ROUTES = [
+    "versions",
+    "document",
+    "diff",
+    "drafts",
+    "subscribers",
+  ];
+
+  it.each(CONTENT_ROUTES)(
+    "sees the notice on /%s and no request for it is sent",
+    async (route) => {
+      const requested = open(POLICY_MANAGER, true, `/contracts/c-1/${route}`);
+      await screen.findByText(NOTICE);
+      await tabNames();
+      await waitFor(() => {
+        expect(requested.some((path) => path.endsWith("/contracts/c-1"))).toBe(
+          true,
+        );
+      });
+      expect(screen.queryByRole("alert")).toBeNull();
+      const refused = requested.filter((path) =>
+        new RegExp(`/c-1/${route}(/|$)`).test(path),
+      );
+      expect(refused).toEqual([]);
+    },
+  );
+
+  it("still opens Rule sets", async () => {
+    open(POLICY_MANAGER, true, "/contracts/c-1/rule-sets");
+    await tabNames();
+    expect(await screen.findByText("No attached rule sets")).toBeVisible();
+    expect(screen.queryByText(NOTICE)).toBeNull();
+  });
+});
+
+describe("contractAccess while the capabilities load", () => {
+  it("offers a metadata-only caller no content tab (no flash of Drafts or Subscribers)", () => {
+    const access = contractAccess(
+      { content_redacted: true },
+      { isPending: true, can: () => false },
+    );
+    expect(access.canRead).toBe(false);
+    expect(access.canSeeVersions).toBe(false);
+  });
+
+  it("still offers a full reader the content tabs while loading", () => {
+    const access = contractAccess(
+      { content_redacted: false },
+      { isPending: true, can: () => false },
+    );
+    expect(access.canRead).toBe(true);
+    expect(access.canSeeVersions).toBe(true);
   });
 });
 

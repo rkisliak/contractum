@@ -67,4 +67,18 @@ describe("long and right-to-left user text", () => {
     );
     expect(button).toMatch(/\.text\s*\{[^}]*text-overflow:\s*ellipsis/);
   });
+
+  it("gives a narrow tree's contract name the whole row and wraps its badges under it (R5)", () => {
+    const tree = css("features/folders/FolderTree.module.css");
+    const narrow = tree.slice(tree.indexOf("@container (max-width: 36rem)"));
+    expect(narrow).toMatch(
+      /\.contractRow > \[role="gridcell"\]:first-child\s*\{[^}]*grid-column:\s*1 \/ -1/,
+    );
+    expect(narrow).toMatch(
+      /\.contractRow > \[role="gridcell"\]:not\(:first-child\)\s*\{[^}]*display:\s*none/,
+    );
+    expect(narrow).toMatch(/\.contractRow \.row\s*\{[^}]*flex-wrap:\s*wrap/);
+    expect(narrow).toMatch(/\.contractRow \.label\s*\{[^}]*flex:\s*1 1 0/);
+    expect(narrow).toMatch(/\.narrowInline\s*\{[^}]*flex:\s*0 0 100%/);
+  });
 });

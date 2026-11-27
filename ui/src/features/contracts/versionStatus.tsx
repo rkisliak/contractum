@@ -4,11 +4,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   EyeOff,
+  FilePen,
   FlaskConical,
   History,
   type LucideIcon,
 } from "lucide-react";
-import type { ContractVersion } from "@/api/types";
+import type { ContractSummary, ContractVersion } from "@/api/types";
 import { Badge, type BadgeIntent } from "@/components/Badge";
 
 export type VersionBadge = {
@@ -18,14 +19,25 @@ export type VersionBadge = {
   icon: LucideIcon;
 };
 
-type VersionLike = Pick<
-  ContractVersion,
-  "status" | "lifecycle" | "deprecated" | "sunset_date"
->;
+// A version from the versions API, or the head summary of a contract list row (headVersionLike):
+// a draft has no status of its own, so `lifecycle` also admits "draft" and `status` may be null.
+type VersionLike = {
+  status: ContractVersion["status"] | null;
+  lifecycle: ContractVersion["lifecycle"] | "draft";
+  deprecated: boolean;
+  sunset_date: string | null;
+};
 
 export function versionBadges(version: VersionLike): VersionBadge[] {
   const out: VersionBadge[] = [];
-  if (version.lifecycle === "unpublished") {
+  if (version.lifecycle === "draft") {
+    out.push({
+      key: "draft",
+      label: "Draft",
+      intent: "neutral",
+      icon: FilePen,
+    });
+  } else if (version.lifecycle === "unpublished") {
     out.push({
       key: "unpublished",
       label: "Unpublished",
@@ -65,6 +77,39 @@ export function versionBadges(version: VersionLike): VersionBadge[] {
     });
   }
   return out;
+}
+
+/**
+ * A contract list row's head version as a VersionLike (D-08): a draft head is Draft, an unpublished
+ * head Unpublished, any other head is published, Latest when the contract has a Latest version and
+ * Preview when it has none. The row carries no sunset date, so Deprecated is the plain label.
+ */
+export function headVersionLike(
+  row: Pick<ContractSummary, "version" | "latest_version">,
+): VersionLike {
+  const { state, deprecated } = row.version;
+  if (state === "draft")
+    return { lifecycle: "draft", status: null, deprecated, sunset_date: null };
+  if (state === "unpublished")
+    return {
+      lifecycle: "unpublished",
+      status: null,
+      deprecated,
+      sunset_date: null,
+    };
+  return {
+    lifecycle: "published",
+    status: row.latest_version ? "latest" : "preview",
+    deprecated,
+    sunset_date: null,
+  };
+}
+
+/** The badges of a contract list row's head: the one lifecycle mapping through headVersionLike. */
+export function headBadges(
+  row: Pick<ContractSummary, "version" | "latest_version">,
+): VersionBadge[] {
+  return versionBadges(headVersionLike(row));
 }
 
 export function VersionBadges({ version }: { version: VersionLike }) {

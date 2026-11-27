@@ -22,6 +22,29 @@ export function contractName(
   return contract.name ?? contract.odcs_id;
 }
 
+/**
+ * What the caller's role lets the contract page offer. `metadataOnly` is the API's own flag
+ * (`content_redacted`, a Policy Manager without a contract role); `canSeeVersions` is true when
+ * the Versions list, a version and the Diff would be answered (a published read or a full read,
+ * shown while the capabilities load). The UI decides nothing: it only leaves out what the API
+ * would refuse, so the page sends no request the caller is refused.
+ */
+export function contractAccess(
+  contract: Pick<ContractSummary, "content_redacted">,
+  caps: { isPending: boolean; can: (permission: string) => boolean },
+) {
+  const allows = (permission: string) => caps.isPending || caps.can(permission);
+  const metadataOnly = contract.content_redacted;
+  const canRead = allows("contract:read");
+  return {
+    allows,
+    metadataOnly,
+    canRead,
+    canSeeVersions:
+      !metadataOnly && (allows("contract:read-published") || canRead),
+  };
+}
+
 export function useFolderCrumbs(folderId: string | undefined): Crumb[] {
   const list = useFolderList(true);
   const folders = list.data?.folders ?? [];
@@ -68,16 +91,23 @@ export function ContractLayout({
   // Tabs follow what each tab's first request needs (shown while the capabilities load): the
   // current document, drafts and subscribers need contract:read, attached rule sets
   // contract:read-metadata. A published-only reader (a consumer) still reads the Latest document.
-  const allows = (permission: string) => caps.isPending || caps.can(permission);
-  const canRead = allows("contract:read");
+  // A metadata-only caller (content_redacted) gets neither content nor version tabs.
+  const { allows, metadataOnly, canRead, canSeeVersions } = contractAccess(
+    data,
+    caps,
+  );
   const tabs = [
     { to: base, label: "Overview", exact: true },
-    ...(canRead || data.latest_version
+    ...(!metadataOnly && (canRead || data.latest_version)
       ? [{ to: `${base}/document`, label: "Document" }]
       : []),
     ...(canRead ? [{ to: `${base}/drafts`, label: "Drafts" }] : []),
-    { to: `${base}/versions`, label: "Versions" },
-    { to: `${base}/diff`, label: "Diff" },
+    ...(canSeeVersions
+      ? [
+          { to: `${base}/versions`, label: "Versions" },
+          { to: `${base}/diff`, label: "Diff" },
+        ]
+      : []),
     ...(allows("contract:read-metadata")
       ? [{ to: `${base}/rule-sets`, label: "Rule sets" }]
       : []),

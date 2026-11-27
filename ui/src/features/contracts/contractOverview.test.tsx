@@ -113,7 +113,8 @@ describe("contract layout", () => {
   it("names an unnamed contract by its ODCS id and hides Document with nothing to read", async () => {
     contractPage("/contracts/c-1", {
       contract: makeContract({ name: null, latest_version: null }),
-      permissions: ["contract:view"],
+      // A consumer: published reads only, nothing published yet, so no Document tab.
+      permissions: ["contract:read-published", "contract:view"],
     });
     expect(
       await screen.findByRole("heading", {

@@ -167,8 +167,8 @@ A central data-contract service for a large company with many data-engineering t
 | **navikt/mock-oauth2-server** | **7.0.2** (`ghcr.io/navikt/mock-oauth2-server`) | Entra stand-in for compose and e2e | Supports client-credentials, auth-code with PKCE, JWT-bearer/OBO, and per-issuer discovery at `/{issuerId}/.well-known/openid-configuration`. Claims (`roles`, `groups`, `_claim_names` for the overage case, `tid`, `ver`) are configured via `JSON_CONFIG`/`tokenCallbacks`. It does not emulate Entra's URL layout, so make the issuer registry configurable per issuer (this is already the design). | MEDIUM-HIGH |
 | In-process fake issuer | (own, about 60 lines) | Unit tests | Generate an RSA key, serve a JWKS through `respx`, mint tokens with PyJWT. Fast, no container, and covers expired, wrong-aud, wrong-iss and overage cases deterministically. | HIGH |
 | respx | 0.23.1 | httpx mocking | Graph and JWKS stubs. | HIGH |
-| Hypothesis | 6.170.15 | Property tests | RBAC inheritance equivalence, diff-classifier invariants, normalise/denormalise round-trips. | HIGH |
-| Schemathesis | 4.33.1 | OpenAPI-driven API fuzz and conformance | Directly supports "every endpoint documented in OpenAPI": it fails when responses diverge from the spec. Run against each service in CI. | HIGH |
+| Hypothesis | 6.170.17 | Property tests | RBAC inheritance equivalence, diff-classifier invariants, normalise/denormalise round-trips. | HIGH |
+| Schemathesis | 4.34.3 | OpenAPI-driven API fuzz and conformance | Directly supports "every endpoint documented in OpenAPI": it fails when responses diverge from the spec. Run against each service in CI. | HIGH |
 | polyfactory | 3.5.0 | Test data | Optional. | MEDIUM |
 | ruff | 0.17.5 | Lint + format | | HIGH |
 | mypy | 2.4.1 | Type checking | Use `strict` with the Pydantic plugin. SQLAlchemy 2.1 row typing needs mypy >=1.7. `ty` 0.0.99 is still pre-1.0, so do not gate CI on it. | MEDIUM-HIGH |

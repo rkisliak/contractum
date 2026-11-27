@@ -35,7 +35,7 @@ dev = [
   "mypy==2.4.1",
   "import-linter==2.17",
   "httpx==0.29.0",
-  "schemathesis==4.34.2",
+  "schemathesis==4.34.3",
   "pytest-cov==7.1.0",
   "coverage==7.17.5",
 ]
@@ -52,7 +52,7 @@ e2e = [
   "httpx==0.29.0",
   "pyjwt[crypto]==2.15.1",
   "docker>=7.1",
-  "schemathesis==4.34.2",
+  "schemathesis==4.34.3",
 ]
 
 [tool.pytest.ini_options]

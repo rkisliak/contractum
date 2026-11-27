@@ -36,7 +36,7 @@ dev = [
     { name = "pytest-cov", specifier = "==7.1.0" },
     { name = "respx", specifier = "==0.23.1" },
     { name = "ruff", specifier = "==0.17.6" },
-    { name = "schemathesis", specifier = "==4.34.2" },
+    { name = "schemathesis", specifier = "==4.34.3" },
     { name = "testcontainers", specifier = "==4.15.0" },
 ]
 docs = [
@@ -50,7 +50,7 @@ e2e = [
     { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-asyncio", specifier = "==1.5.0" },
-    { name = "schemathesis", specifier = "==4.34.2" },
+    { name = "schemathesis", specifier = "==4.34.3" },
 ]
 
 [[package]]
@@ -1673,7 +1673,7 @@ wheels = [
 
 [[package]]
 name = "schemathesis"
-version = "4.34.2"
+version = "4.34.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1690,9 +1690,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/af/040a3eb1f8023ce182d953b6d2dc12270e03431ca20305495195cb2b7db4/schemathesis-4.34.2.tar.gz", hash = "sha256:bf5ca148c4cbedecfe3818ff869da56dc791a7546b774da7fb5139e922d32ded", size = 4149160, upload-time = "2026-11-24T11:06:29.916Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3d/29/d122613339c07f605e724e1795422a5198a7438d540a6adbb7a8d827bcae/schemathesis-4.34.3.tar.gz", hash = "sha256:f46c1430ec54258180243760e94253b4e3f33bc687dd2e3e19946db7f229f8f6", size = 4165245, upload-time = "2026-11-27T00:04:40.506Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/c2/fa9f2ff2fd4ce87ac978f0bb03eaa8154493f35ecf97f9913568d27a4324/schemathesis-4.34.2-py3-none-any.whl", hash = "sha256:51e3002699cf051005006629208f23fc7dbb120ab3c142b53342c42424880560", size = 1285712, upload-time = "2026-11-24T11:06:28.126Z" },
+    { url = "https://files.pythonhosted.org/packages/67/ea/5950e05a3247327f16fcbb38a3d67796c9387c3f004ca5c3212f7630808f/schemathesis-4.34.3-py3-none-any.whl", hash = "sha256:20860ecfc8218f872b91d7922f2b1f40f3f09ffba1930e9ef6965e3d6df5d2c6", size = 1294157, upload-time = "2026-11-27T00:04:37.89Z" },
 ]
 
 [[package]]

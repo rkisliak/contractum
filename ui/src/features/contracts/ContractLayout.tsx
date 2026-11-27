@@ -12,15 +12,12 @@ import { Skeleton } from "@/components/states";
 import { TabNav } from "@/components/Tabs";
 import { useCapabilities } from "@/features/access/useCapabilities";
 import { useFolderList } from "@/features/folders/api";
-import { ancestorIds } from "@/features/folders/tree";
+import { ancestorIds, contractDisplayName } from "@/features/folders/tree";
 import { isNotFound, problemOf } from "@/lib/unexpected";
 import { useContract } from "./api";
 
-export function contractName(
-  contract: Pick<ContractSummary, "name" | "odcs_id">,
-) {
-  return contract.name ?? contract.odcs_id;
-}
+/** The one display rule for a contract's name: its ODCS name, or its id when the name is empty. */
+export const contractName = contractDisplayName;
 
 /**
  * What the caller's role lets the contract page offer. `metadataOnly` is the API's own flag

@@ -110,6 +110,36 @@ describe("contract layout", () => {
     ).toBeVisible();
   });
 
+  it("names a contract whose name is the empty string by its ODCS id, in the title and the delete dialog", async () => {
+    const user = userEvent.setup();
+    contractPage("/contracts/c-1", {
+      contract: makeContract({ name: "" }),
+    });
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "urn:acme:ledger:orders",
+      }),
+    ).toBeVisible();
+    await user.click(
+      await screen.findByRole("button", { name: "Delete contract" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Delete urn:acme:ledger:orders?"),
+    ).toBeVisible();
+    // The type-to-confirm gate stays closed until the displayed name is typed.
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete urn:acme:ledger:orders",
+    });
+    expect(confirm).toBeDisabled();
+    await user.type(
+      within(dialog).getByRole("textbox"),
+      "urn:acme:ledger:orders",
+    );
+    expect(confirm).toBeEnabled();
+  });
+
   it("names an unnamed contract by its ODCS id and hides Document with nothing to read", async () => {
     contractPage("/contracts/c-1", {
       contract: makeContract({ name: null, latest_version: null }),

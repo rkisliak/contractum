@@ -67,3 +67,19 @@ export const folderCopy = {
   slugHelper:
     "Lowercase letters, digits and single hyphens. The slug is part of the folder path and cannot be changed later.",
 } as const;
+
+// "Show contracts in tree" strings (16-UI-SPEC Copywriting Contract). "No contracts" means only
+// "none you can see", never "this folder has none".
+export const treeCopy = {
+  toggle: "Show contracts in tree",
+  overflow: "More contracts — open folder",
+  loading: "Loading contracts",
+  empty: "No contracts",
+  error: "Could not load contracts.",
+  retry: "Retry loading",
+  notPublished: "Not published",
+  noLatest: "No Latest version",
+  /** The accessible name of a contract row: "{name}, {badges}, version {semver}". */
+  rowName: (displayName: string, badges: string, versionText: string) =>
+    `${displayName}, ${badges}, ${versionText}`,
+} as const;

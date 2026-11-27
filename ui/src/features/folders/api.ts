@@ -1,9 +1,16 @@
 // Folder reads and writes over the typed client. Every folder query key starts with "folders",
 // so one invalidation refreshes the tree, the folder page and its children after a write.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import type { components } from "@/api/schema.gen";
-import type { Folder, FolderDeletionCheck } from "@/api/types";
+import type { ApiClient } from "@/api/client";
+import type { ContractSummary, Folder, FolderDeletionCheck } from "@/api/types";
 
 type FolderPage = components["schemas"]["IdentityFolderListOut"];
 
@@ -55,6 +62,68 @@ export function useContractCount(folderId: string) {
     },
     staleTime: 60_000,
     retry: false,
+  });
+}
+
+/** One page of a folder's own contracts in the tree: the same size the Contracts column counts (D-13). */
+export const FOLDER_TREE_PAGE = CONTRACT_COUNT_PAGE;
+
+/** A folder's own contracts as the tree holds them: loading, failed, or one page and "more". */
+export type FolderContractsState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; items: ContractSummary[]; more: boolean };
+
+/**
+ * The tree query for one folder (D-02): its own contracts only (`include_subtree=false`), at most
+ * one page, in the server's order. Its key starts with "contracts", so a contract write refreshes
+ * it; it cannot share the count column's entry, which asks for the subtree.
+ */
+export function folderContractsOptions(api: ApiClient, folderId: string) {
+  return queryOptions({
+    queryKey: ["contracts", "folder-tree", folderId] as const,
+    queryFn: async () => {
+      const { data } = await api.GET("/api/v1/contracts/contracts", {
+        params: {
+          query: {
+            folder_id: folderId,
+            include_subtree: false,
+            limit: FOLDER_TREE_PAGE,
+          },
+        },
+      });
+      if (data === undefined) throw new Error("GET /contracts had no body");
+      return { items: data.items, more: data.next_cursor !== null };
+    },
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+/**
+ * One list call per folder id, keyed by folder id. The caller passes only the expanded, visible
+ * folders while "Show contracts in tree" is on; an empty array makes no request at all.
+ */
+export function useFolderContractQueries(
+  folderIds: readonly string[],
+): Record<string, FolderContractsState> {
+  const api = useApi();
+  return useQueries({
+    queries: folderIds.map((folderId) => folderContractsOptions(api, folderId)),
+    combine: (results) => {
+      const states: Record<string, FolderContractsState> = {};
+      results.forEach((result, index) => {
+        const folderId = folderIds[index];
+        if (folderId === undefined) return;
+        states[folderId] =
+          result.data !== undefined
+            ? { status: "ready", ...result.data }
+            : result.isError
+              ? { status: "error" }
+              : { status: "loading" };
+      });
+      return states;
+    },
   });
 }
 

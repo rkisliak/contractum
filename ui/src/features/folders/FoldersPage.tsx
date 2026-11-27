@@ -4,7 +4,8 @@
 // the contract count (one cached list page per visible row) in fixed columns, plus quick actions in
 // fixed slots: "Create {child kind}" where the caller may, and open.
 // "Create organization" appears for callers who may create folders at ROOT; "Show archived"
-// brings archived folders back with a badge.
+// brings archived folders back with a badge; "Show contracts in tree" lists each expanded folder's own
+// contracts under it.
 import { ArrowRight, FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Folder } from "@/api/types";
@@ -26,7 +27,7 @@ import {
   useContractCount,
   useFolderList,
 } from "./api";
-import { folderCopy } from "./copy";
+import { folderCopy, treeCopy } from "./copy";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { FolderTree, type TreeColumn } from "./FolderTree";
 import { folderName, type FolderNode } from "./tree";
@@ -37,9 +38,13 @@ type CreateTarget = { parent: Folder; childKind: string };
 export function FoldersPage({
   showArchived,
   onShowArchivedChange,
+  showContracts,
+  onShowContractsChange,
 }: {
   showArchived: boolean;
   onShowArchivedChange: (value: boolean) => void;
+  showContracts: boolean;
+  onShowContractsChange: (value: boolean) => void;
 }) {
   const list = useFolderList(showArchived);
   const root = list.data?.folders.find((folder) => folder.kind === "root");
@@ -81,6 +86,14 @@ export function FoldersPage({
             onShowArchivedChange(event.target.checked);
           }}
         />
+        <Checkbox
+          id="folders-show-contracts"
+          label={treeCopy.toggle}
+          checked={showContracts}
+          onChange={(event) => {
+            onShowContractsChange(event.target.checked);
+          }}
+        />
         {list.isError ? (
           <ProblemAlert
             problem={problemOf(list.error)}
@@ -109,6 +122,7 @@ export function FoldersPage({
             <FolderTree
               folders={list.data.folders}
               label="All folders"
+              showContracts={showContracts}
               columns={FOLDER_COLUMNS}
               actionsColumn={{ header: "Actions", width: "4.5rem" }}
               renderActions={(node, tabbable) => (

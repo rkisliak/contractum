@@ -2,7 +2,8 @@
 // read ROOT it is the single top node ("Root"), holding the organizations, then projects, then
 // teams. A folder whose parent the caller cannot read becomes a top-level node, so nothing visible
 // is ever lost.
-import type { Folder } from "@/api/types";
+import type { ContractSummary, Folder } from "@/api/types";
+import type { FolderContractsState } from "./api";
 
 export type FolderNode = {
   folder: Folder;
@@ -79,3 +80,95 @@ export function folderName(
 }
 
 export const ROOT_LABEL = "Root";
+
+/**
+ * One row of the tree when contracts are shown (D-11). `key` is unique across kinds (a prefix plus
+ * the folder or contract id), so rendering, focus and type-ahead never confuse a folder with a
+ * contract. State rows (`overflow`, `loading`, `error`, `empty`) trail the contracts of one folder.
+ */
+export type TreeRow =
+  | { kind: "folder"; key: string; depth: number; node: FolderNode }
+  | {
+      kind: "contract";
+      key: string;
+      depth: number;
+      contract: ContractSummary;
+      folderId: string;
+      /** 1-based among that folder's contracts only. */
+      position: number;
+      setSize: number;
+    }
+  | { kind: "overflow"; key: string; depth: number; folderId: string }
+  | { kind: "loading"; key: string; depth: number; folderId: string }
+  | { kind: "error"; key: string; depth: number; folderId: string }
+  | { kind: "empty"; key: string; depth: number; folderId: string };
+
+export type TreeRowKind = TreeRow["kind"];
+
+/**
+ * Flattens the expanded part of the tree in display order. With `contracts` null (the toggle is
+ * off) the rows are exactly the folder rows of `visibleNodes`. Otherwise each expanded folder emits
+ * its subfolders first, then its contracts in the server's order (never re-sorted), then one
+ * trailing state row. A folder with no entry in `contracts` emits nothing of its own.
+ */
+export function visibleRows(
+  roots: FolderNode[],
+  expanded: ReadonlySet<string>,
+  contracts: Readonly<Record<string, FolderContractsState>> | null,
+): TreeRow[] {
+  const out: TreeRow[] = [];
+  const walk = (list: FolderNode[]) => {
+    for (const node of list) {
+      const id = node.folder.id;
+      out.push({
+        kind: "folder",
+        key: `f:${id}`,
+        depth: node.depth,
+        node,
+      });
+      if (!expanded.has(id)) continue;
+      walk(node.children);
+      const state = contracts?.[id];
+      if (state === undefined) continue;
+      const depth = node.depth + 1;
+      if (state.status === "loading") {
+        out.push({ kind: "loading", key: `l:${id}`, depth, folderId: id });
+      } else if (state.status === "error") {
+        out.push({ kind: "error", key: `e:${id}`, depth, folderId: id });
+      } else {
+        state.items.forEach((contract, index) => {
+          out.push({
+            kind: "contract",
+            key: `c:${contract.id}`,
+            depth,
+            contract,
+            folderId: id,
+            position: index + 1,
+            setSize: state.items.length,
+          });
+        });
+        if (state.items.length === 0) {
+          out.push({ kind: "empty", key: `n:${id}`, depth, folderId: id });
+        } else if (state.more) {
+          out.push({ kind: "overflow", key: `o:${id}`, depth, folderId: id });
+        }
+      }
+    }
+  };
+  walk(roots);
+  return out;
+}
+
+/** The name a contract row shows: its ODCS name, or its id when the name is empty (`||`, not `??`). */
+export function contractDisplayName(
+  contract: Pick<ContractSummary, "name" | "odcs_id">,
+): string {
+  return contract.name || contract.odcs_id;
+}
+
+/** What type-ahead matches: the folder name or the contract name; state rows have none. */
+export function rowLabel(row: TreeRow): string {
+  if (row.kind === "folder") return folderName(row.node.folder);
+  if (row.kind === "contract") return contractDisplayName(row.contract);
+  return "";
+}

@@ -3,8 +3,10 @@
 // End jump, Enter opens the folder, printable keys jump by name (type-ahead). A mouse click on a row
 // expands or collapses it; the row's open action (the arrow) opens it. The current folder
 // carries aria-current="page" and its ancestors are expanded.
-import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Folder as FolderIcon } from "lucide-react";
+// With `showContracts` every expanded folder also lists its own contracts (one list call per
+// expanded folder) as treegrid rows below its subfolders; each is a real link to the contract.
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRight, FileText, Folder as FolderIcon } from "lucide-react";
 import {
   useId,
   useMemo,
@@ -14,16 +16,23 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-import type { Folder } from "@/api/types";
+import type { ContractSummary, Folder } from "@/api/types";
 import { Badge } from "@/components/Badge";
+import { Identifier } from "@/components/Identifier";
+import { Skeleton } from "@/components/states";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
 import { cx } from "@/lib/cx";
+import { useFolderContractQueries } from "./api";
+import { treeCopy } from "./copy";
 import {
   ancestorIds,
   buildFolderTree,
+  contractDisplayName,
   folderName,
   visibleNodes,
+  visibleRows,
   type FolderNode,
+  type TreeRow,
 } from "./tree";
 import styles from "./FolderTree.module.css";
 
@@ -36,7 +45,16 @@ export type TreeColumn = {
   /** Dropped when the tree is narrow (counts give way so the name keeps room). */
   collapsible?: boolean;
   render: (node: FolderNode) => ReactNode;
+  /** The cell of a contract row (with `showContracts`); empty when absent. */
+  renderContract?: (contract: ContractSummary) => ReactNode;
+  /**
+   * Under a narrow tree this collapsible column's content moves into the name cell of a contract
+   * row, so the state it carries (the lifecycle badge) is never lost.
+   */
+  narrowInline?: boolean;
 };
+
+const NO_FOLDERS: readonly string[] = [];
 
 export type FolderTreeProps = {
   folders: Folder[];
@@ -56,6 +74,14 @@ export type FolderTreeProps = {
    * stop, so Tab moves from the focused row into its actions and arrows keep moving rows.
    */
   renderActions?: (node: FolderNode, tabbable: boolean) => ReactNode;
+  /**
+   * Lists each expanded folder's own contracts under its subfolders. Every folder is then
+   * expandable (its contracts are unknown until its list call returns). Off by default: the tree
+   * then makes no contract request and renders only folders.
+   */
+  showContracts?: boolean;
+  /** The accessible name of a contract row; defaults to its display name. */
+  contractLabel?: (contract: ContractSummary) => string;
 };
 
 export function FolderTree({
@@ -66,6 +92,8 @@ export function FolderTree({
   columns,
   actionsColumn,
   renderActions,
+  showContracts = false,
+  contractLabel,
 }: FolderTreeProps) {
   const navigate = useNavigate();
   const treeId = useId();
@@ -97,6 +125,34 @@ export function FolderTree({
     () => visibleNodes(roots, expanded),
     [roots, expanded],
   );
+  // The expanded folders on screen are the ones whose contracts are fetched (D-03): none when the
+  // toggle is off, so the tree then makes no list call at all.
+  const openFolderIds = useMemo(
+    () =>
+      showContracts
+        ? visible
+            .filter((node) => expanded.has(node.folder.id))
+            .map((node) => node.folder.id)
+        : NO_FOLDERS,
+    [showContracts, visible, expanded],
+  );
+  const folderContracts = useFolderContractQueries(openFolderIds);
+  const rows = useMemo(
+    () => visibleRows(roots, expanded, showContracts ? folderContracts : null),
+    [roots, expanded, showContracts, folderContracts],
+  );
+  // aria-setsize and aria-posinset of a folder row count its sibling folders only.
+  const siblings = useMemo(() => {
+    const info = new Map<string, { position: number; size: number }>();
+    const walk = (list: FolderNode[]) => {
+      list.forEach((node, index) => {
+        info.set(node.folder.id, { position: index + 1, size: list.length });
+        walk(node.children);
+      });
+    };
+    walk(roots);
+    return info;
+  }, [roots]);
   const tabStop =
     visible.find((node) => node.folder.id === focusedId)?.folder.id ??
     visible.find((node) => node.folder.id === currentId)?.folder.id ??
@@ -132,6 +188,7 @@ export function FolderTree({
     const index = visible.findIndex((candidate) => candidate.folder.id === id);
     const isOpen = expanded.has(id);
     const hasChildren = node.children.length > 0;
+    const expandable = showContracts || hasChildren;
     let handled = true;
     switch (event.key) {
       case "ArrowDown": {
@@ -145,12 +202,12 @@ export function FolderTree({
         break;
       }
       case "ArrowRight":
-        if (hasChildren && !isOpen) toggle(id, true);
+        if (expandable && !isOpen) toggle(id, true);
         else if (hasChildren && node.children[0])
           focusItem(node.children[0].folder.id);
         break;
       case "ArrowLeft":
-        if (hasChildren && isOpen) toggle(id, false);
+        if (expandable && isOpen) toggle(id, false);
         else if (node.folder.parent_id && expandedParent(node, visible))
           focusItem(node.folder.parent_id);
         break;
@@ -194,7 +251,7 @@ export function FolderTree({
     // A click anywhere on the row (name, icon, chevron, facts) expands or collapses it; the row's
     // open action (the arrow) and the keyboard (Enter, Space) open the folder.
     setFocusedId(node.folder.id);
-    if (node.children.length > 0) toggle(node.folder.id);
+    if (showContracts || node.children.length > 0) toggle(node.folder.id);
   }
 
   // The APG treegrid: a flat list of rows carrying aria-level/setsize/posinset, each with a name
@@ -203,108 +260,208 @@ export function FolderTree({
   // is named by its folder name only (aria-labelledby).
   const cols = columns ?? [];
   const hasActions = renderActions !== undefined;
-  function renderItems(list: FolderNode[]): ReactNode[] {
-    return list.flatMap((node, position) => {
-      const { folder } = node;
-      const hasChildren = node.children.length > 0;
-      const isOpen = expanded.has(folder.id);
-      const current = folder.id === currentId;
-      return [
-        <div
-          key={folder.id}
-          id={domId(folder.id)}
-          role="row"
-          aria-level={node.depth + 1}
-          aria-setsize={list.length}
-          aria-posinset={position + 1}
-          aria-expanded={hasChildren ? isOpen : undefined}
-          aria-selected={current}
-          aria-current={current ? "page" : undefined}
-          aria-labelledby={`${domId(folder.id)}-label`}
-          tabIndex={folder.id === tabStop ? 0 : -1}
-          className={cx(styles.gridRow, styles.item, current && styles.current)}
-          onKeyDown={(event) => {
-            onKeyDown(event, node);
-          }}
-          onClick={(event) => {
-            onClick(event, node);
-          }}
-          onFocus={(event) => {
-            if (event.target === event.currentTarget) setFocusedId(folder.id);
-          }}
-        >
+  const indent = (depth: number): CSSProperties => ({
+    paddingInlineStart: `calc(${String(depth)} * var(--spacing-3))`,
+  });
+
+  function renderFolderRow(row: Extract<TreeRow, { kind: "folder" }>) {
+    const { node } = row;
+    const { folder } = node;
+    const hasChildren = node.children.length > 0;
+    const expandable = showContracts || hasChildren;
+    const isOpen = expanded.has(folder.id);
+    const current = folder.id === currentId;
+    const sibling = siblings.get(folder.id);
+    return (
+      <div
+        key={row.key}
+        id={domId(folder.id)}
+        role="row"
+        aria-level={node.depth + 1}
+        aria-setsize={sibling?.size}
+        aria-posinset={sibling?.position}
+        aria-expanded={expandable ? isOpen : undefined}
+        aria-selected={current}
+        aria-current={current ? "page" : undefined}
+        aria-labelledby={`${domId(folder.id)}-label`}
+        tabIndex={folder.id === tabStop ? 0 : -1}
+        className={cx(styles.gridRow, styles.item, current && styles.current)}
+        onKeyDown={(event) => {
+          onKeyDown(event, node);
+        }}
+        onClick={(event) => {
+          onClick(event, node);
+        }}
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) setFocusedId(folder.id);
+        }}
+      >
+        <span role="gridcell" className={styles.row} style={indent(node.depth)}>
           <span
-            role="gridcell"
-            className={styles.row}
-            style={{
-              paddingInlineStart: `calc(${String(node.depth)} * var(--spacing-3))`,
-            }}
+            className={cx(styles.toggle, !expandable && styles.leaf)}
+            data-tree-toggle={expandable ? "" : undefined}
+            aria-hidden="true"
           >
-            <span
-              className={cx(styles.toggle, !hasChildren && styles.leaf)}
-              data-tree-toggle={hasChildren ? "" : undefined}
-              aria-hidden="true"
-            >
-              {hasChildren ? (
-                <ChevronRight
-                  size={12}
-                  strokeWidth={2}
-                  className={cx(styles.chevron, isOpen && styles.open)}
-                />
-              ) : null}
-            </span>
-            <FolderIcon
-              size={14}
-              strokeWidth={2}
-              aria-hidden="true"
-              className={styles.folderIcon}
-            />
-            <span
-              id={`${domId(folder.id)}-label`}
-              className={styles.label}
-              title={folderName(folder)}
-            >
-              {folder.archived ? (
-                // The clip pattern is position: absolute, which makes the hidden span a block, and
-                // the accessible name puts a space around a block ("Old , archived"). The hidden
-                // span therefore carries the whole name and the visible one is hidden from it.
-                <>
-                  <span aria-hidden="true">{folderName(folder)}</span>
-                  <VisuallyHidden>{`${folderName(folder)}, archived`}</VisuallyHidden>
-                </>
-              ) : (
-                folderName(folder)
-              )}
-            </span>
-            {folder.archived ? (
-              <span className={styles.badge} aria-hidden="true">
-                <Badge intent="neutral">Archived</Badge>
-              </span>
+            {expandable ? (
+              <ChevronRight
+                size={12}
+                strokeWidth={2}
+                className={cx(styles.chevron, isOpen && styles.open)}
+              />
             ) : null}
           </span>
-          {cols.map((column) => (
-            <span
-              key={column.id}
-              role="gridcell"
-              className={cx(styles.cell, column.align === "end" && styles.end)}
-              data-collapsible={column.collapsible ? "" : undefined}
-            >
-              {column.render(node)}
-            </span>
-          ))}
-          {hasActions ? (
-            <span
-              role="gridcell"
-              className={cx(styles.cell, styles.end, styles.actions)}
-              data-tree-action=""
-            >
-              {renderActions(node, folder.id === tabStop)}
+          <FolderIcon
+            size={14}
+            strokeWidth={2}
+            aria-hidden="true"
+            className={styles.folderIcon}
+          />
+          <span
+            id={`${domId(folder.id)}-label`}
+            className={styles.label}
+            title={folderName(folder)}
+          >
+            {folder.archived ? (
+              // The clip pattern is position: absolute, which makes the hidden span a block, and
+              // the accessible name puts a space around a block ("Old , archived"). The hidden
+              // span therefore carries the whole name and the visible one is hidden from it.
+              <>
+                <span aria-hidden="true">{folderName(folder)}</span>
+                <VisuallyHidden>{`${folderName(folder)}, archived`}</VisuallyHidden>
+              </>
+            ) : (
+              folderName(folder)
+            )}
+          </span>
+          {folder.archived ? (
+            <span className={styles.badge} aria-hidden="true">
+              <Badge intent="neutral">Archived</Badge>
             </span>
           ) : null}
-        </div>,
-        ...(hasChildren && isOpen ? renderItems(node.children) : []),
-      ];
-    });
+        </span>
+        {cols.map((column) => (
+          <span
+            key={column.id}
+            role="gridcell"
+            className={cx(styles.cell, column.align === "end" && styles.end)}
+            data-collapsible={column.collapsible ? "" : undefined}
+          >
+            {column.render(node)}
+          </span>
+        ))}
+        {hasActions ? (
+          <span
+            role="gridcell"
+            className={cx(styles.cell, styles.end, styles.actions)}
+            data-tree-action=""
+          >
+            {renderActions(node, folder.id === tabStop)}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  // A contract is a treegrid row one level below its folder (the treegrid's "treeitem"): its name
+  // is a real link, so click, middle-click and the context menu all open the contract.
+  function renderContractRow(row: Extract<TreeRow, { kind: "contract" }>) {
+    const { contract } = row;
+    const rowId = `${treeId}-${row.key}`;
+    const displayName = contractDisplayName(contract);
+    const named = contract.name !== null && contract.name !== "";
+    return (
+      <div
+        key={row.key}
+        id={rowId}
+        role="row"
+        aria-level={row.depth + 1}
+        aria-setsize={row.setSize}
+        aria-posinset={row.position}
+        aria-labelledby={`${rowId}-label`}
+        tabIndex={-1}
+        className={cx(styles.gridRow, styles.contractRow)}
+      >
+        <span role="gridcell" className={styles.row} style={indent(row.depth)}>
+          <span className={cx(styles.toggle, styles.leaf)} aria-hidden="true" />
+          <FileText
+            size={14}
+            strokeWidth={2}
+            aria-hidden="true"
+            className={styles.folderIcon}
+          />
+          <VisuallyHidden id={`${rowId}-label`}>
+            {contractLabel?.(contract) ?? displayName}
+          </VisuallyHidden>
+          <span className={styles.label} title={displayName}>
+            <Link
+              to="/contracts/$contractId"
+              params={{ contractId: contract.id }}
+              tabIndex={-1}
+              className={cx(styles.contractLink, !named && styles.muted)}
+            >
+              {named ? displayName : <Identifier value={displayName} />}
+            </Link>
+          </span>
+        </span>
+        {cols.map((column) => (
+          <span
+            key={column.id}
+            role="gridcell"
+            className={cx(styles.cell, column.align === "end" && styles.end)}
+            data-collapsible={column.collapsible ? "" : undefined}
+          >
+            {column.renderContract?.(contract) ?? null}
+          </span>
+        ))}
+        {hasActions ? (
+          <span
+            role="gridcell"
+            className={cx(styles.cell, styles.end, styles.actions)}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  // Loading, empty, error and overflow rows trail the contracts of one folder. Loading and empty
+  // are not focusable; error and overflow are plain text for now.
+  function renderStateRow(
+    row: Exclude<TreeRow, { kind: "folder" | "contract" }>,
+  ) {
+    return (
+      <div
+        key={row.key}
+        role="row"
+        aria-level={row.depth + 1}
+        className={cx(styles.gridRow, styles.stateRow)}
+      >
+        <span role="gridcell" className={styles.row} style={indent(row.depth)}>
+          <span className={cx(styles.toggle, styles.leaf)} aria-hidden="true" />
+          {row.kind === "loading" ? (
+            <Skeleton label="contracts" />
+          ) : (
+            <span className={styles.muted}>
+              {row.kind === "empty"
+                ? treeCopy.empty
+                : row.kind === "error"
+                  ? treeCopy.error
+                  : treeCopy.overflow}
+            </span>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  function renderRow(row: TreeRow): ReactNode {
+    switch (row.kind) {
+      case "folder":
+        return renderFolderRow(row);
+      case "contract":
+        return renderContractRow(row);
+      default:
+        return renderStateRow(row);
+    }
   }
 
   if (roots.length === 0) return null;
@@ -351,7 +508,7 @@ export function FolderTree({
           </span>
         ) : null}
       </div>
-      {renderItems(roots)}
+      {rows.map(renderRow)}
     </div>
   );
 }

@@ -6,8 +6,12 @@ import type { FolderContractsState } from "./api";
 import {
   ancestorIds,
   buildFolderTree,
+  firstChildKey,
   folderName,
+  isFocusableRow,
+  parentFolderKey,
   rowLabel,
+  typeAheadKey,
   visibleNodes,
   visibleRows,
 } from "./tree";
@@ -230,5 +234,121 @@ describe("visibleRows", () => {
     );
     expect(rows.slice(4).map(rowLabel)).toEqual(["Orders", "urn:b", "urn:c"]);
     expect(rowLabel(rows[0] as never)).toBe("Acme");
+  });
+});
+
+describe("keyboard helpers over the row model", () => {
+  const roots = buildFolderTree([acme, payments, ledger, fraud]);
+  const open = new Set(["acme", "payments", "ledger"]);
+  const rowsOf = (state: Record<string, FolderContractsState>) =>
+    visibleRows(roots, open, state);
+  const at = (rows: ReturnType<typeof visibleRows>, key: string) => {
+    const found = rows.find((row) => row.key === key);
+    if (found === undefined) throw new Error(`no row ${key}`);
+    return found;
+  };
+
+  it("treats folder, contract, overflow and error rows as focusable and loading and empty as not", () => {
+    const withMore = rowsOf(ready([contract("a")], true));
+    expect(withMore.map(isFocusableRow)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(isFocusableRow(at(withMore, "o:ledger"))).toBe(true);
+    expect(
+      isFocusableRow(at(rowsOf({ ledger: { status: "error" } }), "e:ledger")),
+    ).toBe(true);
+    expect(
+      isFocusableRow(at(rowsOf({ ledger: { status: "loading" } }), "l:ledger")),
+    ).toBe(false);
+    expect(isFocusableRow(at(rowsOf(ready([])), "n:ledger"))).toBe(false);
+  });
+
+  it("names the folder row as the parent of a contract, overflow, error, loading or empty row", () => {
+    const rows = rowsOf(ready([contract("a")], true));
+    expect(parentFolderKey(at(rows, "c:a"), rows)).toBe("f:ledger");
+    expect(parentFolderKey(at(rows, "o:ledger"), rows)).toBe("f:ledger");
+    expect(
+      parentFolderKey(
+        at(rowsOf({ ledger: { status: "error" } }), "e:ledger"),
+        rows,
+      ),
+    ).toBe("f:ledger");
+    expect(
+      parentFolderKey(
+        at(rowsOf({ ledger: { status: "loading" } }), "l:ledger"),
+        rows,
+      ),
+    ).toBe("f:ledger");
+    expect(parentFolderKey(at(rowsOf(ready([])), "n:ledger"), rows)).toBe(
+      "f:ledger",
+    );
+  });
+
+  it("names the parent folder row of a folder row when that row is visible, else null", () => {
+    const rows = rowsOf(ready([]));
+    expect(parentFolderKey(at(rows, "f:ledger"), rows)).toBe("f:payments");
+    expect(parentFolderKey(at(rows, "f:payments"), rows)).toBe("f:acme");
+    // Acme's parent is not in the list at all.
+    expect(parentFolderKey(at(rows, "f:acme"), rows)).toBeNull();
+    // A folder whose parent row is not among the rows has no parent to go to.
+    const partial = rows.filter((row) => row.key !== "f:payments");
+    expect(parentFolderKey(at(partial, "f:ledger"), partial)).toBeNull();
+  });
+
+  it("finds the first focusable row directly under an open folder, a subfolder before a contract", () => {
+    const rows = visibleRows(roots, new Set(["acme", "payments"]), {
+      payments: { status: "ready", items: [contract("p")], more: false },
+    });
+    expect(firstChildKey("f:payments", rows)).toBe("f:fraud");
+    expect(firstChildKey("f:acme", rows)).toBe("f:payments");
+    const team = rowsOf(ready([contract("a"), contract("b")]));
+    expect(firstChildKey("f:ledger", team)).toBe("c:a");
+  });
+
+  it("does not look past the folder's own children", () => {
+    const rows = rowsOf(ready([contract("a")]));
+    // Fraud is a leaf folder and its next row is Ledger, a sibling.
+    expect(firstChildKey("f:fraud", rows)).toBeNull();
+  });
+
+  it("gives null for a folder whose only child row is loading or empty, or that has no rows", () => {
+    expect(
+      firstChildKey("f:ledger", rowsOf({ ledger: { status: "loading" } })),
+    ).toBeNull();
+    expect(firstChildKey("f:ledger", rowsOf(ready([])))).toBeNull();
+    expect(firstChildKey("f:ledger", rowsOf({}))).toBeNull();
+    expect(firstChildKey("f:missing", rowsOf({}))).toBeNull();
+  });
+
+  it("gives an error row as the first child of a folder whose list failed", () => {
+    expect(
+      firstChildKey("f:ledger", rowsOf({ ledger: { status: "error" } })),
+    ).toBe("e:ledger");
+  });
+
+  it("type-ahead finds the next focusable row starting with the character, wrapping, case-insensitive", () => {
+    const rows = rowsOf(
+      ready([contract("o1", "Orders"), contract("o2", "outbox")]),
+    );
+    const index = (key: string) => rows.findIndex((row) => row.key === key);
+    expect(typeAheadKey(rows, index("f:acme"), "o")).toBe("c:o1");
+    expect(typeAheadKey(rows, index("c:o1"), "O")).toBe("c:o2");
+    // Wraps past the end back to the first match and may land on the starting row.
+    expect(typeAheadKey(rows, index("c:o2"), "o")).toBe("c:o1");
+    expect(typeAheadKey(rows, index("c:o1"), "a")).toBe("f:acme");
+    expect(typeAheadKey(rows, index("c:o1"), "z")).toBeNull();
+  });
+
+  it("type-ahead skips loading and empty rows", () => {
+    const loading = rowsOf({ ledger: { status: "loading" } });
+    expect(typeAheadKey(loading, 0, "l")).toBe("f:ledger");
+    expect(typeAheadKey(loading, 0, "x")).toBeNull();
+    const empty = rowsOf(ready([]));
+    expect(typeAheadKey(empty, 0, "n")).toBeNull();
   });
 });

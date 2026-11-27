@@ -172,3 +172,27 @@ export function rowLabel(row: TreeRow): string {
   if (row.kind === "contract") return contractDisplayName(row.contract);
   return "";
 }
+
+// RED stubs: the real helpers arrive in the GREEN commit.
+export function isFocusableRow(_row: TreeRow): boolean {
+  return false;
+}
+export function parentFolderKey(
+  _row: TreeRow,
+  _rows: readonly TreeRow[],
+): string | null {
+  return null;
+}
+export function firstChildKey(
+  _folderKey: string,
+  _rows: readonly TreeRow[],
+): string | null {
+  return null;
+}
+export function typeAheadKey(
+  _rows: readonly TreeRow[],
+  _fromIndex: number,
+  _char: string,
+): string | null {
+  return null;
+}

@@ -99,7 +99,9 @@ date), **Unpublish version** and **Republish version**.
 The Policy Manager role is given at a folder and covers everything below it. It reads contract
 metadata but not contract content.
 A contract you can see as metadata only opens with a notice and without the **Document**,
-**Versions** and **Diff** tabs.
+**Drafts**, **Versions**, **Diff** and **Subscribers** tabs. A link to one of those tabs shows the same
+notice. Facts taken from the contract content (domain, tags, ODCS apiVersion) read "Not available at
+your access level", because they are hidden, not empty.
 
 ![The rule set editor with a rule's JSONPath target and CEL condition](../images/ui/rule-set-editor.png)
 

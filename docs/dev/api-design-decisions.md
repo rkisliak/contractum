@@ -358,7 +358,7 @@ set. How the pieces fit, with the section that specifies each:
 | Baseline under the lock | Contracts sends the baseline, the floor and caller-scoped link facts with every run and re-checks the baseline under the publish lock: 409 `baseline-changed` | "Versions and lifecycle": "Publish compatibility" |
 | Reference facts and cel-2 | Before rules run, elements, servers, contract links, people and teams are resolved into the tri-state `refs` binding; `cel-2` rules also read `previous` and `changes`; published `cel-1` versions evaluate as before | "Validation runs and reports": "Reference facts" |
 | Seeded semantic sets | `odcs-consistency` and `odcs-references`, platform scope, mandatory, in warn grace for `DC_MANDATORY_WARN_DAYS` after migration 0006 (set the variable on `validation-migrate` too); a Global Policy Manager can enforce them early | "Mandatory rule sets and enforcement" |
-| Publication status | `odcs-publication` (platform scope, mandatory, warn grace like the semantic sets). Version 1 (migration 0009) holds the warning `published-status-active`. Version 2 (migration 0010) adds the error `released-status-active`: a released version (no prerelease part) published with an ODCS `status` other than `active` is refused once version 2 is enforced; a prerelease (Preview) publish keeps the warning; draft saves and validations never show either | "Mandatory rule sets and enforcement"; "The `ctx.operation` binding" |
+| Publication status | `odcs-publication` (platform scope, mandatory, warn grace like the semantic sets). Version 1 (migration 0009) holds the warning `published-status-active`. Version 2 (migration 0010) adds the error `released-status-active`. Once version 2 is enforced, it refuses a released version (no prerelease part) whose ODCS `status` is not `active`. A prerelease (Preview) publish keeps the warning. Draft saves and validations show neither | "Mandatory rule sets and enforcement"; "The `ctx.operation` binding" |
 | Stored report and changelog | `GET .../versions/{ref}/validation-report` returns the report a version was published with; `GET .../contracts/{contract_id}/diff?from=&to=` classifies the changes between any two readable versions or drafts on the fly | "Versions and lifecycle": "Stored validation reports", "Changelog between two versions" |
 | Rule impact | `POST /api/v1/contracts/governance/rule-set-dry-runs` (would a rule-set version, published or draft, block the published contracts in scope) and `GET /api/v1/contracts/governance/drift?folder_id=` (which published contracts fail the rules now in force); paged, content-free, no state change | "Versions and lifecycle": "Rule impact: dry-runs and compliance drift" |
 | Breaking-change notices | A card pinned to a version the new publish breaks also gets `contract.version.breaking_published`, listing the breaking changes per pinned version | "Subscriber cards": "Breaking-change notices" |
@@ -592,8 +592,8 @@ migration.
 
 **A released version needs `status: active`.** Migration
 `0009_seed_publication_rule_set` seeds `odcs-publication` (cel-2, mandatory, platform scope, same
-warn grace and `DC_MANDATORY_WARN_DAYS` rule as above) with one rule, `published-status-active`,
-severity `warning`: it fires only in a publish-mode run whose document's ODCS `status` is not the
+warn grace and `DC_MANDATORY_WARN_DAYS` rule as above). Its one rule, `published-status-active`, has
+severity `warning`. It fires only in a publish-mode run whose document's ODCS `status` is not the
 string `active` (`draft`, `proposed`, `deprecated`, absent or any other type). Migration
 `0010_publication_rule_set_v2` publishes version 2 the way every new version of a mandatory set is
 published: `publish_counter` 2, the draft becomes the new content, `enforce_at = now() +

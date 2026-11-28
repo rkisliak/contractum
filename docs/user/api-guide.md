@@ -167,6 +167,10 @@ A contract has drafts and published versions.
   change again.
 - The document's top-level `version` must be a quoted SemVer 2.0.0 string of at most 255 characters,
   such as `"1.4.0"`, and higher than every earlier version of the contract. A version number is never reused.
+- A released version (no prerelease part, such as `"1.4.0"`) must declare `status: active`. A
+  prerelease such as `"1.4.0-rc.1"` may keep `draft` or `proposed` and gets a warning. The platform
+  rule set `odcs-publication` checks this: a refused publish names `released-status-active` in its
+  report. Like every new mandatory version, the check warns during its grace period, then blocks.
 
 Every published version has a status, computed on every read:
 

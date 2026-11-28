@@ -83,7 +83,9 @@ byte for byte, exactly as written.
 - **Validate**: checks the draft against the ODCS JSON Schema and every rule set that applies to the
   folder.
 - **Publish**: opens the publish dialog. Save first. A new version above the Latest is published as
-  a Preview; promote it from the **Versions** tab to make it the Latest.
+  a Preview; promote it from the **Versions** tab to make it the Latest. A released version, such
+  as 1.2.0, needs `status: active` in the document. A prerelease, such as 1.2.0-rc.1, can keep
+  `status: draft` and gets a warning.
   - When the saved document does not say `status: active`, the dialog shows a warning first. For a
     released version, **Publish** stays disabled.
   - **Change status to active** rewrites only the `status` value in the editor. Review the change,

@@ -228,7 +228,7 @@ a version early, move its `enforce_at` date, or pause the whole set (see
 | `odcs-structural` (`cel-1`) | `property-names-unique` (error), `schema-names-unique` (error), `primary-key-positions-valid` (error), `logical-type-option-bounds` (warning) | Mandatory, **enforced from version 1** |
 | `odcs-consistency` (`cel-2`) | `logical-physical-coherent`, `partition-key-position`, `pii-needs-classification`, `pii-needs-retention` (warnings); `primary-key-required-unique`, `quality-element-resolves`, `relationship-target-resolves`, `sla-element-resolves` (errors) | Mandatory, starts in **warn** for `DC_MANDATORY_WARN_DAYS` |
 | `odcs-references` (`cel-2`) | `linked-contract-published`, `server-reference-exists` (errors); `team-exists`, `team-member-exists` (warnings) | Mandatory, starts in **warn** |
-| `odcs-publication` (`cel-2`) | `published-status-active` (warning): at publish, the document's ODCS `status` is `active` | Mandatory, starts in **warn**; a warning, so it **never blocks**, even after enforcement |
+| `odcs-publication` (`cel-2`) | Version 1: `published-status-active` (warning): at publish, the document's ODCS `status` is `active`. Version 2 adds `released-status-active` (error): a released version (no prerelease part) needs `status: active`; `published-status-active` then judges only prerelease (Preview) publishes | Mandatory; each version starts in **warn**. After version 2 is enforced, a released version without `status: active` is blocked |
 
 Every run also checks the official ODCS JSON Schema first (the `structural` part of the report).
 A schema violation always makes a contract unpublishable.
@@ -515,9 +515,10 @@ appear.
 `cel-2` rules also read `ctx.operation`, `"publish"` in the publish gate (and in the batch dry-run
 and drift evaluations, which judge stored versions as the gate would) and `"save"` in a draft save
 and every on-demand validation. It is the run's server-side mode, never a caller value, and
-`cel-1` rules never see it. The seeded set `odcs-publication` uses it: its warning
-`published-status-active` fires only in publish runs, covers Latest and Preview, and never blocks
-(only error-severity findings block).
+`cel-1` rules never see it. The seeded set `odcs-publication` uses it: its rules fire only in
+publish runs. Version 2 also reads the document's own ODCS `version`, which is the SemVer contracts
+publishes. A released version without `status: active` is the error `released-status-active`. A
+prerelease one gets the warning `published-status-active`.
 
 The seeded sets `odcs-consistency` (cross-field: keys, PII, type coherence, element references)
 and `odcs-references` (links, teams, members, servers) use these bindings.

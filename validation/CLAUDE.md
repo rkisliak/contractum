@@ -49,7 +49,7 @@ that the app's `sys.modules` never holds the engine. `uv run lint-imports` enfor
 - `src/dc_validation/models.py` (`RuleSet`, `RuleSetVersion`, `ValidationRun`, outbox model),
   `migrate.py`, `migrations/` (0001 baseline, 0002 rule sets, 0003 mandatory, 0004 validation runs,
   0005 platform seed, 0006 semantic platform sets, 0007 pause, 0008 folder purge guard, 0009
-  publication platform set).
+  publication platform set, 0010 publication set version 2).
 - `src/dc_validation/sandbox.py` (Plans 05-03, 05-04): `Sandbox`, `sandbox_hook` (the lifespan
   hook), `SandboxBusy` (503 `validation-unavailable`, `Retry-After: 1`) and `SandboxUnavailable`.
   Workers spawn lazily, speak JSON lines (`dc_rules.protocol`), are recycled after
@@ -80,8 +80,8 @@ that the app's `sys.modules` never holds the engine. `uv run lint-imports` enfor
   Reference facts (Plan 06-07): `DC_MAX_REFS_PER_KIND` (200 references resolved per kind, the rest
   `unverifiable`), `DC_PRINCIPAL_CACHE_TTL_S` (45; identity's definite answers per caller).
   Governance: `DC_MANDATORY_WARN_DAYS` (14; `0` enforces at once; negative is refused at start-up;
-  also read by `validation-migrate`, because migration 0006 stamps the seeded sets' `enforce_at`
-  with it, so set it on both or on neither).
+  also read by `validation-migrate`, because migrations 0006, 0009 and 0010 stamp the seeded sets'
+  `enforce_at` with it, so set it on both or on neither).
   Sizes: `DC_MAX_DRAFT_BYTES`, `DC_MAX_DOCUMENT_BYTES`, `DC_MAX_FINDINGS`, `DC_MAX_ATTACHMENTS`,
   `DC_MAX_ADHOC_RULE_SETS`. Rule limits are the `dc_rules.ports.Limits` fields under the same names
   (`max_expression_bytes`, `max_target_chars`, `max_rules_per_set`, `max_compiled_bytes`,
@@ -196,6 +196,18 @@ that the app's `sys.modules` never holds the engine. `uv run lint-imports` enfor
   (D-124), in warn grace and after `enforce_at` alike, so enforcing it only changes the finding's
   mode; ROOT pause and reschedule apply as for the other platform sets. The message is static text.
   Never edit the constant (hash pinned in `test_seed_rules.py`).
+  Version 2 (quick 261128-rsa): `seed.ODCS_PUBLICATION_V2`, migration `0010_publication_rule_set_v2`,
+  rolled out like any new version of a mandatory set (`publish_counter` 2, the draft becomes the V2
+  content, `enforce_at = now() + DC_MANDATORY_WARN_DAYS`, one `ruleset.version_published` event; the
+  set description is updated too). It adds the **error** rule `released-status-active`: at publish, a
+  released version (no prerelease part) needs ODCS `status: active`, a missing status included.
+  `published-status-active` stays a warning and judges only prerelease (Preview) publishes. Both read
+  the document's own ODCS `version`, which is the SemVer contracts publishes (it gates the exact
+  stored bytes and re-checks their hash under the lock), so no ctx field was added; only a string
+  shaped like a SemVer prerelease (`^[0-9]+[.][0-9]+[.][0-9]+-`) counts as a Preview, anything else
+  is judged as a release (fail closed). In grace v1 and v2 both report (non-blocking `warn`); once v2
+  is enforced v1 drops out and the error blocks. Never edit the constant (hash pinned in
+  `test_seed_rules.py`).
 
 - Folder usage and purge (quick 261119-0v1; `folder_purge.py`, `api/folder_usage.py`): identity calls
   `GET /internal/v1/validation/folders/{id}/usage` (counts only: mandatory folder rule sets are in use and
@@ -207,7 +219,7 @@ that the app's `sys.modules` never holds the engine. `uv run lint-imports` enfor
 - Grace period at runtime (quick 261120-0ye, D-34): `runtime_settings.py` (`effective_warn_days`, `settings_client_hook`) reads the
   stored `governance.mandatory_warn_days` with the caller's bearer (30 s cache, last good value, else `DC_MANDATORY_WARN_DAYS`) at
   the two runtime call sites (`PUT /rule-sets/{id}/mandatory` and publishing a version of a mandatory set, `publish_rule_set(...,
-  warn_days=)`). Migrations 0006 and 0009 keep reading the env value. About reports the env default.
+  warn_days=)`). Migrations 0006, 0009 and 0010 keep reading the env value. About reports the env default.
 
 ## Tests
 

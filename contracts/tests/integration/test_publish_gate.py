@@ -28,12 +28,12 @@ Sql = Callable[..., list[dict[str, Any]]]
 CONTRACTS = "/api/v1/contracts/contracts"
 
 
-def doc(odcs_id: str, *names: str, version: str = "1.0.0") -> bytes:
+def doc(odcs_id: str, *names: str, version: str = "1.0.0", status: str = "active") -> bytes:
     """A conformant ODCS v3.2.0 document with one table holding the named properties."""
     props = "".join(f"      - name: {n}\n        logicalType: string\n" for n in names)
     return (
         f'apiVersion: v3.2.0\nkind: DataContract\nid: {odcs_id}\nversion: "{version}"\n'
-        f"status: draft\nname: Orders\nschema:\n  - name: orders\n    properties:\n{props}"
+        f"status: {status}\nname: Orders\nschema:\n  - name: orders\n    properties:\n{props}"
     ).encode()
 
 
@@ -427,10 +427,12 @@ def pins_of_row(row: dict[str, Any]) -> list[dict[str, Any]]:
 SEMANTIC_PINS = [
     ("odcs-consistency", 1, "mandatory", "warn"),
     ("odcs-publication", 1, "mandatory", "warn"),
+    ("odcs-publication", 2, "mandatory", "warn"),
     ("odcs-references", 1, "mandatory", "warn"),
 ]
 PLATFORM_PIN_NAMES = [
     "odcs-consistency",
+    "odcs-publication",
     "odcs-publication",
     "odcs-references",
     "odcs-structural",
@@ -711,6 +713,113 @@ async def test_a_version_published_before_the_phase_shows_null_pins(
         assert {k: old.json()[k] for k in PIN_FIELDS} == dict.fromkeys(PIN_FIELDS)
         assert new.json()["validation_run_id"] is not None
         assert new.json()["pinned_rule_sets"] == []
+
+
+# -- a released version needs ODCS status: active (quick 261128-rsa) ----------------------------
+
+PUBLICATION_SET = "8285c164-893d-4088-bd46-c517186d3d5f"  # seed.PLATFORM_ODCS_PUBLICATION_ID
+RELEASED_KEY = "released-status-active"
+PREVIEW_KEY = "published-status-active"
+
+
+def publication_findings(report: dict[str, Any]) -> list[tuple[int, str, str, bool]]:
+    """(rule-set version, rule key, mode, blocking) of every odcs-publication finding."""
+    return [
+        (f["rule_set"]["version"], f["rule_key"], f["mode"], f["blocking"])
+        for f in report["findings"]
+        if f["rule_set"]["name"] == "odcs-publication"
+    ]
+
+
+async def stored_report(stack: Any, contract: str, semver: str, token: str) -> dict[str, Any]:
+    response = await stack.client.get(
+        f"{CONTRACTS}/{contract}/versions/{semver}/validation-report", headers=bearer(token)
+    )
+    assert response.status_code == 200, response.text
+    report: dict[str, Any] = response.json()["report"]
+    return report
+
+
+async def test_a_released_version_without_status_active_warns_in_grace_and_is_blocked_after(
+    make_stack: MakeStack, sql: Sql
+) -> None:
+    async with make_stack(platform_seed=True) as stack:
+        chain = await stack.chain()
+        ed = await editor(stack, chain.team)
+
+        # In warn grace (version 2's enforce_at is DC_MANDATORY_WARN_DAYS ahead): it publishes,
+        # and the stored report carries the non-blocking error next to the version 1 warning.
+        graced_id = new_id()
+        contract, draft, etag = await stack.create_contract(
+            chain.team, doc(graced_id, "id", status="draft"), token=ed
+        )
+        graced = await stack.publish(contract, draft, etag, token=ed)
+        assert graced.status_code == 201, graced.text
+        report = await stored_report(stack, contract, "1.0.0", ed)
+        assert publication_findings(report) == [
+            (1, PREVIEW_KEY, "warn", False),
+            (2, RELEASED_KEY, "warn", False),
+        ]
+
+        # A Global admin enforces version 2 now through the ROOT platform route.
+        enforced = await stack.validation.post(
+            f"/api/v1/validation/folders/{stack.root_id}/platform-rule-sets/"
+            f"{PUBLICATION_SET}/versions/2/enforce-now",
+            headers=bearer(stack.admin_token),
+        )
+        assert enforced.status_code == 200, enforced.text
+
+        odcs_id = new_id()
+        contract, draft, etag = await stack.create_contract(
+            chain.team, doc(odcs_id, "id", status="draft"), token=ed
+        )
+        events_before = published_events(stack, sql)
+        refused = await stack.publish(contract, draft, etag, token=ed)
+
+        assert refused.status_code == 422, refused.text
+        problem = refused.json()
+        assert problem["type"] == "urn:dc:problem:contract-validation-failed"
+        assert publication_findings(problem["report"]) == [(2, RELEASED_KEY, "enforce", True)]
+        assert version_row(stack, sql, draft)["state"] == "draft"
+        assert published_events(stack, sql) == events_before
+
+        # A missing status is refused the same way.
+        no_status = doc(odcs_id, "id", status="draft").replace(b"status: draft\n", b"")
+        etag = await save(stack, contract, draft, etag, no_status, ed)
+        missing = await stack.publish(contract, draft, etag, token=ed)
+        assert missing.status_code == 422, missing.text
+        assert publication_findings(missing.json()["report"]) == [
+            (2, RELEASED_KEY, "enforce", True)
+        ]
+
+        # A prerelease publishes as a Preview with the warning only.
+        preview_body = doc(odcs_id, "id", version="1.0.0-rc.1", status="draft")
+        etag = await save(stack, contract, draft, etag, preview_body, ed)
+        preview = await stack.publish(contract, draft, etag, token=ed)
+        assert preview.status_code == 201, preview.text
+        report = await stored_report(stack, contract, "1.0.0-rc.1", ed)
+        assert publication_findings(report) == [(2, PREVIEW_KEY, "enforce", False)]
+
+        # The fixed release (status: active) publishes with no publication finding.
+        started = await stack.client.post(
+            f"{CONTRACTS}/{contract}/drafts",
+            json={"from_version": "1.0.0-rc.1"},
+            headers=bearer(ed),
+        )
+        assert started.status_code == 201, started.text
+        next_draft = started.json()["draft"]
+        etag = await save(
+            stack,
+            contract,
+            next_draft["id"],
+            f'"r{next_draft["revision"]}"',
+            doc(odcs_id, "id", version="1.0.0"),
+            ed,
+        )
+        released = await stack.publish(contract, next_draft["id"], etag, token=ed)
+        assert released.status_code == 201, released.text
+        report = await stored_report(stack, contract, "1.0.0", ed)
+        assert publication_findings(report) == []
 
 
 # -- WR-04: no pooled connection sits idle in transaction across the gate call --------------------

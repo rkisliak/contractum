@@ -87,9 +87,10 @@ minutes per admin, and the audit event records only the recipient's domain.
 | Require a reason to unpublish or deprecate | contracts `DC_REQUIRE_LIFECYCLE_REASON` (off) | On or off. |
 
 The grace period is read when a rule set becomes mandatory and when a version of a mandatory set
-is published. The database migrations that create the built-in rule sets read only the
-environment value. The chart's migration Job does not pass `extraEnv`, so on a first install
-those built-in sets use the default of 14 days.
+is published. The database migrations that create the built-in rule sets, or add a new version
+of one, read only the environment value. The chart's migration Job does not pass `extraEnv`, so
+on a first install, and on an upgrade that adds a built-in version, those versions use the default
+of 14 days.
 
 ## Sign-in & security
 

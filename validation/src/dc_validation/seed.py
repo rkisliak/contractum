@@ -39,6 +39,16 @@ shows it. A warning-severity finding is never blocking (D-124), in warn grace an
 ``enforce_at`` alike. Its condition judges only ``this`` and is fully guarded, so it can never
 error.
 
+``ODCS_PUBLICATION_V2`` (quick 261128-rsa, migration 0010) is the second version of that set and
+rolls out like any new version of a mandatory set: in warn grace until its ``enforce_at``. A
+released version (a SemVer without a prerelease part, so it becomes Latest or an older release)
+must declare ``status: active``: ``released-status-active`` is an **error**, so once version 2 is
+enforced it blocks such a publish. A Preview published with a prerelease version (``1.2.0-rc.1``)
+keeps the ``published-status-active`` warning. Both read the document's own ODCS ``version``:
+contracts publishes exactly the SemVer the gated bytes declare, or refuses the publish. Only a
+string shaped like a SemVer prerelease counts as a Preview; anything else is judged as a release
+(fail closed).
+
 A later platform version ships as a new constant (for example ``ODCS_STRUCTURAL_V2``) and a new
 migration; ``ODCS_STRUCTURAL_V1`` is never edited, because its hash is stored by migration 0005.
 """
@@ -932,6 +942,90 @@ ODCS_PUBLICATION_V1: Final[RuleSetContent] = RuleSetContent.model_validate(
                     _pub({"apiVersion": "v3.2.0"}, "publish"),
                     _pub({"status": "deprecated"}, "publish"),
                     _pub({"status": 1}, "publish"),
+                ],
+            ),
+        ],
+    }
+)
+
+
+# -- odcs-publication v2 (quick 261128-rsa) ------------------------------------------------------
+
+PLATFORM_ODCS_PUBLICATION_V2_ID: Final[UUID] = UUID("31ce56ee-98cc-453b-b406-766cbf044bcd")
+PLATFORM_PUBLICATION_V2_EVENT_ID: Final[UUID] = UUID("5dd557d9-7891-4a98-a357-2a2db9dcff5a")
+
+ODCS_PUBLICATION_V2_DESCRIPTION: Final = (
+    "Platform publication checks for ODCS contracts, run at publish: a released version needs "
+    "status active, a Preview gets a warning."
+)
+
+# A SemVer prerelease (``1.2.0-rc.1``): a hyphen right after the three core numbers. Build metadata
+# alone (``1.0.0+build-1``) is a release. Anything else, a missing or non-string version included,
+# is judged as a release (fail closed; contracts refuses such a publish as invalid-version anyway).
+_IS_PRERELEASE = (
+    "has(this.version) && type(this.version) == string"
+    " && this.version.matches('^[0-9]+[.][0-9]+[.][0-9]+-')"
+)
+_IS_ACTIVE = "has(this.status) && type(this.status) == string && this.status == 'active'"
+
+_PREVIEW_STATUS_ACTIVE = f"""\
+!has(ctx.operation) || ctx.operation != 'publish'
+  || !(type(this) == map && {_IS_PRERELEASE})
+  || (type(this) == map && {_IS_ACTIVE})"""
+
+_RELEASED_STATUS_ACTIVE = f"""\
+!has(ctx.operation) || ctx.operation != 'publish'
+  || (type(this) == map && (({_IS_ACTIVE}) || ({_IS_PRERELEASE})))"""
+
+
+ODCS_PUBLICATION_V2: Final[RuleSetContent] = RuleSetContent.model_validate(
+    {
+        "dsl_version": "cel-2",
+        "rules": [
+            _rule2(
+                "published-status-active",
+                "At a prerelease publish (a Preview), the document's ODCS status is 'active'.",
+                "$",
+                _PREVIEW_STATUS_ACTIVE,
+                "warning",
+                "This prerelease version was published while the document's status is not "
+                "'active'. A released version (no prerelease part) needs status: active.",
+                [
+                    _pub({"version": "1.2.0-rc.1", "status": "active"}, "publish"),
+                    _pub({"version": "1.0.0", "status": "draft"}, "publish"),
+                    _pub({"status": "draft"}, "publish"),
+                    _pub({"version": "1.2.0-rc.1", "status": "draft"}, "save"),
+                    _pub({"version": "1.2.0-rc.1", "status": "draft"}),
+                ],
+                [
+                    _pub({"version": "1.2.0-rc.1", "status": "draft"}, "publish"),
+                    _pub({"version": "1.2.0-rc.1", "status": "proposed"}, "publish"),
+                    _pub({"version": "2.0.0-alpha+build.5"}, "publish"),
+                    _pub({"version": "1.2.0-rc.1", "status": 1}, "publish"),
+                ],
+            ),
+            _rule2(
+                "released-status-active",
+                "At a release publish (no prerelease part), the document's ODCS status is "
+                "'active'.",
+                "$",
+                _RELEASED_STATUS_ACTIVE,
+                "error",
+                "A released version needs status: active. Set status: active, or publish a "
+                "prerelease version (for example 1.2.0-rc.1) as a Preview.",
+                [
+                    _pub({"version": "1.0.0", "status": "active"}, "publish"),
+                    _pub({"version": "1.2.0-rc.1", "status": "draft"}, "publish"),
+                    _pub({"version": "1.2.0-rc.1"}, "publish"),
+                    _pub({"version": "1.0.0", "status": "draft"}, "save"),
+                    _pub({"version": "1.0.0", "status": "draft"}),
+                ],
+                [
+                    _pub({"version": "1.0.0", "status": "draft"}, "publish"),
+                    _pub({"version": "1.0.0"}, "publish"),
+                    _pub({"version": "1.0.0+build-1", "status": "draft"}, "publish"),
+                    _pub({"version": "1.0.0", "status": "Active"}, "publish"),
+                    _pub({"status": "draft"}, "publish"),
                 ],
             ),
         ],

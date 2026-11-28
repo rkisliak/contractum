@@ -31,11 +31,25 @@ describe("contractVersionSlot", () => {
     });
   });
 
-  it("keeps the Latest semver on a draft head of a published contract", () => {
+  it("names the Latest on a draft head of a published contract, so the semver is not read as the draft's", () => {
     expect(contractVersionSlot(row("draft", { semver: "1.2.0" }))).toEqual({
-      text: "1.2.0",
+      text: "Latest 1.2.0",
       muted: false,
     });
+  });
+
+  it("names the Latest on an unpublished head of a contract that has one", () => {
+    expect(
+      contractVersionSlot(row("unpublished", { semver: "1.0.0" })),
+    ).toEqual({ text: "Latest 1.0.0", muted: false });
+  });
+
+  it("keeps the bare semver after a deprecated Latest head", () => {
+    expect(
+      contractVersionSlot(
+        row("published", { semver: "2.0.0", deprecated: true }),
+      ),
+    ).toEqual({ text: "2.0.0", muted: false });
   });
 
   it("says Not published, muted, for a draft or unpublished head with no Latest", () => {
@@ -69,6 +83,12 @@ describe("contractRowLabel", () => {
     expect(
       contractRowLabel(row("unpublished", { name: null, odcsId: "urn:y" })),
     ).toBe("urn:y, Unpublished, not published");
+  });
+
+  it("says Latest version for a draft head of a published contract", () => {
+    expect(contractRowLabel(row("draft", { semver: "1.2.0" }))).toBe(
+      "Orders, Draft, Latest version 1.2.0",
+    );
   });
 
   it("says no Latest version, not not published, for a Preview without a Latest", () => {

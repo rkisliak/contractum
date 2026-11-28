@@ -3,8 +3,10 @@
 // Policy Manager. Each persona ticks "Show contracts in tree", expands Acme, Payments and Ledger
 // (the folders it can see), and the contract rows rendered under Ledger must equal, name for name
 // and in the same order, the items of the list response that persona's browser received for the
-// Ledger folder (include_subtree=false, sort=name). A row opens its contract by click and by Enter;
-// the Policy Manager lands on the metadata-only page. No console error, page error or API error of
+// Ledger folder (include_subtree=false, sort=name). Each row shows its lifecycle badge and version
+// right after the name. A row opens its contract by click, by Enter and by its open action; the
+// Policy Manager lands on the metadata-only page. Expand all and Collapse all are disabled whenever
+// they would change nothing. No console error, page error or API error of
 // any status is allowed (nothing is allow-listed) and the tree passes the serious axe gate.
 import type { Locator, Page, Response } from "@playwright/test";
 import { expect, expectNoSeriousA11yViolations, test } from "./fixtures";
@@ -127,6 +129,12 @@ async function openTree(page: Page): Promise<void> {
   await expect(grid(page)).toBeVisible();
 }
 
+function treeButton(page: Page, name: "Expand all" | "Collapse all"): Locator {
+  return page
+    .getByRole("group", { name: "Tree actions" })
+    .getByRole("button", { name });
+}
+
 async function walk(
   page: Page,
   signInFn: () => Promise<void>,
@@ -137,6 +145,8 @@ async function walk(
   issues.reset();
 
   await openTree(page);
+  // Only Root is open (or nothing is, for a persona without Root): nothing to collapse yet.
+  await expect(treeButton(page, "Collapse all")).toBeDisabled();
   await page.getByLabel("Show contracts in tree").check();
   await expect(page).toHaveURL(/[?&]contracts=true/);
 
@@ -159,6 +169,18 @@ async function walk(
   const orders = body.items.find((item) => item.id === demo.orders.id);
   expect(orders, "Orders is in the Ledger response").toBeDefined();
   await expect(contractRow(page, demo.orders.id)).toBeVisible();
+  // The badge and version follow the name ("Latest 1.1.0"), never a bare number in a count column.
+  const meta = contractRow(page, demo.orders.id).locator(
+    "[data-contract-meta]",
+  );
+  await expect(meta).toBeVisible();
+  await expect(meta).toHaveText(
+    /^(Latest|Preview|Draft|Unpublished).*(\d+\.\d+\.\d+|Not published|No Latest version)$/,
+  );
+  const openAction = contractRow(page, demo.orders.id).getByRole("link", {
+    name: `Open ${demo.orders.name}`,
+  });
+  await expect(openAction).toBeVisible();
 
   await expectNoSeriousA11yViolations(page);
   expect(issues.take(), "console, page or API errors on the tree").toEqual([]);
@@ -181,6 +203,32 @@ async function walk(
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(contractUrl);
   await expectOrders(page, issues, options.metadataOnly);
+
+  // Once more through the row's open action, reached with Tab from the focused row.
+  await page.goBack();
+  await expect(grid(page)).toBeVisible();
+  await expandPath(page, options.keyboard, false);
+  await contractRow(page, demo.orders.id).focus();
+  await page.keyboard.press("Tab");
+  await expect(
+    contractRow(page, demo.orders.id).getByRole("link", {
+      name: `Open ${demo.orders.name}`,
+    }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(contractUrl);
+  await expectOrders(page, issues, options.metadataOnly);
+
+  // Expand all opens everything, then has nothing left to do; Collapse all likewise.
+  await page.goBack();
+  await expect(grid(page)).toBeVisible();
+  await treeButton(page, "Expand all").click();
+  await expect(treeButton(page, "Expand all")).toBeDisabled();
+  await expect(treeButton(page, "Collapse all")).toBeEnabled();
+  await treeButton(page, "Collapse all").click();
+  await expect(treeButton(page, "Collapse all")).toBeDisabled();
+  await expect(treeButton(page, "Expand all")).toBeEnabled();
+  expect(issues.take(), "console, page or API errors on the tree").toEqual([]);
 }
 
 async function expectOrders(

@@ -20,12 +20,14 @@ The UI follows your system theme (light or dark) and works on a phone.
 - **Folders** shows the folder tree you can see: Root, then Organization, Project and Team. A folder
   page has tabs for its contracts, sub-folders, templates, rule sets, subscribers and access.
   - **Expand all** opens every folder in the tree. **Collapse all** closes them again, leaving
-    only Root open.
+    only Root open. Each button is disabled while it would change nothing on screen.
   - Tick **Show contracts in tree** (next to **Show archived**, off by default, and kept in the
     page address so a link keeps it) to list each expanded folder's own contracts under its
-    sub-folders. Contracts are sorted by name. Each row shows the contract's lifecycle badge
-    (Draft, Preview, Latest, Unpublished or Deprecated) and its latest version, or "Not published"
-    before the first publish. Open a contract by clicking its row or pressing Enter on it.
+    sub-folders. Contracts are sorted by name. Each row shows the contract's lifecycle badge and
+    Latest version after its name, such as **Latest 1.0.0**. The badge is Draft, Preview, Latest,
+    Unpublished or Deprecated. A draft of a published contract shows **Draft** and **Latest 1.0.0**.
+    Before the first publish the row says "Not published". Open a contract by clicking its row,
+    by pressing Enter on it, or with the arrow button in the **Actions** column.
   - A folder shows its first 100 contracts, then a **More contracts — open folder** row that opens
     the folder's **Contracts** tab. The row carries no count, because the server does not report
     how many contracts a folder holds.

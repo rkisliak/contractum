@@ -7,7 +7,10 @@
 // action (the arrow) opens it. The current folder carries aria-current="page" and its ancestors
 // are expanded.
 // With `showContracts` every expanded folder also lists its own contracts (one list call per
-// expanded folder) as treegrid rows below its subfolders; each is a real link to the contract.
+// expanded folder) as treegrid rows below its subfolders; each is a real link to the contract,
+// with the page's meta (lifecycle badge and version) after its name and its own row actions.
+// The page learns through `onExpansionChange` whether Expand all and Collapse all would change
+// what is on screen, so it can disable them when they would not.
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -20,6 +23,7 @@ import {
 import {
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -63,14 +67,8 @@ export type TreeColumn = {
   align?: "start" | "end";
   /** Dropped when the tree is narrow (counts give way so the name keeps room). */
   collapsible?: boolean;
+  /** The cell of a folder row; the cell of a contract row is empty. */
   render: (node: FolderNode) => ReactNode;
-  /** The cell of a contract row (with `showContracts`); empty when absent. */
-  renderContract?: (contract: ContractSummary) => ReactNode;
-  /**
-   * Under a narrow tree this collapsible column's content moves into the name cell of a contract
-   * row, so the state it carries (the lifecycle badge) is never lost.
-   */
-  narrowInline?: boolean;
 };
 
 const NO_FOLDERS: readonly string[] = [];
@@ -81,6 +79,12 @@ export type FolderTreeHandle = {
   expandAll: () => void;
   /** Closes every folder except Root, so the organizations stay in view. */
   collapseAll: () => void;
+};
+
+/** Whether each tree command would change what is on screen (false: it would do nothing). */
+export type FolderTreeExpansion = {
+  canExpandAll: boolean;
+  canCollapseAll: boolean;
 };
 
 export type FolderTreeProps = {
@@ -101,6 +105,16 @@ export type FolderTreeProps = {
    * stop, so Tab moves from the focused row into its actions and arrows keep moving rows.
    */
   renderActions?: (node: FolderNode, tabbable: boolean) => ReactNode;
+  /** A contract row's quick actions, in the same column and with the same `tabbable` rule. */
+  renderContractActions?: (
+    contract: ContractSummary,
+    tabbable: boolean,
+  ) => ReactNode;
+  /**
+   * Shown right after a contract's name at every width (its lifecycle badge and version); on a
+   * narrow tree it wraps onto a second line under the name.
+   */
+  renderContractMeta?: (contract: ContractSummary) => ReactNode;
   /**
    * Lists each expanded folder's own contracts under its subfolders. Every folder is then
    * expandable (its contracts are unknown until its list call returns). Off by default: the tree
@@ -111,6 +125,8 @@ export type FolderTreeProps = {
   contractLabel?: (contract: ContractSummary) => string;
   /** Receives the Expand all and Collapse all commands. */
   ref?: Ref<FolderTreeHandle>;
+  /** Told, before paint, whenever Expand all or Collapse all starts or stops changing anything. */
+  onExpansionChange?: (expansion: FolderTreeExpansion) => void;
 };
 
 export function FolderTree({
@@ -121,9 +137,12 @@ export function FolderTree({
   columns,
   actionsColumn,
   renderActions,
+  renderContractActions,
+  renderContractMeta,
   showContracts = false,
   contractLabel,
   ref,
+  onExpansionChange,
 }: FolderTreeProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -228,6 +247,25 @@ export function FolderTree({
     document.getElementById(domId(key))?.focus();
   }
 
+  // What Expand all and Collapse all would change, judged on the rows on screen: a hidden folder
+  // only matters through a visible ancestor, which then differs itself. A folder without an arrow
+  // (no subfolders, and with contracts shown an empty loaded list) changes nothing either way.
+  const rootIds = useMemo(
+    () => new Set(folders.filter((f) => f.kind === "root").map((f) => f.id)),
+    [folders],
+  );
+  let canExpandAll = false;
+  let canCollapseAll = false;
+  for (const node of visible) {
+    if (!isExpandableFolder(node, contractsShown)) continue;
+    const isOpen = expanded.has(node.folder.id);
+    if (!isOpen) canExpandAll = true;
+    if (isOpen !== rootIds.has(node.folder.id)) canCollapseAll = true;
+  }
+  useLayoutEffect(() => {
+    onExpansionChange?.({ canExpandAll, canCollapseAll });
+  }, [onExpansionChange, canExpandAll, canCollapseAll]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -244,12 +282,10 @@ export function FolderTree({
         setExpanded(all);
       },
       collapseAll: () => {
-        setExpanded(
-          new Set(folders.filter((f) => f.kind === "root").map((f) => f.id)),
-        );
+        setExpanded(new Set(rootIds));
       },
     }),
-    [roots, folders, showContracts],
+    [roots, rootIds, showContracts],
   );
 
   function toggle(folderId: string, open?: boolean) {
@@ -505,14 +541,12 @@ export function FolderTree({
     const rowId = domId(row.key);
     const displayName = contractDisplayName(contract);
     const named = contract.name !== null && contract.name !== "";
-    const inlineColumns = cols.filter(
-      (column) => column.narrowInline && column.renderContract !== undefined,
-    );
+    const tabbable = row.key === tabStopKey;
     return (
       <div
         key={row.key}
         {...rowFocusProps(row)}
-        tabIndex={row.key === tabStopKey ? 0 : -1}
+        tabIndex={tabbable ? 0 : -1}
         role="row"
         aria-level={row.depth + 1}
         aria-setsize={row.setSize}
@@ -528,7 +562,17 @@ export function FolderTree({
           });
         }}
       >
-        <span role="gridcell" className={styles.row} style={indent(row.depth)}>
+        {/* The folder columns (kind, counts) say nothing about a contract: the name cell spans
+            them up to the actions column, so a long name has room and the meta follows it. */}
+        <span
+          role="gridcell"
+          aria-colspan={cols.length > 0 ? cols.length + 1 : undefined}
+          className={cx(
+            styles.row,
+            hasActions ? styles.spanToActions : styles.spanAll,
+          )}
+          style={indent(row.depth)}
+        >
           <span className={cx(styles.toggle, styles.leaf)} aria-hidden="true" />
           <FileText
             size={14}
@@ -549,33 +593,22 @@ export function FolderTree({
               {named ? displayName : <Identifier value={displayName} />}
             </Link>
           </span>
-          {inlineColumns.length > 0 ? (
-            // Shown only when the tree is narrow and the collapsible column dropped: the state it
-            // carries (the lifecycle badge) then sits in the name cell instead of being lost.
-            <span className={styles.narrowInline} data-narrow-inline="">
-              {inlineColumns.map((column) => (
-                <span key={column.id} className={styles.narrowInlineItem}>
-                  {column.renderContract?.(contract)}
-                </span>
-              ))}
+          {renderContractMeta ? (
+            // Right after the name, like the contract page header; a narrow tree wraps it under
+            // the name instead of squeezing the name.
+            <span className={styles.contractMeta} data-contract-meta="">
+              {renderContractMeta(contract)}
             </span>
           ) : null}
         </span>
-        {cols.map((column) => (
-          <span
-            key={column.id}
-            role="gridcell"
-            className={cx(styles.cell, column.align === "end" && styles.end)}
-            data-collapsible={column.collapsible ? "" : undefined}
-          >
-            {column.renderContract?.(contract) ?? null}
-          </span>
-        ))}
         {hasActions ? (
           <span
             role="gridcell"
             className={cx(styles.cell, styles.end, styles.actions)}
-          />
+            data-tree-action=""
+          >
+            {renderContractActions?.(contract, tabbable)}
+          </span>
         ) : null}
       </div>
     );

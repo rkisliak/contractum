@@ -146,15 +146,14 @@
   min-width: 0;
 }
 
-/* A contract row's lifecycle badges in the Kind column: side by side, never wrapping. */
-.badges {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-1);
-  min-width: 0;
+/* A contract row's version after its lifecycle badge(s) in the tree: body text, one line. */
+.versionSlot {
+  color: var(--color-body);
+  font-weight: var(--font-weight-normal);
+  white-space: nowrap;
 }
 
-/* "Not published" and "No Latest version" in the Contracts column. */
+/* "Not published" and "No Latest version" in that slot. */
 .mutedSlot {
   color: var(--color-body-subtle);
 }

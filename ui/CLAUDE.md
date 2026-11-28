@@ -395,8 +395,12 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   then teams; `folderName` gives "Root"), `FolderTree` (WAI-ARIA tree with roving
   tabindex, arrows, Home, End, type-ahead, Enter opens; optional `renderMeta`/`renderActions` per visible row),
   `FoldersPage` (`/folders`, `?archived=true`: the primary navigator, rows with kind badge, subfolder and contract
-  counts, "Create {child}" and open quick actions; the view options and the **Expand all** / **Collapse all** buttons
-  share one bar above the tree, the buttons calling the tree's `FolderTreeHandle` through a `ref`), `FolderHeader` (every ancestor crumb a link, a compact "Switch
+  counts in fixed columns sized for folder content (Kind 7rem, each count 6rem, so the Name track keeps room in a
+  1024px window), "Create {child}" and open quick actions; the view options and the **Expand all** / **Collapse all** buttons
+  share one bar above the tree, the buttons calling the tree's `FolderTreeHandle` through a `ref`; each is `disabled` while
+  it would change nothing on screen, from the tree's `onExpansionChange({ canExpandAll, canCollapseAll })`, a layout effect
+  judged on the visible rows: a closed expandable folder for Expand all, an expandable folder whose state differs from
+  "only Root open" for Collapse all), `FolderHeader` (every ancestor crumb a link, a compact "Switch
   folder" `FolderSelect` that keeps the tab, kind and Archived badges, "Create {kind}", actions menu, archived banner, tab nav;
   **Delete folder…** (quick 261119-0v1) is a danger menu item shown only for `folder:delete` holders on non-ROOT folders:
   `useFolderDeletionCheck` (key `folderKeys.deletionCheck(id)` under `["folders"]`, `enabled` only for those holders, so
@@ -413,9 +417,12 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   `loading`, `error`) with unique key prefixes `f:`, `c:`, `o:`, `l:`, `e:`; subfolders come first, then the
   contracts in the server's order (never re-sorted), then one state row; a folder with no contracts gets no row, and a leaf folder whose list came back empty loses its arrow (`isExpandableFolder`). `headBadges(row)` in
   `features/contracts/versionStatus.tsx` is the only lifecycle mapping of a list row (Draft, Preview, Latest, Unpublished,
-  Deprecated); `contractVersionSlot` and `contractRowLabel` (`versionSlot.ts`) build the version cell and the row's accessible
-  name. FolderTree hooks: `contractLabel`, `renderContract` and `narrowInline` (a column whose badge is repeated in the name
-  cell, hidden by CSS outside the narrow container query). The overflow row reads "More contracts — open folder" (no count:
+  Deprecated); `contractVersionSlot` and `contractRowLabel` (`versionSlot.ts`) build the version text and the row's accessible
+  name (the bare Latest semver after a Latest badge, "Latest x.y.z" after any other head's badge, so a Draft badge is never
+  followed by a semver that is not the draft's). FolderTree hooks: `contractLabel`, `renderContractMeta` (the badges and
+  version, right after the name at every width and wrapped under it in the narrow container query; the contract row's name
+  cell spans the folder columns up to the actions column, `aria-colspan`) and `renderContractActions` (the actions cell,
+  `tabbable` like a folder row's; FoldersPage puts the same open `IconButtonLink` there as on folder rows). The overflow row reads "More contracts — open folder" (no count:
   the list API has no total) and links to `/folders/{id}/contracts?subtree=false`. **Recorded exception:** a per-folder
   tree error is an inline row with **Retry loading**, not a `ProblemAlert` (like the member count's "Not available"), so
   one failing folder does not replace the whole tree. A metadata-only contract (`content_redacted`, the Policy Manager)

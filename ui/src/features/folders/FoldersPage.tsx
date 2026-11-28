@@ -5,7 +5,8 @@
 // fixed slots: "Create {child kind}" where the caller may, and open.
 // "Create organization" appears for callers who may create folders at ROOT; "Show archived"
 // brings archived folders back with a badge; "Show contracts in tree" lists each expanded folder's own
-// contracts under it.
+// contracts under it, each with its lifecycle badge and version after the name and an open action.
+// Expand all and Collapse all are disabled while they would change nothing on screen.
 import {
   ArrowRight,
   ChevronsDownUp,
@@ -14,7 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import type { Folder } from "@/api/types";
+import type { ContractSummary, Folder } from "@/api/types";
 import { Alert } from "@/components/Alert";
 import { Badge } from "@/components/Badge";
 import { Button, IconButton, IconButtonLink } from "@/components/Button";
@@ -39,10 +40,11 @@ import { folderCopy, treeCopy } from "./copy";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import {
   FolderTree,
+  type FolderTreeExpansion,
   type FolderTreeHandle,
   type TreeColumn,
 } from "./FolderTree";
-import { folderName, type FolderNode } from "./tree";
+import { contractDisplayName, folderName, type FolderNode } from "./tree";
 import { contractRowLabel, contractVersionSlot } from "./versionSlot";
 import styles from "./FolderPages.module.css";
 
@@ -64,6 +66,11 @@ export function FoldersPage({
   const caps = useCapabilities(root?.id ?? null);
   const [creating, setCreating] = useState<CreateTarget | null>(null);
   const treeRef = useRef<FolderTreeHandle>(null);
+  // Set by the tree before paint; both enabled until it has rendered once.
+  const [expansion, setExpansion] = useState<FolderTreeExpansion>({
+    canExpandAll: true,
+    canCollapseAll: true,
+  });
   const canCreate = root !== undefined && caps.can("folder:create");
   const visible =
     list.data?.folders.filter((folder) => folder.kind !== "root") ?? [];
@@ -125,6 +132,7 @@ export function FoldersPage({
                 variant="outline-neutral"
                 size="small"
                 icon={ChevronsUpDown}
+                disabled={!expansion.canExpandAll}
                 onClick={() => treeRef.current?.expandAll()}
               >
                 {treeCopy.expandAll}
@@ -133,6 +141,7 @@ export function FoldersPage({
                 variant="outline-neutral"
                 size="small"
                 icon={ChevronsDownUp}
+                disabled={!expansion.canCollapseAll}
                 onClick={() => treeRef.current?.collapseAll()}
               >
                 {treeCopy.collapseAll}
@@ -167,11 +176,18 @@ export function FoldersPage({
             ) : null}
             <FolderTree
               ref={treeRef}
+              onExpansionChange={setExpansion}
               folders={list.data.folders}
               label="All folders"
               showContracts={showContracts}
               columns={FOLDER_COLUMNS}
               contractLabel={contractRowLabel}
+              renderContractMeta={(contract) => (
+                <ContractRowMeta contract={contract} />
+              )}
+              renderContractActions={(contract, tabbable) => (
+                <ContractRowActions contract={contract} tabbable={tabbable} />
+              )}
               actionsColumn={{ header: "Actions", width: "4.5rem" }}
               renderActions={(node, tabbable) => (
                 <FolderRowActions
@@ -199,30 +215,22 @@ export function FoldersPage({
   );
 }
 
-/** Name | Kind | Subfolders | Contracts, each cell in a fixed column so every row lines up. */
+/**
+ * Name | Kind | Subfolders | Contracts, each cell in a fixed column so every row lines up. The
+ * columns are sized for folder content only (the widest kind badge, a count), so the Name track
+ * keeps room on a 1024px window; a contract row's name cell spans them.
+ */
 const FOLDER_COLUMNS: TreeColumn[] = [
   {
     id: "kind",
     header: "Kind",
-    width: "13rem",
+    width: "7rem",
     collapsible: true,
     render: (node) => (
       <Badge intent="neutral">
         {node.folder.kind === "root" ? "Platform" : kindLabel(node.folder.kind)}
       </Badge>
     ),
-    // A contract row's lifecycle badge(s): text plus icon, from the one mapping (D-08). Under a
-    // narrow tree they move into the name cell, so the state is never lost.
-    renderContract: (contract) => (
-      <span className={styles.badges}>
-        {headBadges(contract).map((badge) => (
-          <Badge key={badge.key} intent={badge.intent} icon={badge.icon}>
-            {badge.label}
-          </Badge>
-        ))}
-      </span>
-    ),
-    narrowInline: true,
   },
   {
     id: "subfolders",
@@ -243,19 +251,59 @@ const FOLDER_COLUMNS: TreeColumn[] = [
   {
     id: "contracts",
     header: "Contracts",
-    width: "9rem",
+    width: "6rem",
     align: "end",
     collapsible: true,
     render: (node) => <ContractCount node={node} />,
-    // A contract row's Latest semver, or a muted word before the first publish (D-10).
-    renderContract: (contract) => {
-      const slot = contractVersionSlot(contract);
-      return (
-        <span className={cx(slot.muted && styles.mutedSlot)}>{slot.text}</span>
-      );
-    },
   },
 ];
+
+/**
+ * After a contract's name: its lifecycle badge(s), text plus icon from the one mapping (D-08), then
+ * its version (D-10), so the row reads "Orders [Latest] 1.2.0" like the contract page header.
+ */
+function ContractRowMeta({ contract }: { contract: ContractSummary }) {
+  const slot = contractVersionSlot(contract);
+  return (
+    <>
+      {headBadges(contract).map((badge) => (
+        <Badge key={badge.key} intent={badge.intent} icon={badge.icon}>
+          {badge.label}
+        </Badge>
+      ))}
+      <span className={cx(styles.versionSlot, slot.muted && styles.mutedSlot)}>
+        {slot.text}
+      </span>
+    </>
+  );
+}
+
+/** Open the contract, in the slot where a folder row has its open action. */
+function ContractRowActions({
+  contract,
+  tabbable,
+}: {
+  contract: ContractSummary;
+  tabbable: boolean;
+}) {
+  const label = treeCopy.openContract(contractDisplayName(contract));
+  return (
+    <>
+      {/* Keeps "Open" in the same slot as on a folder row. */}
+      <span className={styles.actionSlot} aria-hidden="true" />
+      <Tooltip content={label} side="top">
+        <IconButtonLink
+          icon={ArrowRight}
+          size={24}
+          aria-label={label}
+          tabIndex={tabbable ? 0 : -1}
+          to="/contracts/$contractId"
+          params={{ contractId: contract.id }}
+        />
+      </Tooltip>
+    </>
+  );
+}
 
 function ContractCount({ node }: { node: FolderNode }) {
   const contracts = useContractCount(node.folder.id);

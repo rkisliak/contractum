@@ -75,12 +75,15 @@ export const treeCopy = {
   expandAll: "Expand all",
   collapseAll: "Collapse all",
   actionsLabel: "Tree actions",
+  openContract: (name: string) => `Open ${name}`,
   overflow: "More contracts — open folder",
   loading: "Loading contracts",
   error: "Could not load contracts.",
   retry: "Retry loading",
   notPublished: "Not published",
   noLatest: "No Latest version",
+  /** After a non-Latest head's badge (a draft of a published contract): "Latest 1.2.0". */
+  latestVersion: (semver: string) => `Latest ${semver}`,
   /** The accessible name of a contract row: "{name}, {badges}, version {semver}". */
   rowName: (displayName: string, badges: string, versionText: string) =>
     `${displayName}, ${badges}, ${versionText}`,

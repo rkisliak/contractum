@@ -248,7 +248,8 @@ async function explicitStates(page: Page, width: Width): Promise<void> {
   await audit(page, width, "/folders expanded");
 
   // The same navigator with "Show contracts in tree" on and every folder expanded: contract rows
-  // (name, lifecycle badge, version slot, the narrow-inline badge at 390) beside the folder rows.
+  // (name, then the lifecycle badge and version, wrapped under the name at 390, and the open
+  // action) beside the folder rows.
   await page.goto("/folders?contracts=true");
   await settle(page);
   for (let i = 0; i < 4; i++) {

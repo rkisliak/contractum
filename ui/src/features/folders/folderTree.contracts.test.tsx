@@ -87,7 +87,13 @@ describe("Show contracts in tree", () => {
     // ROOT (level 1), then its organization (2), then its own contract one level below it (2).
     expect(rows[0]).toHaveAttribute("aria-level", "1");
     expect(rows[1]).toHaveAttribute("aria-level", "2");
-    expect(within(rows[2] as HTMLElement).getByRole("link")).toBe(link);
+    // The name link, then the row's open action, both to the contract.
+    const [nameLink, openLink] = within(rows[2] as HTMLElement).getAllByRole(
+      "link",
+    );
+    expect(nameLink).toBe(link);
+    expect(openLink).toHaveAccessibleName("Open Platform catalogue");
+    expect(openLink).toHaveAttribute("href", "/contracts/c-root");
     expect(names).toEqual(["1", "2", "2"]);
     expect(rows[2]).toHaveAttribute("aria-posinset", "1");
     expect(rows[2]).toHaveAttribute("aria-setsize", "1");
@@ -462,8 +468,8 @@ describe("per-folder states of the tree (D-13 to D-15)", () => {
   });
 });
 
-describe("narrow tree: the lifecycle badge moves into the name cell", () => {
-  it("carries the badge column's content in the name cell of a contract row, and not of a folder row", async () => {
+describe("contract row meta: the lifecycle badge and version follow the name", () => {
+  it("puts the badge and version in the name cell of a contract row, and nothing in a folder row", async () => {
     const tree = scripted(() => ({
       items: [makeContract({ id: "c-1", name: "Orders" })],
     }));
@@ -471,18 +477,24 @@ describe("narrow tree: the lifecycle badge moves into the name cell", () => {
 
     const link = await screen.findByRole("link", { name: "Orders" });
     const row = link.closest<HTMLElement>('[role="row"]');
-    const nameCell = within(row as HTMLElement).getAllByRole("gridcell")[0];
-    const inline = (nameCell as HTMLElement).querySelector(
-      "[data-narrow-inline]",
+    const cells = within(row as HTMLElement).getAllByRole("gridcell");
+    const meta = (cells[0] as HTMLElement).querySelector(
+      "[data-contract-meta]",
     );
-    expect(inline).not.toBeNull();
-    expect(inline).toHaveTextContent("Draft");
-    // The Kind column keeps its own copy for the wide tree.
-    const kindCell = within(row as HTMLElement).getAllByRole("gridcell")[1];
-    expect(kindCell).toHaveTextContent("Draft");
-    // A folder row never carries the inline copy.
+    expect(meta).not.toBeNull();
+    // A draft head of a contract with a Latest: the badge, then the Latest it does not replace.
+    expect(meta).toHaveTextContent(/^Draft\s*Latest 1\.0\.0$/);
+    // The name comes before the meta in the name cell.
+    expect(
+      link.compareDocumentPosition(meta as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The name cell spans the folder columns: the version is no longer in the Contracts column.
+    expect(cells).toHaveLength(2);
+    expect(cells[0]).toHaveAttribute("aria-colspan", "4");
+    // A folder row never carries the meta group.
     const folderRow = screen.getByRole("row", { name: "Acme" });
-    expect(folderRow.querySelector("[data-narrow-inline]")).toBeNull();
+    expect(folderRow.querySelector("[data-contract-meta]")).toBeNull();
   });
 });
 
@@ -557,6 +569,33 @@ describe("tree keyboard model over every row kind (TREE-03, D-11)", () => {
     expect(tabStops()).toEqual([orders()]);
     focus(feed());
     expect(tabStops()).toEqual([feed()]);
+  });
+
+  it("tabs from the focused contract row into its open action, and keys there belong to the link", async () => {
+    const user = userEvent.setup();
+    const tree = scripted(rootAnswer);
+    renderApp("/folders?contracts=true", {
+      folders: orgs,
+      handlers: tree.handlers,
+    });
+
+    await screen.findByRole("link", { name: "Orders" });
+    const openOrders = () =>
+      within(orders()).getByRole("link", { name: "Open Orders" });
+    const openFeed = () =>
+      within(feed()).getByRole("link", { name: "Open Payments feed" });
+    expect(openOrders()).toHaveAttribute("tabindex", "-1");
+    focus(orders());
+    // Only the tab-stop row's action is in the Tab order, as on folder rows.
+    expect(openOrders()).toHaveAttribute("tabindex", "0");
+    expect(openFeed()).toHaveAttribute("tabindex", "-1");
+    await user.tab();
+    expect(openOrders()).toHaveFocus();
+    // Arrow keys on the action do not move the tree's focus.
+    await user.keyboard("{ArrowDown}");
+    expect(openOrders()).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(orders()).toHaveFocus();
   });
 
   it("does nothing on Right over a contract row, and Left goes to its folder, then collapses it", async () => {

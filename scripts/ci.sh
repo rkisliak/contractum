@@ -130,7 +130,7 @@ if part checks; then
     gateway/problem-responder/responder.py gateway/api-docs/merge.py gateway/api-docs/server.py \
     scripts/export_openapi.py scripts/coverage_gate.py scripts/operation_coverage.py \
     scripts/gen_http_reference.py scripts/release/next_version.py scripts/release/changelog.py \
-    scripts/release/release_images.py scripts/ci_changes.py
+    scripts/release/release_images.py scripts/ci_changes.py scripts/docs_gate.py
 
   step "lint-imports"
   uv run lint-imports

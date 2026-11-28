@@ -1,0 +1,2 @@
+# The product was renamed; the old name must not come back.
+Pactum

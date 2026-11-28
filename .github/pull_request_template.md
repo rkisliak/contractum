@@ -13,6 +13,9 @@ What changes, and why.
 - [ ] Docs updated
 - [ ] Docs not needed because: ...
 
+No docs impact: end this description with a last paragraph `Docs-Impact: none — <reason>` (the
+`docs-gate` check reads it, and the squash commit keeps it).
+
 ## Checks run
 
 List the checks you ran (for example `uv run pytest tests/repo`, `zensical build --strict`).

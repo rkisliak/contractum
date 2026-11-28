@@ -3,7 +3,11 @@
 # images and heading anchors (official release binary, SHA-256 verified), the HTTP API reference
 # drift check, and the docs site build with `zensical build --strict`. The CLI reference drift
 # check lives in sdk.yml next to the SDK it documents. External links are checked once a week in
-# docs-links-weekly.yml, never on pull requests.
+# docs-links-weekly.yml, never on pull requests. The docs-gate job runs scripts/docs_gate.py: no
+# reader doc may claim that no release exists, a change to a documented surface needs a docs change
+# or a `Docs-Impact: none — <reason>` trailer (in a commit message or the pull request description,
+# so the run repeats when the description is edited), and Vale (official release binary, SHA-256
+# verified) checks the changed docs.
 #
 # This workflow publishes nothing unless the repository variable DOCS_PAGES_ENABLED is 'true':
 # only then does a push to main deploy the site to GitHub Pages, from the pages-deploy job, which
@@ -12,6 +16,8 @@ name: Documentation
 
 on:
   pull_request:
+    # `edited`: a Docs-Impact trailer added to the description re-runs the docs gate.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
   workflow_dispatch:
@@ -86,13 +92,60 @@ jobs:
       - name: zensical build --strict
         run: uv run --frozen --only-group docs zensical build --strict
 
+  # Stale release claims in every reader doc, docs impact of the change, Vale on the changed docs.
+  # Python standard library only: no uv or Python setup. The PR description goes through env and a
+  # file, never into the script text.
+  docs-gate:
+    name: docs-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # To upgrade: take both values from the vale_<version>_checksums.txt of the Vale release (the
+      # Linux_64-bit.tar.gz line) and change them together with VALE_VERSION and VALE_IMAGE in
+      # scripts/docs_gate.py.
+      VALE_VERSION: "3.28.1"
+      VALE_SHA256: "068954ad869ebec24b8dec6ebcd1cbb1fd5f5a83e966a35baedfae8b2cdc093a"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history and the v* tags: the change range and the release check need them.
+          fetch-depth: 0
+      - name: Install Vale (official release, SHA-256 verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          tarball="$RUNNER_TEMP/vale.tar.gz"
+          curl -fsSL -o "$tarball" "$url"
+          echo "${VALE_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/vale-bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/vale-bin" vale
+          echo "$RUNNER_TEMP/vale-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/vale-bin/vale" --version
+      # The packages are pinned by SHA-256 in .vale.ini; the script refuses a changed zip.
+      - name: Vale packages
+        run: python3 scripts/docs_gate.py --sync
+      - name: Docs gate
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            printf '%s' "${PR_BODY:-}" > "$RUNNER_TEMP/pr-body.txt"
+            python3 scripts/docs_gate.py --range "${BASE:-}" "$HEAD" --pr-body-file "$RUNNER_TEMP/pr-body.txt"
+          else
+            python3 scripts/docs_gate.py --range "${BASE:-}" "$HEAD"
+          fi
+
   # Deploys the site to GitHub Pages. Inactive until the repository variable DOCS_PAGES_ENABLED
   # is 'true' (Pages must be enabled for the repository first), and only ever from main: on a push,
   # or when the workflow is started by hand on main (a docs-only commit can skip the other workflows).
   pages-deploy:
     name: pages-deploy
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.DOCS_PAGES_ENABLED == 'true'
-    needs: [docs-lint, docs-build]
+    needs: [docs-lint, docs-build, docs-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

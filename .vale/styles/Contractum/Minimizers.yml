@@ -1,0 +1,13 @@
+# Words that tell the reader a step is easy. If it is not easy for them, the page has failed them.
+extends: existence
+message: "Drop '%s': it adds nothing, and the step may not be easy for the reader."
+level: suggestion
+ignorecase: true
+tokens:
+  - simply
+  - just
+  - obviously
+  - of course
+  - easily
+  - straightforward
+  - trivially

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Docs gate, part 2: a change to a documented surface needs docs or a Docs-Impact trailer.
+# Turn the hooks on once per clone: sh scripts/setup-hooks.sh (or git config core.hooksPath .githooks).
+exec python3 scripts/docs_gate.py --commit-msg "$1"

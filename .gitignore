@@ -49,3 +49,9 @@ clients/python/.venv-*/
 
 # Docs site build output (written by `zensical build`)
 /site/
+
+# Vale packages, downloaded and checked by `python3 scripts/docs_gate.py --sync`. The project's own
+# rules (Contractum) and vocabulary (config) are committed.
+.vale/styles/*
+!.vale/styles/Contractum/
+!.vale/styles/config/

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Docs gate, part 1: stale release claims and Vale errors in the staged docs.
+# Turn the hooks on once per clone: sh scripts/setup-hooks.sh (or git config core.hooksPath .githooks).
+exec python3 scripts/docs_gate.py --staged

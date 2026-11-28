@@ -30,7 +30,7 @@ README = ROOT / "README.md"
 
 REQUIREMENT_PREFIXES = (
     "UI RULE RBAC VAL AUTH VER SUB PLAT AUD GOV DOCS DATA CONT SDK FETCH API REPORT REF CLIAUTH "
-    "TMPL SITE SDKQA DOCCI CLEAN SRV PUB E2E"
+    "TMPL SITE SDKQA DOCCI CLEAN SRV PUB E2E MAIL SRC TREE"
 ).split()
 INTERNAL_ID = re.compile(
     r"\bD-(?:[A-Z]+-)*\d+\b"  # decision ids: D-12, D-UI-08-30
@@ -148,6 +148,7 @@ def test_openapi_texts_carry_no_internal_ids() -> None:
         ("quick 261121-psn", True),
         ("added in Phase 9", True),
         ("covers VAL-03 and SITE-01", True),
+        ("covers MAIL-02, SRC-04 and TREE-11", True),
         ("UTF-8, SHA-256, ISO-8601, RFC-9457, 2026-11-21", False),
     ],
 )

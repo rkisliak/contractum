@@ -1,0 +1,46 @@
+# Accepted terms: Vale.Terms enforces this exact casing in prose; other rules skip these words.
+# One regular expression per line, case-sensitive. Code spans and fenced blocks are never checked.
+Contractum
+ODCS
+Bitol
+CEL
+JSONPath
+JSON Pointer
+JSONB
+JWKS
+JWTs?
+PATs?
+OIDC
+Entra
+Microsoft Graph
+PostgreSQL
+Postgres
+ltree
+NATS
+JetStream
+Traefik
+Kubernetes
+Helm
+cert-manager
+Zensical
+OpenAPI
+Swagger
+FastAPI
+Pydantic
+Alembic
+PyPI
+uv
+pnpm
+Vitest
+Playwright
+markdownlint
+lychee
+Vale
+GitHub
+SMTP
+STARTTLS
+SBOM
+DAST
+ZAP
+ASVS
+Let's Encrypt

@@ -1,0 +1,9 @@
+# Link text must make sense on its own (screen readers list links out of context).
+extends: existence
+message: "Link text '%s' does not say where it goes: name the page or the task."
+level: warning
+ignorecase: true
+scope: raw
+nonword: true
+tokens:
+  - '\[(?:here|click here|this|this link|link|this page|read more|more)\]\('

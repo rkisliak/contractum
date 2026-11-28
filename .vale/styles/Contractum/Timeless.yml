@@ -1,0 +1,26 @@
+# Time-anchored words make a page wrong the day the product changes (Google: timeless documentation).
+# Describe what the product does; put history in release notes.
+# Deliberately left out: "latest" (a contract lifecycle state: Latest), "new" (the UI has a **New**
+# menu and Entra a "New registration" page), plain "now", and words with a common non-time
+# sense: "no longer need", "used to sign", "previously published", "the new version" (upgrades).
+extends: existence
+message: "Avoid time-anchored '%s': describe what the product does, without a point in time."
+link: https://developers.google.com/style/timeless-documentation
+level: warning
+ignorecase: true
+tokens:
+  - currently
+  - at present
+  - at the moment
+  - as of (?:this writing|now|today)
+  - for now
+  - for the time being
+  - '(?<!as )soon'
+  - eventually
+  - in the future
+  - (?:does|do|is|are|has|have) not yet
+  - not yet
+  - (?:is|are) now (?:available|supported|possible|required|the default)
+  - recently (?:added|introduced|changed)
+  - (?:the )?new in (?:v|version )?\d
+  - going forward

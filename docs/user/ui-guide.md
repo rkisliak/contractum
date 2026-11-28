@@ -19,6 +19,8 @@ The UI follows your system theme (light or dark) and works on a phone.
   links to the main areas.
 - **Folders** shows the folder tree you can see: Root, then Organization, Project and Team. A folder
   page has tabs for its contracts, sub-folders, templates, rule sets, subscribers and access.
+  - **Expand all** opens every folder in the tree. **Collapse all** closes them again, leaving
+    only Root open.
   - Tick **Show contracts in tree** (next to **Show archived**, off by default, and kept in the
     page address so a link keeps it) to list each expanded folder's own contracts under its
     sub-folders. Contracts are sorted by name. Each row shows the contract's lifecycle badge

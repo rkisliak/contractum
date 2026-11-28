@@ -6,8 +6,14 @@
 // "Create organization" appears for callers who may create folders at ROOT; "Show archived"
 // brings archived folders back with a badge; "Show contracts in tree" lists each expanded folder's own
 // contracts under it.
-import { ArrowRight, FolderPlus, Plus } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  FolderPlus,
+  Plus,
+} from "lucide-react";
+import { useRef, useState } from "react";
 import type { Folder } from "@/api/types";
 import { Alert } from "@/components/Alert";
 import { Badge } from "@/components/Badge";
@@ -31,7 +37,11 @@ import {
 } from "./api";
 import { folderCopy, treeCopy } from "./copy";
 import { CreateFolderDialog } from "./CreateFolderDialog";
-import { FolderTree, type TreeColumn } from "./FolderTree";
+import {
+  FolderTree,
+  type FolderTreeHandle,
+  type TreeColumn,
+} from "./FolderTree";
 import { folderName, type FolderNode } from "./tree";
 import { contractRowLabel, contractVersionSlot } from "./versionSlot";
 import styles from "./FolderPages.module.css";
@@ -53,6 +63,7 @@ export function FoldersPage({
   const root = list.data?.folders.find((folder) => folder.kind === "root");
   const caps = useCapabilities(root?.id ?? null);
   const [creating, setCreating] = useState<CreateTarget | null>(null);
+  const treeRef = useRef<FolderTreeHandle>(null);
   const canCreate = root !== undefined && caps.can("folder:create");
   const visible =
     list.data?.folders.filter((folder) => folder.kind !== "root") ?? [];
@@ -81,27 +92,53 @@ export function FoldersPage({
         }
       />
       <div className={styles.stack}>
-        <div
-          className={styles.viewOptions}
-          role="group"
-          aria-label="View options"
-        >
-          <Checkbox
-            id="folders-show-archived"
-            label="Show archived"
-            checked={showArchived}
-            onChange={(event) => {
-              onShowArchivedChange(event.target.checked);
-            }}
-          />
-          <Checkbox
-            id="folders-show-contracts"
-            label={treeCopy.toggle}
-            checked={showContracts}
-            onChange={(event) => {
-              onShowContractsChange(event.target.checked);
-            }}
-          />
+        <div className={styles.viewBar}>
+          <div
+            className={styles.viewOptions}
+            role="group"
+            aria-label="View options"
+          >
+            <Checkbox
+              id="folders-show-archived"
+              label="Show archived"
+              checked={showArchived}
+              onChange={(event) => {
+                onShowArchivedChange(event.target.checked);
+              }}
+            />
+            <Checkbox
+              id="folders-show-contracts"
+              label={treeCopy.toggle}
+              checked={showContracts}
+              onChange={(event) => {
+                onShowContractsChange(event.target.checked);
+              }}
+            />
+          </div>
+          {visible.length > 0 ? (
+            <div
+              className={styles.viewActions}
+              role="group"
+              aria-label={treeCopy.actionsLabel}
+            >
+              <Button
+                variant="outline-neutral"
+                size="small"
+                icon={ChevronsUpDown}
+                onClick={() => treeRef.current?.expandAll()}
+              >
+                {treeCopy.expandAll}
+              </Button>
+              <Button
+                variant="outline-neutral"
+                size="small"
+                icon={ChevronsDownUp}
+                onClick={() => treeRef.current?.collapseAll()}
+              >
+                {treeCopy.collapseAll}
+              </Button>
+            </div>
+          ) : null}
         </div>
         {list.isError ? (
           <ProblemAlert
@@ -129,6 +166,7 @@ export function FoldersPage({
               </Alert>
             ) : null}
             <FolderTree
+              ref={treeRef}
               folders={list.data.folders}
               label="All folders"
               showContracts={showContracts}

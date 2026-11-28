@@ -75,6 +75,29 @@ describe("folders page", () => {
     ).toBeVisible();
   });
 
+  it("expands every folder with Expand all and closes all but Root with Collapse all", async () => {
+    const user = userEvent.setup();
+    renderApp("/folders", { folders });
+    const tree = await screen.findByRole("treegrid", { name: "All folders" });
+    expect(within(tree).queryByRole("row", { name: "Ledger" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Expand all" }));
+    expect(within(tree).getByRole("row", { name: "Payments" })).toBeVisible();
+    expect(within(tree).getByRole("row", { name: "Ledger" })).toBeVisible();
+    expect(within(tree).getByRole("row", { name: "Acme" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Collapse all" }));
+    expect(within(tree).getByRole("row", { name: "Acme" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(within(tree).queryByRole("row", { name: "Payments" })).toBeNull();
+    expect(within(tree).queryByRole("row", { name: "Ledger" })).toBeNull();
+  });
+
   it("shows kind badges, counts and quick actions on navigator rows", async () => {
     const user = userEvent.setup();
     renderApp("/folders", {

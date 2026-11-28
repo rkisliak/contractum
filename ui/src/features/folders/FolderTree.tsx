@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   useId,
+  useImperativeHandle,
   useMemo,
   useState,
   type CSSProperties,
@@ -26,6 +27,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type Ref,
 } from "react";
 import type { ContractSummary, Folder } from "@/api/types";
 import { Badge } from "@/components/Badge";
@@ -73,6 +75,14 @@ export type TreeColumn = {
 
 const NO_FOLDERS: readonly string[] = [];
 
+/** Commands a page can send to its tree (the Folders page's Expand all and Collapse all). */
+export type FolderTreeHandle = {
+  /** Opens every folder that can open (with contracts shown, every folder). */
+  expandAll: () => void;
+  /** Closes every folder except Root, so the organizations stay in view. */
+  collapseAll: () => void;
+};
+
 export type FolderTreeProps = {
   folders: Folder[];
   currentId?: string;
@@ -99,6 +109,8 @@ export type FolderTreeProps = {
   showContracts?: boolean;
   /** The accessible name of a contract row; defaults to its display name. */
   contractLabel?: (contract: ContractSummary) => string;
+  /** Receives the Expand all and Collapse all commands. */
+  ref?: Ref<FolderTreeHandle>;
 };
 
 export function FolderTree({
@@ -111,6 +123,7 @@ export function FolderTree({
   renderActions,
   showContracts = false,
   contractLabel,
+  ref,
 }: FolderTreeProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -214,6 +227,30 @@ export function FolderTree({
     });
     document.getElementById(domId(key))?.focus();
   }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      expandAll: () => {
+        const all = new Set<string>();
+        const walk = (list: FolderNode[]) => {
+          for (const node of list) {
+            if (showContracts || node.children.length > 0)
+              all.add(node.folder.id);
+            walk(node.children);
+          }
+        };
+        walk(roots);
+        setExpanded(all);
+      },
+      collapseAll: () => {
+        setExpanded(
+          new Set(folders.filter((f) => f.kind === "root").map((f) => f.id)),
+        );
+      },
+    }),
+    [roots, folders, showContracts],
+  );
 
   function toggle(folderId: string, open?: boolean) {
     setExpanded((current) => {

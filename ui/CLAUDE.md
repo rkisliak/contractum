@@ -395,7 +395,8 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   then teams; `folderName` gives "Root"), `FolderTree` (WAI-ARIA tree with roving
   tabindex, arrows, Home, End, type-ahead, Enter opens; optional `renderMeta`/`renderActions` per visible row),
   `FoldersPage` (`/folders`, `?archived=true`: the primary navigator, rows with kind badge, subfolder and contract
-  counts, "Create {child}" and open quick actions), `FolderHeader` (every ancestor crumb a link, a compact "Switch
+  counts, "Create {child}" and open quick actions; the view options and the **Expand all** / **Collapse all** buttons
+  share one bar above the tree, the buttons calling the tree's `FolderTreeHandle` through a `ref`), `FolderHeader` (every ancestor crumb a link, a compact "Switch
   folder" `FolderSelect` that keeps the tab, kind and Archived badges, "Create {kind}", actions menu, archived banner, tab nav;
   **Delete folder…** (quick 261119-0v1) is a danger menu item shown only for `folder:delete` holders on non-ROOT folders:
   `useFolderDeletionCheck` (key `folderKeys.deletionCheck(id)` under `["folders"]`, `enabled` only for those holders, so

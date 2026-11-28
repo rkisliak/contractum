@@ -72,6 +72,9 @@ export const folderCopy = {
 // contracts shows no row and no arrow, never a "No contracts" line.
 export const treeCopy = {
   toggle: "Show contracts in tree",
+  expandAll: "Expand all",
+  collapseAll: "Collapse all",
+  actionsLabel: "Tree actions",
   overflow: "More contracts — open folder",
   loading: "Loading contracts",
   error: "Could not load contracts.",

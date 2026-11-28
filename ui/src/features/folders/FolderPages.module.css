@@ -49,6 +49,21 @@
   gap: var(--spacing-4);
 }
 
+/* The bar above the tree: view options at the start, Expand all and Collapse all at the end. */
+.viewBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3) var(--spacing-6);
+}
+
+.viewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
 /* View options sit side by side in one row, wrapping on narrow screens. */
 .viewOptions {
   display: flex;

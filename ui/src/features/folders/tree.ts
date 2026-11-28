@@ -84,7 +84,7 @@ export const ROOT_LABEL = "Root";
 /**
  * One row of the tree when contracts are shown (D-11). `key` is unique across kinds (a prefix plus
  * the folder or contract id), so rendering, focus and type-ahead never confuse a folder with a
- * contract. State rows (`overflow`, `loading`, `error`, `empty`) trail the contracts of one folder.
+ * contract. State rows (`overflow`, `loading`, `error`) trail the contracts of one folder.
  */
 export type TreeRow =
   | { kind: "folder"; key: string; depth: number; node: FolderNode }
@@ -100,8 +100,7 @@ export type TreeRow =
     }
   | { kind: "overflow"; key: string; depth: number; folderId: string }
   | { kind: "loading"; key: string; depth: number; folderId: string }
-  | { kind: "error"; key: string; depth: number; folderId: string }
-  | { kind: "empty"; key: string; depth: number; folderId: string };
+  | { kind: "error"; key: string; depth: number; folderId: string };
 
 export type TreeRowKind = TreeRow["kind"];
 
@@ -147,9 +146,8 @@ export function visibleRows(
             setSize: state.items.length,
           });
         });
-        if (state.items.length === 0) {
-          out.push({ kind: "empty", key: `n:${id}`, depth, folderId: id });
-        } else if (state.more) {
+        // A folder with no contracts adds no row: an empty folder simply shows nothing under it.
+        if (state.more) {
           out.push({ kind: "overflow", key: `o:${id}`, depth, folderId: id });
         }
       }
@@ -173,9 +171,23 @@ export function rowLabel(row: TreeRow): string {
   return "";
 }
 
-/** Loading and empty rows only report a state; every other row can hold the keyboard focus. */
+/** Loading rows only report a state; every other row can hold the keyboard focus. */
 export function isFocusableRow(row: TreeRow): boolean {
-  return row.kind !== "loading" && row.kind !== "empty";
+  return row.kind !== "loading";
+}
+
+/**
+ * Whether a folder row can open: it has subfolders, or contracts are shown and its contract list
+ * is not known to be empty (unknown until its list call returns, so it starts expandable).
+ */
+export function isExpandableFolder(
+  node: FolderNode,
+  contracts: Readonly<Record<string, FolderContractsState>> | null,
+): boolean {
+  if (node.children.length > 0) return true;
+  if (contracts === null) return false;
+  const state = contracts[node.folder.id];
+  return !(state?.status === "ready" && state.items.length === 0);
 }
 
 /**
@@ -196,7 +208,7 @@ export function parentFolderKey(
 /**
  * The first focusable row directly under a folder row (one level deeper, before the next row at
  * the folder's own level or above), or null when it has none: a folder whose only child row is
- * loading or empty, a closed one, or one that is not in `rows`.
+ * loading, a closed one, or one that is not in `rows`.
  */
 export function firstChildKey(
   folderKey: string,

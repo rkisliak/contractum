@@ -8,12 +8,14 @@ import {
   buildFolderTree,
   firstChildKey,
   folderName,
+  isExpandableFolder,
   isFocusableRow,
   parentFolderKey,
   rowLabel,
   typeAheadKey,
   visibleNodes,
   visibleRows,
+  type FolderNode,
 } from "./tree";
 
 const acme = makeFolder({ id: "acme", display_name: "Acme" });
@@ -175,14 +177,35 @@ describe("visibleRows", () => {
     ]);
   });
 
-  it("emits one empty row for a ready folder with no contracts", () => {
+  it("emits no row under a ready folder with no contracts", () => {
     expect(kinds(visibleRows(roots, open, ready([])))).toEqual([
       "folder",
       "folder",
       "folder",
       "folder",
-      "empty",
     ]);
+  });
+
+  it("makes a leaf folder expandable until its contract list comes back empty", () => {
+    const find = (list: FolderNode[], id: string): FolderNode | undefined =>
+      list
+        .map((node) => (node.folder.id === id ? node : find(node.children, id)))
+        .find((node) => node !== undefined);
+    const ledgerNode = find(roots, "ledger");
+    const acmeNode = find(roots, "acme");
+    if (!ledgerNode || !acmeNode) throw new Error("fixture tree changed");
+    expect(isExpandableFolder(ledgerNode, null)).toBe(false);
+    expect(isExpandableFolder(ledgerNode, {})).toBe(true);
+    expect(
+      isExpandableFolder(ledgerNode, { ledger: { status: "loading" } }),
+    ).toBe(true);
+    expect(
+      isExpandableFolder(ledgerNode, { ledger: { status: "error" } }),
+    ).toBe(true);
+    expect(isExpandableFolder(ledgerNode, ready([contract("a")]))).toBe(true);
+    expect(isExpandableFolder(ledgerNode, ready([]))).toBe(false);
+    // A folder with subfolders always opens.
+    expect(isExpandableFolder(acmeNode, null)).toBe(true);
   });
 
   it("emits one loading row while loading and one error row on failure", () => {
@@ -248,7 +271,7 @@ describe("keyboard helpers over the row model", () => {
     return found;
   };
 
-  it("treats folder, contract, overflow and error rows as focusable and loading and empty as not", () => {
+  it("treats folder, contract, overflow and error rows as focusable and loading as not", () => {
     const withMore = rowsOf(ready([contract("a")], true));
     expect(withMore.map(isFocusableRow)).toEqual([
       true,
@@ -265,10 +288,9 @@ describe("keyboard helpers over the row model", () => {
     expect(
       isFocusableRow(at(rowsOf({ ledger: { status: "loading" } }), "l:ledger")),
     ).toBe(false);
-    expect(isFocusableRow(at(rowsOf(ready([])), "n:ledger"))).toBe(false);
   });
 
-  it("names the folder row as the parent of a contract, overflow, error, loading or empty row", () => {
+  it("names the folder row as the parent of a contract, overflow, error or loading row", () => {
     const rows = rowsOf(ready([contract("a")], true));
     expect(parentFolderKey(at(rows, "c:a"), rows)).toBe("f:ledger");
     expect(parentFolderKey(at(rows, "o:ledger"), rows)).toBe("f:ledger");
@@ -284,9 +306,6 @@ describe("keyboard helpers over the row model", () => {
         rows,
       ),
     ).toBe("f:ledger");
-    expect(parentFolderKey(at(rowsOf(ready([])), "n:ledger"), rows)).toBe(
-      "f:ledger",
-    );
   });
 
   it("names the parent folder row of a folder row when that row is visible, else null", () => {
@@ -316,7 +335,7 @@ describe("keyboard helpers over the row model", () => {
     expect(firstChildKey("f:fraud", rows)).toBeNull();
   });
 
-  it("gives null for a folder whose only child row is loading or empty, or that has no rows", () => {
+  it("gives null for a folder whose only child row is loading, or that has no rows", () => {
     expect(
       firstChildKey("f:ledger", rowsOf({ ledger: { status: "loading" } })),
     ).toBeNull();
@@ -344,7 +363,7 @@ describe("keyboard helpers over the row model", () => {
     expect(typeAheadKey(rows, index("c:o1"), "z")).toBeNull();
   });
 
-  it("type-ahead skips loading and empty rows", () => {
+  it("type-ahead skips loading rows", () => {
     const loading = rowsOf({ ledger: { status: "loading" } });
     expect(typeAheadKey(loading, 0, "l")).toBe("f:ledger");
     expect(typeAheadKey(loading, 0, "x")).toBeNull();

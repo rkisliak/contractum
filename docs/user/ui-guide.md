@@ -27,7 +27,9 @@ The UI follows your system theme (light or dark) and works on a phone.
   - A folder shows its first 100 contracts, then a **More contracts — open folder** row that opens
     the folder's **Contracts** tab. The row carries no count, because the server does not report
     how many contracts a folder holds.
-  - The tree only shows contracts you can open from the **Contracts** list.
+  - The tree only shows contracts you can open from the **Contracts** list. A folder with no
+    such contracts shows nothing under it. A folder with no sub-folders and no contracts loses
+    its expand arrow once its list has loaded.
   - The Folders page loads at most 2,000 folders. When it stops, a note says so. Open a folder to
     see everything inside it, including contracts in folders the tree did not load.
 - **Contracts** lists every contract you can see, across all folders, with filters for text, ODCS

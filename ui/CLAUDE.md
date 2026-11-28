@@ -409,8 +409,8 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   FolderTree prop): `folderContractsOptions(api, folderId)` (key `["contracts","folder-tree",id]`, `include_subtree=false`,
   `sort=name`, `limit` 100, `staleTime` 30 s) and `useFolderContractQueries` make one list call per visible expanded
   folder and none per contract. `tree.ts` `visibleRows` emits the `TreeRow` union (`folder`, `contract`, `overflow`,
-  `loading`, `error`, `empty`) with unique key prefixes `f:`, `c:`, `o:`, `l:`, `e:`, `n:`; subfolders come first, then the
-  contracts in the server's order (never re-sorted), then one state row. `headBadges(row)` in
+  `loading`, `error`) with unique key prefixes `f:`, `c:`, `o:`, `l:`, `e:`; subfolders come first, then the
+  contracts in the server's order (never re-sorted), then one state row; a folder with no contracts gets no row, and a leaf folder whose list came back empty loses its arrow (`isExpandableFolder`). `headBadges(row)` in
   `features/contracts/versionStatus.tsx` is the only lifecycle mapping of a list row (Draft, Preview, Latest, Unpublished,
   Deprecated); `contractVersionSlot` and `contractRowLabel` (`versionSlot.ts`) build the version cell and the row's accessible
   name. FolderTree hooks: `contractLabel`, `renderContract` and `narrowInline` (a column whose badge is repeated in the name

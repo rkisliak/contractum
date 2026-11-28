@@ -42,6 +42,7 @@ import {
   contractDisplayName,
   firstChildKey,
   folderName,
+  isExpandableFolder,
   isFocusableRow,
   parentFolderKey,
   typeAheadKey,
@@ -159,9 +160,10 @@ export function FolderTree({
     [showContracts, visible, expanded],
   );
   const folderContracts = useFolderContractQueries(openFolderIds);
+  const contractsShown = showContracts ? folderContracts : null;
   const rows = useMemo(
-    () => visibleRows(roots, expanded, showContracts ? folderContracts : null),
-    [roots, expanded, showContracts, folderContracts],
+    () => visibleRows(roots, expanded, contractsShown),
+    [roots, expanded, contractsShown],
   );
   // aria-setsize and aria-posinset of a folder row count its sibling folders only.
   const siblings = useMemo(() => {
@@ -278,7 +280,7 @@ export function FolderTree({
       case "ArrowRight":
         // Only a folder row opens or is entered; contract, overflow and error rows have no children.
         if (row.kind === "folder") {
-          const expandable = showContracts || row.node.children.length > 0;
+          const expandable = isExpandableFolder(row.node, contractsShown);
           if (expandable && !expanded.has(row.node.folder.id))
             toggle(row.node.folder.id, true);
           else {
@@ -368,8 +370,7 @@ export function FolderTree({
   function renderFolderRow(row: Extract<TreeRow, { kind: "folder" }>) {
     const { node } = row;
     const { folder } = node;
-    const hasChildren = node.children.length > 0;
-    const expandable = showContracts || hasChildren;
+    const expandable = isExpandableFolder(node, contractsShown);
     const isOpen = expanded.has(folder.id);
     const current = folder.id === currentId;
     const sibling = siblings.get(folder.id);
@@ -543,8 +544,8 @@ export function FolderTree({
     );
   }
 
-  // Loading, empty, error and overflow rows trail the contracts of one folder (UI-SPEC Row type
-  // table). Loading and empty only report a state and are not focusable; error and overflow are
+  // Loading, error and overflow rows trail the contracts of one folder (UI-SPEC Row type
+  // table). Loading only reports a state and are not focusable; error and overflow are
   // treegrid rows. The error row is inline copy with a Retry (not a ProblemAlert: a block alert
   // would break the 40px row geometry; recorded exception to the ui-frontend skill rule 3).
   function renderStateRow(
@@ -567,18 +568,6 @@ export function FolderTree({
           className={geometry}
         >
           {nameCell(<Skeleton label="contracts" />)}
-        </div>
-      );
-    }
-    if (row.kind === "empty") {
-      return (
-        <div
-          key={row.key}
-          role="row"
-          aria-level={row.depth + 1}
-          className={geometry}
-        >
-          {nameCell(<span className={styles.muted}>{treeCopy.empty}</span>)}
         </div>
       );
     }

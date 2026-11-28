@@ -325,19 +325,19 @@ describe("per-folder states of the tree (D-13 to D-15)", () => {
   const rowOf = (text: string) =>
     screen.getByText(text).closest<HTMLElement>('[role="row"]');
 
-  it("shows one muted, non-focusable No contracts row for an empty folder, with no number", async () => {
+  it("shows no row and no arrow for a folder whose contract list is empty", async () => {
     const tree = scripted(() => ({ items: [] }));
     renderApp("/folders?contracts=true", { folders, handlers: tree.handlers });
 
-    const message = await screen.findByText("No contracts");
-    const row = rowOf("No contracts");
-    expect(row).not.toBeNull();
-    expect(row?.getAttribute("tabindex")).not.toBe("0");
-    expect(row?.getAttribute("tabindex")).not.toBe("-1");
-    expect(message.textContent).not.toMatch(/\d/);
-    expect(screen.getAllByText("No contracts")).toHaveLength(1);
+    // Wait for the list call to settle, then the leaf folder has nothing under it.
+    await waitFor(() => {
+      expect(tree.calls.length).toBeGreaterThan(0);
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Loading contracts")).toBeNull();
+    });
+    expect(screen.queryByText("No contracts")).toBeNull();
   });
-
   it("announces Loading contracts while a folder's list is in flight and keeps other folders usable", async () => {
     const user = userEvent.setup();
     let release: () => void = () => undefined;
@@ -523,9 +523,11 @@ describe("tree keyboard model over every row kind (TREE-03, D-11)", () => {
     });
 
     await screen.findByRole("link", { name: "Orders" });
-    // Acme is a leaf folder with no contracts: its list is empty, so its state row is skipped.
+    // Acme is a leaf folder with no contracts: once its list comes back empty it shows nothing.
     await user.click(rowNamed("Acme"));
-    await screen.findByText("No contracts");
+    await waitFor(() => {
+      expect(rowNamed("Acme")).not.toHaveAttribute("aria-expanded");
+    });
     expect(rowNamed("Acme")).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(rowNamed("Beta")).toHaveFocus();

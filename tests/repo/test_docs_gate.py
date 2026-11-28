@@ -697,3 +697,19 @@ def test_sync_refuses_a_path_outside_the_package(
     with pytest.raises(gate.SetupError, match="unexpected path"):
         gate.sync_packages()
     assert sorted(p.name for p in (styles_root / gate.STYLES_DIR).iterdir()) == []
+
+
+def test_html_comments_are_skipped_also_across_lines_and_paragraphs() -> None:
+    def blanked(text: str) -> str:
+        return "".join("\n" if char == "\n" else " " for char in text)
+
+    for prefix, comment, suffix in [
+        ("a ", "<!-- x\ny -->", " b"),
+        ("a ", "<!-- x --!>", " b"),
+        ("a ", "<!-- open\nrest", ""),
+    ]:
+        result = gate.blank_html_comments(prefix + comment + suffix)
+        assert result == prefix + blanked(comment) + suffix
+    pattern = [re.compile(r"no release", re.IGNORECASE)]
+    text = "Intro.\n\n<!--\nNo release\n\nyet -->\n\nNo release here.\n"
+    assert [line for line, _ in gate.find_phrases(text, pattern)] == [8]

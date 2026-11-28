@@ -252,7 +252,14 @@ _FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 _QUOTE_PREFIX = re.compile(r"^\s*(?:>\s?)+")
 _BLOCK_START = re.compile(r"^(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|\|)")
 _CODE_SPAN = re.compile(r"(`+)(?!`).+?(?<!`)\1(?!`)")
-_HTML_COMMENT = re.compile(r"<!--.*?-->")
+# An HTML comment, also across lines; HTML also ends one at `--!>`, and an unclosed comment runs
+# to the end of the file.
+_HTML_COMMENT = re.compile(r"<!--.*?(?:--!?>|\Z)", re.DOTALL)
+
+
+def blank_html_comments(text: str) -> str:
+    """Replace every HTML comment with spaces, keeping its newlines so line numbers stay right."""
+    return _HTML_COMMENT.sub(lambda match: re.sub(r"[^\n]", " ", match.group(0)), text)
 
 
 def prose_segments(text: str) -> list[tuple[str, list[int], list[int]]]:
@@ -303,12 +310,12 @@ def prose_segments(text: str) -> list[tuple[str, list[int], list[int]]]:
 def find_phrases(text: str, patterns: Sequence[re.Pattern[str]]) -> list[tuple[int, str]]:
     """``(line, phrase)`` for every pattern hit in the prose of a Markdown text."""
     hits: list[tuple[int, str]] = []
-    for joined, numbers, offsets in prose_segments(text):
+    for joined, numbers, offsets in prose_segments(blank_html_comments(text)):
 
         def blank(match: re.Match[str]) -> str:
             return " " * len(match.group(0))
 
-        prose = _HTML_COMMENT.sub(blank, _CODE_SPAN.sub(blank, joined))
+        prose = _CODE_SPAN.sub(blank, joined)
         for pattern in patterns:
             for match in pattern.finditer(prose):
                 line = numbers[bisect.bisect_right(offsets, match.start()) - 1]

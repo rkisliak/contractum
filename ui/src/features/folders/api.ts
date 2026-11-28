@@ -11,6 +11,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { components } from "@/api/schema.gen";
 import type { ApiClient } from "@/api/client";
 import type { ContractSummary, Folder, FolderDeletionCheck } from "@/api/types";
+import { createLimiter } from "@/lib/limiter";
 
 type FolderPage = components["schemas"]["IdentityFolderListOut"];
 
@@ -39,6 +40,14 @@ export const CONTRACT_COUNT_PAGE = 100;
 export type ContractCount = { count: number; more: boolean };
 
 /**
+ * Every contract-list call the folder navigator makes (the count column and the tree's folder
+ * pages) goes through this limiter: one call per visible row, all at once, would queue up behind
+ * each other in the services and the slowest would answer 503. Four at a time, as for member counts.
+ */
+const CONTRACT_LIST_CONCURRENCY = 4;
+const limitedList = createLimiter(CONTRACT_LIST_CONCURRENCY);
+
+/**
  * How many contracts the caller can see in a folder and below, from one page of the contracts
  * list (`include_subtree`). Only rendered (visible, expanded) tree rows call it, and the answer
  * is cached under `["contracts", ...]`, so contract writes refresh it.
@@ -48,15 +57,17 @@ export function useContractCount(folderId: string) {
   return useQuery({
     queryKey: ["contracts", "folder-count", folderId] as const,
     queryFn: async (): Promise<ContractCount> => {
-      const { data } = await api.GET("/api/v1/contracts/contracts", {
-        params: {
-          query: {
-            folder_id: folderId,
-            include_subtree: true,
-            limit: CONTRACT_COUNT_PAGE,
+      const { data } = await limitedList(() =>
+        api.GET("/api/v1/contracts/contracts", {
+          params: {
+            query: {
+              folder_id: folderId,
+              include_subtree: true,
+              limit: CONTRACT_COUNT_PAGE,
+            },
           },
-        },
-      });
+        }),
+      );
       if (data === undefined) throw new Error("GET /contracts had no body");
       return { count: data.items.length, more: data.next_cursor !== null };
     },
@@ -83,16 +94,18 @@ export function folderContractsOptions(api: ApiClient, folderId: string) {
   return queryOptions({
     queryKey: ["contracts", "folder-tree", folderId] as const,
     queryFn: async () => {
-      const { data } = await api.GET("/api/v1/contracts/contracts", {
-        params: {
-          query: {
-            folder_id: folderId,
-            include_subtree: false,
-            sort: "name",
-            limit: FOLDER_TREE_PAGE,
+      const { data } = await limitedList(() =>
+        api.GET("/api/v1/contracts/contracts", {
+          params: {
+            query: {
+              folder_id: folderId,
+              include_subtree: false,
+              sort: "name",
+              limit: FOLDER_TREE_PAGE,
+            },
           },
-        },
-      });
+        }),
+      );
       if (data === undefined) throw new Error("GET /contracts had no body");
       return { items: data.items, more: data.next_cursor !== null };
     },

@@ -388,7 +388,8 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   to `/signin?notice=password-changed` (the API revokes every session).
 - **Folder explorer** (`src/features/folders/`): `api.ts` (`useFolderList(includeArchived)` pages `GET /folders` up to
   2,000 and is shared by the folders page, the header picker and breadcrumbs; `useContractCount(folderId)` one cached
-  contract list page per visible navigator row; `useFolder(id)`; `useFolderWrites()`
+  contract list page per visible navigator row (it and the tree's per-folder pages share one four-at-a-time limiter, `lib/limiter.ts`
+  `createLimiter`, also used by the group member counts, so a page with many rows never queues the services into a 503); `useFolder(id)`; `useFolderWrites()`
   create, rename, archive, unarchive, each invalidating `["folders"]` and `["capabilities"]`), `tree.ts` (built from
   `parent_id`; a readable ROOT is the single top node "Root", open by default, holding organizations, then projects,
   then teams; `folderName` gives "Root"), `FolderTree` (WAI-ARIA tree with roving

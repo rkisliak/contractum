@@ -14,7 +14,7 @@ import {
 } from "@/test/contracts-fixtures";
 import { http, HttpResponse, server } from "@/test/msw";
 import { renderApp } from "@/test/renderApp";
-import { contractAccess } from "./ContractLayout";
+import { contractAccess, metadataOnlyMayOpen } from "./ContractLayout";
 
 afterEach(() => {
   tokenStore.clear();
@@ -270,5 +270,28 @@ describe("a consumer (regression)", () => {
     open(CONSUMER, false);
     const names = await tabNames();
     expect(names).toEqual(["Overview", "Document", "Versions", "Diff"]);
+  });
+});
+
+describe("metadataOnlyMayOpen", () => {
+  const base = "/contracts/ABC-1";
+
+  it("opens the Overview and the Rule sets tab, in any case and with trailing slashes", () => {
+    expect(metadataOnlyMayOpen("/contracts/abc-1", base)).toBe(true);
+    expect(metadataOnlyMayOpen("/contracts/abc-1///", base)).toBe(true);
+    expect(metadataOnlyMayOpen("/CONTRACTS/ABC-1/rule-sets/", base)).toBe(true);
+  });
+
+  it("matches against any of the page's root paths", () => {
+    expect(
+      metadataOnlyMayOpen("/contracts/other", base, "/contracts/other"),
+    ).toBe(true);
+  });
+
+  it("refuses every other tab and a path that only starts like the root", () => {
+    expect(metadataOnlyMayOpen("/contracts/abc-1/versions", base)).toBe(false);
+    expect(metadataOnlyMayOpen("/contracts/abc-10", base)).toBe(false);
+    expect(metadataOnlyMayOpen("////", base)).toBe(false);
+    expect(metadataOnlyMayOpen("", base)).toBe(false);
   });
 });

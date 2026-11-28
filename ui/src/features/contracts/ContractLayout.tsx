@@ -32,7 +32,10 @@ export function metadataOnlyMayOpen(
   pathname: string,
   ...bases: string[]
 ): boolean {
-  const path = pathname.replace(/\/+$/, "").toLowerCase();
+  // Trailing slashes are cut by index: a `/\/+$/` pattern backtracks over every run of slashes.
+  let end = pathname.length;
+  while (end > 0 && pathname.charAt(end - 1) === "/") end -= 1;
+  const path = pathname.slice(0, end).toLowerCase();
   return bases.some((base) => {
     const root = base.toLowerCase();
     return path === root || path === `${root}/rule-sets`;

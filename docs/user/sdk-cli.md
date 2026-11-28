@@ -2,7 +2,7 @@
 
 For data engineers and pipeline owners who fetch published Contractum contracts and test their own data against them, from the command line, from Python, from pytest or from CI. The client is read-only: it never writes to Contractum.
 
-The package is `contractum` (source in `clients/python`, licensed under the Apache License 2.0, see `clients/python/LICENSE`; the Contractum server keeps its own licence). It ships with every **platform release** on the GitHub Releases page of the Contractum repository (tag `vX.Y.Z`, or `vX.Y.Z-rc.N` for a release candidate), with the same version as the server, not on a package index. **No platform release has been published yet**: until the first one, install from a checkout (`uv tool install ./clients/python`, which reports the placeholder version `0.0.0.dev0`) or build the image yourself (see "Install"). The repository is `rkisliak/contractum`. In the commands below, `1.0.0` stands for the release you pin.
+The package is `contractum` (source in `clients/python`, licensed under the Apache License 2.0, see `clients/python/LICENSE`; the Contractum server keeps its own licence). It ships with every **platform release** on the GitHub Releases page of the Contractum repository (tag `vX.Y.Z`, or `vX.Y.Z-rc.N` for a release candidate), with the same version as the server, not on a package index. To try a change that is not in a release, install from a checkout (`uv tool install ./clients/python`, which reports the placeholder version `0.0.0.dev0`) or build the image yourself (see "Install"). The repository is `rkisliak/contractum`. In the commands below, `1.0.0` stands for the release you pin.
 
 For every command and option, see the generated [CLI reference](reference/cli.md). For every public Python name, see the [SDK API reference](reference/sdk-api.md).
 
@@ -57,14 +57,14 @@ Features that need a third-party package are extras. A missing extra is a clear 
 uv tool install "contractum[delta] @ $WHEEL"
 ```
 
-**Docker image.** Each release also pushes a hardened, non-root image of the CLI (`clients/python/Dockerfile`, entrypoint `contractum`, working directory `/work`) to `ghcr.io/rkisliak/contractum-cli`, tagged with the platform version (`1.0.0`, or `1.1.0-rc.1` for a release candidate); a stable release also moves `latest`. Pin the version. It carries the `delta` and `sql` extras, not pandas or polars, and no credential: pass `CONTRACTUM_URL` and `CONTRACTUM_TOKEN` at run time. If the package is not public, `docker login ghcr.io` first. Before the first release, build it yourself with `docker build -t contractum:test clients/python`.
+**Docker image.** Each release also pushes a hardened, non-root image of the CLI (`clients/python/Dockerfile`, entrypoint `contractum`, working directory `/work`) to `ghcr.io/rkisliak/contractum-cli`, tagged with the platform version (`1.0.0`, or `1.1.0-rc.1` for a release candidate); a stable release also moves `latest`. Pin the version. It carries the `delta` and `sql` extras, not pandas or polars, and no credential: pass `CONTRACTUM_URL` and `CONTRACTUM_TOKEN` at run time. If the package is not public, `docker login ghcr.io` first. To try a change that is not in a release, build the image from a checkout with `docker build -t contractum:test clients/python`.
 
 ```bash
 docker run --rm ghcr.io/rkisliak/contractum-cli:1.0.0 --version
 docker run --rm -v "$PWD:/work:ro" ghcr.io/rkisliak/contractum-cli:1.0.0 test data/orders.parquet --contract payments.orders --frozen --offline
 ```
 
-The `sdk-package` job of `.github/workflows/sdk.yml` builds and smoke-tests the wheel, the source archive and the image on every pull request that touches the client. Only the platform release workflow (`.github/workflows/release.yml`) publishes them: it attaches the wheel, the source archive and `SHA256SUMS` to the GitHub Release, with attestations, and pushes the image. No release has been published yet.
+The `sdk-package` job of `.github/workflows/sdk.yml` builds and smoke-tests the wheel, the source archive and the image on every pull request that touches the client. Only the platform release workflow (`.github/workflows/release.yml`) publishes them: it attaches the wheel, the source archive and `SHA256SUMS` to the GitHub Release, with attestations, and pushes the image. Every release from `v1.0.0` on has them: see [Contractum releases on GitHub](https://github.com/rkisliak/contractum/releases).
 
 ## Sign in
 

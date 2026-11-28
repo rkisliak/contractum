@@ -102,7 +102,7 @@ def odcs_doc(odcs_id: str, *, version: str) -> bytes:
     """A minimal valid ODCS document with the given declared version."""
     return (
         f'apiVersion: v3.2.0\nkind: DataContract\nid: {odcs_id}\nversion: "{version}"\n'
-        "status: draft\nname: Orders\n"
+        "status: active\nname: Orders\n"
         "schema:\n  - name: orders\n    properties:\n      - name: id\n"
         "        logicalType: string\n"
     ).encode()

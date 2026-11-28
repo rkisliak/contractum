@@ -15,6 +15,7 @@ import { Menu } from "@/components/Menu";
 import { ProblemAlert } from "@/components/ProblemAlert";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { EmptyState, Skeleton } from "@/components/states";
+import { createLimiter } from "@/lib/limiter";
 import { problemOf } from "@/lib/unexpected";
 import { idKeys, useApi } from "./shared";
 import styles from "./admin.module.css";
@@ -304,32 +305,7 @@ const COUNT_CONCURRENCY = 4;
 const COUNT_PAGE = 100;
 const COUNT_MAX_PAGES = 10;
 
-let running = 0;
-const waiting: (() => void)[] = [];
-
-async function acquire(): Promise<void> {
-  if (running < COUNT_CONCURRENCY) {
-    running += 1;
-    return;
-  }
-  // A releasing request hands its slot straight to the next waiter, so the count never exceeds four.
-  await new Promise<void>((resolve) => waiting.push(resolve));
-}
-
-function release(): void {
-  const next = waiting.shift();
-  if (next) next();
-  else running -= 1;
-}
-
-async function limited<T>(task: () => Promise<T>): Promise<T> {
-  await acquire();
-  try {
-    return await task();
-  } finally {
-    release();
-  }
-}
+const limited = createLimiter(COUNT_CONCURRENCY);
 
 /**
  * The member count of a local group. The key sits under `idKeys.members(groupId)`, so a member

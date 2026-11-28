@@ -249,11 +249,12 @@ async def test_no_author_route_reaches_the_platform_set(make_stack: Any) -> None
             assert response.status_code == 404, (method, url, response.status_code, response.text)
             assert response.json()["type"] == "urn:dc:problem:not-found"
 
-        assert (
-            stack.validation_sql("SELECT mandatory, publish_counter FROM rule_set")
-            == [{"mandatory": True, "publish_counter": 1}] * 4
-        )
-        assert len(stack.validation_sql("SELECT 1 FROM rule_set_version")) == 4
+        # odcs-publication is at version 2 (migration 0010); nothing here changed any set.
+        assert sorted(
+            (r["mandatory"], r["publish_counter"])
+            for r in stack.validation_sql("SELECT mandatory, publish_counter FROM rule_set")
+        ) == [(True, 1)] * 3 + [(True, 2)]
+        assert len(stack.validation_sql("SELECT 1 FROM rule_set_version")) == 5
 
 
 # -- idempotency, reversibility and drift (plan 05-13 task 2) ----------------------------------
@@ -273,6 +274,14 @@ def publication_migration() -> Any:
     return importlib.import_module(
         "dc_validation.migrations.versions.0009_seed_publication_rule_set"
     )
+
+
+def publication_v2_migration() -> Any:
+    return importlib.import_module("dc_validation.migrations.versions.0010_publication_rule_set_v2")
+
+
+# Four platform sets; five versions and five published events (odcs-publication has two).
+SEEDED_COUNTS = (4, 5, 5)
 
 
 def counts(db_url: str) -> tuple[int, int, int]:
@@ -306,7 +315,7 @@ async def test_running_the_seed_statements_again_changes_nothing(
     fresh_db_url: str, migrate_validation: Callable[..., None]
 ) -> None:
     migrate_validation()
-    assert counts(fresh_db_url) == (4, 4, 4)
+    assert counts(fresh_db_url) == SEEDED_COUNTS
     engine = sa.create_engine(fresh_db_url)
     try:
         for _ in range(2):
@@ -315,11 +324,12 @@ async def test_running_the_seed_statements_again_changes_nothing(
                     *seed_migration().seed_statements(),
                     *semantic_migration().seed_statements(),
                     *publication_migration().seed_statements(),
+                    *publication_v2_migration().seed_statements(),
                 ]:
                     connection.execute(statement)
     finally:
         engine.dispose()
-    assert counts(fresh_db_url) == (4, 4, 4)
+    assert counts(fresh_db_url) == SEEDED_COUNTS
 
 
 async def test_downgrade_removes_the_seed_and_upgrade_recreates_it_without_drift(
@@ -329,7 +339,7 @@ async def test_downgrade_removes_the_seed_and_upgrade_recreates_it_without_drift
     migrate_validation("downgrade", DOWNGRADE_TARGET)
     assert counts(fresh_db_url) == (0, 0, 0)
     migrate_validation("upgrade")
-    assert counts(fresh_db_url) == (4, 4, 4)
+    assert counts(fresh_db_url) == SEEDED_COUNTS
     migrate_validation("check")  # raises CommandError on drift
     url = fresh_db_url.replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(url, autocommit=True) as conn:
@@ -423,7 +433,7 @@ async def test_running_the_semantic_seed_again_never_moves_the_enforcement_date(
     finally:
         engine.dispose()
 
-    assert counts(fresh_db_url) == (4, 4, 4)
+    assert counts(fresh_db_url) == SEEDED_COUNTS
     after = [r["days_to_enforce"] for r in semantic_rows(fresh_db_url)]
     assert all(abs(float(a) - float(b)) < 0.01 for a, b in zip(after, before, strict=True))
 

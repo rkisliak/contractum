@@ -77,7 +77,7 @@ id: {odcs_id}
 apiVersion: v3.2.0
 name: {name}
 version: "{version}"
-status: draft
+status: active
 domain: subscriptions
 tags: [phase41]
 description:

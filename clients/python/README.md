@@ -14,9 +14,9 @@ repository (tag `vX.Y.Z`, or `vX.Y.Z-rc.N` for a release candidate), not on a pa
 release carries the wheel, the source archive and `SHA256SUMS`, with the same version as the server
 (`1.1.0rc1` in PEP 440 form for `v1.1.0-rc.1`). Install the wheel from its release URL, for example
 with `uv tool install` or `pip install`, or download it with
-`gh release download vX.Y.Z --pattern '*.whl' --repo rkisliak/contractum`. Until the first release,
-install from a checkout with `uv tool install ./clients/python` (it reports the placeholder version
-`0.0.0.dev0`).
+`gh release download vX.Y.Z --pattern '*.whl' --repo rkisliak/contractum`. To try a change that is
+not in a release, install from a checkout with `uv tool install ./clients/python` (it reports the
+placeholder version `0.0.0.dev0`).
 
 ## Quickstart
 

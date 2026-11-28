@@ -32,6 +32,7 @@ from .identity_me_out_principal_type import IdentityMeOutPrincipalType
 from .identity_me_out_via import IdentityMeOutVia
 from .identity_password_rules_out import IdentityPasswordRulesOut
 from .identity_sign_in_methods_out import IdentitySignInMethodsOut
+from .list_contracts_api_v1_contracts_contracts_get_sort import ListContractsApiV1ContractsContractsGetSort
 from .problem import Problem
 from .problem_errors_item import ProblemErrorsItem
 
@@ -68,6 +69,7 @@ __all__ = (
     "IdentityMeOutVia",
     "IdentityPasswordRulesOut",
     "IdentitySignInMethodsOut",
+    "ListContractsApiV1ContractsContractsGetSort",
     "Problem",
     "ProblemErrorsItem",
 )

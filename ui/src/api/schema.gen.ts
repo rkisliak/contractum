@@ -285,6 +285,9 @@ export interface paths {
          * List Contracts
          * @description List and search contracts: filters, ``q`` text match, keyset pagination.
          *
+         *     ``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name
+         *     sorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.
+         *
          *     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
          *     the SQL, so a caller without access gets an empty page. A row appears when the caller
          *     holds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a
@@ -3960,8 +3963,16 @@ export interface components {
              */
             version_id: string;
         };
-        /** ContractVersionSummaryOut */
+        /**
+         * ContractVersionSummaryOut
+         * @description A contract's head version.
+         *
+         *     ``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,
+         *     and returned to metadata-only callers too.
+         */
         ContractVersionSummaryOut: {
+            /** Deprecated */
+            deprecated: boolean;
             /** Number */
             number: number;
             /** State */
@@ -7684,6 +7695,7 @@ export interface operations {
                 q?: string | null;
                 limit?: number;
                 cursor?: string | null;
+                sort?: "id" | "name";
             };
             header?: never;
             path?: never;

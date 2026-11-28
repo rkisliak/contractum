@@ -613,6 +613,26 @@ async function explicitStates(
     });
     await a("/folders expanded", true);
   });
+  // The tree with contracts: every folder expanded, so the volume contracts (200-character,
+  // Arabic, Hebrew, CJK and emoji names, a 255-character ODCS id) sit in tree rows.
+  await attempt("/folders?contracts=true with every row expanded", async () => {
+    await goto("/folders?contracts=true");
+    const tree = page.getByRole("treegrid", { name: "All folders" });
+    for (let i = 0; i < 4; i++) {
+      const closed = tree.locator("[role=row][aria-expanded=false]");
+      const n = await closed.count();
+      for (let j = 0; j < n; j++)
+        await closed.first().locator("[data-tree-toggle]").click();
+    }
+    await expect(page.locator("[aria-busy='true']")).toHaveCount(0, {
+      timeout: 30_000,
+    });
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+      document.getElementById("main-content")?.scrollTo(0, 0);
+    });
+    await a("/folders?contracts=true expanded", true);
+  });
   await attempt("a token with a 100-character name", async () => {
     await goto("/account/tokens");
     const tokenName = `volspec-${Date.now().toString(36)}`.padEnd(100, "t");

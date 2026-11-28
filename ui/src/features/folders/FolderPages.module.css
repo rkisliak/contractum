@@ -49,6 +49,29 @@
   gap: var(--spacing-4);
 }
 
+/* The bar above the tree: view options at the start, Expand all and Collapse all at the end. */
+.viewBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3) var(--spacing-6);
+}
+
+.viewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+/* View options sit side by side in one row, wrapping on narrow screens. */
+.viewOptions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3) var(--spacing-8);
+}
+
 .toolbarField {
   flex: 1 1 18rem;
   max-width: 28rem;
@@ -121,4 +144,16 @@
   width: 16rem;
   max-width: 100%;
   min-width: 0;
+}
+
+/* A contract row's version after its lifecycle badge(s) in the tree: body text, one line. */
+.versionSlot {
+  color: var(--color-body);
+  font-weight: var(--font-weight-normal);
+  white-space: nowrap;
+}
+
+/* "Not published" and "No Latest version" in that slot. */
+.mutedSlot {
+  color: var(--color-body-subtle);
 }

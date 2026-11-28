@@ -247,6 +247,25 @@ async function explicitStates(page: Page, width: Width): Promise<void> {
   await settle(page);
   await audit(page, width, "/folders expanded");
 
+  // The same navigator with "Show contracts in tree" on and every folder expanded: contract rows
+  // (name, then the lifecycle badge and version, wrapped under the name at 390, and the open
+  // action) beside the folder rows.
+  await page.goto("/folders?contracts=true");
+  await settle(page);
+  for (let i = 0; i < 4; i++) {
+    const closed = tree.locator("[role=row][aria-expanded=false]");
+    const n = await closed.count();
+    for (let j = 0; j < n; j++)
+      await closed.first().locator("[data-tree-toggle]").click();
+  }
+  await expect(page.locator("[aria-busy='true']")).toHaveCount(0);
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.getElementById("main-content")?.scrollTo(0, 0);
+  });
+  await settle(page);
+  await audit(page, width, "/folders?contracts=true expanded");
+
   // Not found.
   await page.goto("/contracts/00000000-0000-4000-8000-000000000000");
   await audit(page, width, "contract not found");

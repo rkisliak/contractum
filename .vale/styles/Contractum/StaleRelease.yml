@@ -1,0 +1,21 @@
+# Claims that no release exists, or that something arrives "in a future release".
+# Contractum has stable releases (v* tags), so these sentences are false wherever they appear.
+# scripts/docs_gate.py reads this token list too (its stale-claim check runs without Vale), so this
+# file is the one place the phrase list lives. Never delete a phrase to make a run pass.
+extends: existence
+message: "Stale release claim: '%s'. Releases exist; state what is true now (see the release pass in keep-docs-current)."
+link: https://diataxis.fr/reference/
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\bno (?:[\w-]+ )?releases? (?:has|have|had|is|are|was|were)? ?(?:yet )?(?:been )?(?:published|made|cut|shipped|available|out)\b'
+  - '\bno (?:public |official |platform )?release (?:exists|yet)\b'
+  - '\b(?:has|have|is|are) not (?:yet )?been released\b'
+  - '\bnot released yet\b'
+  - '\b(?:until|before) (?:the|a) first (?:[\w-]+ )?release\b'
+  - '\b(?:once|when|after) (?:the|a) first (?:[\w-]+ )?release (?:is|has been|ships|lands|exists)\b'
+  - '\b(?:coming|arriving|available) soon\b'
+  - '\bin (?:a|an|the) (?:future|later|upcoming|coming|next) (?:release|version)\b'
+  - '\b(?:planned|scheduled|targeted) for (?:a |an |the )?(?:future|later|upcoming|next) (?:release|version)\b'
+  - '\bthe (?:upcoming|next) release will\b'

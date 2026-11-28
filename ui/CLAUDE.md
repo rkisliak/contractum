@@ -388,13 +388,19 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   to `/signin?notice=password-changed` (the API revokes every session).
 - **Folder explorer** (`src/features/folders/`): `api.ts` (`useFolderList(includeArchived)` pages `GET /folders` up to
   2,000 and is shared by the folders page, the header picker and breadcrumbs; `useContractCount(folderId)` one cached
-  contract list page per visible navigator row; `useFolder(id)`; `useFolderWrites()`
+  contract list page per visible navigator row (it and the tree's per-folder pages share one four-at-a-time limiter, `lib/limiter.ts`
+  `createLimiter`, also used by the group member counts, so a page with many rows never queues the services into a 503); `useFolder(id)`; `useFolderWrites()`
   create, rename, archive, unarchive, each invalidating `["folders"]` and `["capabilities"]`), `tree.ts` (built from
   `parent_id`; a readable ROOT is the single top node "Root", open by default, holding organizations, then projects,
   then teams; `folderName` gives "Root"), `FolderTree` (WAI-ARIA tree with roving
   tabindex, arrows, Home, End, type-ahead, Enter opens; optional `renderMeta`/`renderActions` per visible row),
   `FoldersPage` (`/folders`, `?archived=true`: the primary navigator, rows with kind badge, subfolder and contract
-  counts, "Create {child}" and open quick actions), `FolderHeader` (every ancestor crumb a link, a compact "Switch
+  counts in fixed columns sized for folder content (Kind 7rem, each count 6rem, so the Name track keeps room in a
+  1024px window), "Create {child}" and open quick actions; the view options and the **Expand all** / **Collapse all** buttons
+  share one bar above the tree, the buttons calling the tree's `FolderTreeHandle` through a `ref`; each is `disabled` while
+  it would change nothing on screen, from the tree's `onExpansionChange({ canExpandAll, canCollapseAll })`, a layout effect
+  judged on the visible rows: a closed expandable folder for Expand all, an expandable folder whose state differs from
+  "only Root open" for Collapse all), `FolderHeader` (every ancestor crumb a link, a compact "Switch
   folder" `FolderSelect` that keeps the tab, kind and Archived badges, "Create {kind}", actions menu, archived banner, tab nav;
   **Delete folder…** (quick 261119-0v1) is a danger menu item shown only for `folder:delete` holders on non-ROOT folders:
   `useFolderDeletionCheck` (key `folderKeys.deletionCheck(id)` under `["folders"]`, `enabled` only for those holders, so
@@ -404,6 +410,25 @@ isPending }` and only hides or disables controls; `useHeldAccess()` (`useHeldAcc
   does not invalidate: the header navigates to the parent (`/folders` for a ROOT parent) first and then calls `settle`. The
   tree rows deliberately have no delete action: a per-row state would need one deletion check per visible row, each
   fanning out to identity, contracts and validation), `FolderOverview`,
+  **"Show contracts in tree"** (`/folders?contracts=true`, off by default, next to `archived`; the `showContracts`
+  FolderTree prop): `folderContractsOptions(api, folderId)` (key `["contracts","folder-tree",id]`, `include_subtree=false`,
+  `sort=name`, `limit` 100, `staleTime` 30 s) and `useFolderContractQueries` make one list call per visible expanded
+  folder and none per contract. `tree.ts` `visibleRows` emits the `TreeRow` union (`folder`, `contract`, `overflow`,
+  `loading`, `error`) with unique key prefixes `f:`, `c:`, `o:`, `l:`, `e:`; subfolders come first, then the
+  contracts in the server's order (never re-sorted), then one state row; a folder with no contracts gets no row, and a leaf folder whose list came back empty loses its arrow (`isExpandableFolder`). `headBadges(row)` in
+  `features/contracts/versionStatus.tsx` is the only lifecycle mapping of a list row (Draft, Preview, Latest, Unpublished,
+  Deprecated); `contractVersionSlot` and `contractRowLabel` (`versionSlot.ts`) build the version text and the row's accessible
+  name (the bare Latest semver after a Latest badge, "Latest x.y.z" after any other head's badge, so a Draft badge is never
+  followed by a semver that is not the draft's). FolderTree hooks: `contractLabel`, `renderContractMeta` (the badges and
+  version, right after the name at every width and wrapped under it in the narrow container query; the contract row's name
+  cell spans the folder columns up to the actions column, `aria-colspan`) and `renderContractActions` (the actions cell,
+  `tabbable` like a folder row's; FoldersPage puts the same open `IconButtonLink` there as on folder rows). The overflow row reads "More contracts — open folder" (no count:
+  the list API has no total) and links to `/folders/{id}/contracts?subtree=false`. **Recorded exception:** a per-folder
+  tree error is an inline row with **Retry loading**, not a `ProblemAlert` (like the member count's "Not available"), so
+  one failing folder does not replace the whole tree. A metadata-only contract (`content_redacted`, the Policy Manager)
+  opens the normal page with an info notice and only the Overview and Rule sets tabs (`contractAccess` in
+  `ContractLayout.tsx`). `clearCacheOnSessionChange` clears the query cache when the token's principal (`principalOf`:
+  issuer and subject) changes, not only on sign-out, so a tree never shows another principal's contracts.
   `FolderContracts` (`/folders/$folderId/contracts`, `?q=&subtree=`), `FolderChildren` (`/folders/$folderId/folders`),
   `CreateFolderDialog` and `RenameFolderDialog`. **Folder tabs registry:** `tabs.ts` `FOLDER_TABS` (`{ id, label,
 segment, visible?(folder), requires? }`, `tabVisible(tab, folder, caps)`: `requires` is any-of at the folder and
@@ -418,14 +443,27 @@ segment, visible?(folder), requires? }`, `tabVisible(tab, folder, caps)`: `requi
   keys (`["contracts", ...]` lists, `["contract", id, ...]` per contract), raw-text document fetches with `Accept`
   (`parseAs: "text"`) and raw-body writes (`bodySerializer`). `report.ts` reads the untyped validation report into one
   finding list (`flattenReport`, grouped by the server's `blocking` flag); `FindingsPanel` renders it; `versionStatus.tsx`
-  maps a version to text-plus-icon badges. The Publish dialog (`PublishDialog.tsx`) shows an advisory warning Alert
-  when `documentStatus(saved)` (the saved bytes, which are exactly what publish sends) is not `active` (the real
-  status, or "sets no status"); it never disables Publish and mirrors the platform rule `published-status-active`,
-  which warns only on publish and never blocks. Clearer refusals (quick 261119-wk8): a draft save refused with
+  maps a version to text-plus-icon badges. The Publish dialog (`PublishDialog.tsx`) leads its body with a warning
+  Alert (the first block of the dialog description, above the intro sentence, so also first in `aria-describedby`) when `documentStatus(saved)` (the saved bytes, which are exactly what publish sends) is not `active` (the real
+  status, or "sets no status"). A released version (`isPrerelease(declared)` false, no `-` part) keeps Publish
+  disabled ("A released version needs status: active"); a prerelease (a Preview) enables it only after the
+  "Publish with status: … anyway" Checkbox, which resets each time the dialog opens. The footer reads Keep editing,
+  **Change status to active** (shown when `replaceTopLevelStatus` in `idEdit.ts` can rewrite an existing top-level
+  `status` value and the caller may edit; it never inserts a missing one, closes the dialog and never saves), Publish.
+  After it the draft editor shows an info Alert ("Status changed to active. Review the change, save the draft, then
+  publish.") right under its toolbar and in the full-screen editor's notices, while the buffer is dirty and until the
+  next successful save or reload. The server gate still decides. A publish of a non-active document adds `documentStatus` (allow-list
+  `PUBLISHED_DOCUMENT_STATUSES` in `ContractVersions.tsx`: proposed, draft, deprecated, retired, none, other) to the
+  Versions search, which turns the "Published x as Latest" notice into a warning; the component re-checks the
+  allow-list because the router also hands down raw parent search keys. The contract header shows a warning Badge
+  "Status: draft" (or "No status") beside "Latest x.y.z" when a Latest exists and `ContractSummary.status` (the head
+  row's ODCS status, which is the Latest once one exists) is not `active`; the Overview's ODCS status badge turns
+  warning then too. Strings live in `copy.ts` (`publishStatusCopy`, `publishedStatusCopy`, `latestStatusBadge`).
+  Clearer refusals (quick 261119-wk8): a draft save refused with
   `odcs-id-mismatch` shows "This contract's id is X. The document says Y." (ids in the normal font; the problem's
   `expected_odcs_id` and `found_odcs_id` are allow-listed in `api/problem.ts`) and, when the buffer allows it, a
-  "Put the contract's id back" button that rewrites only the top-level `id` value (`idEdit.ts`, YAML and JSON) and
-  never saves. Findings computed for text that has since changed render as stale: a warning Alert ("These findings
+  "Put the contract's id back" button that rewrites only the top-level `id` value (`idEdit.ts` `replaceTopLevelId`,
+  YAML and JSON) and never saves. Findings computed for text that has since changed render as stale: a warning Alert ("These findings
   are for revision N. Save and validate to check the current text.") with the page's save-and-validate action, the
   list collapsed behind "Show previous findings", headings "Earlier errors/warnings/info" (never "Blocking") and
   no locations. Structural unknown-property findings name the offending keys in the API message.
@@ -562,7 +600,7 @@ check (`node scripts/check-pin-age.mjs`).
 | Tool                 | Pin                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------- |
 | Node                 | 26.13.1 (`.nvmrc`, `engines.node`, Dockerfile `FROM`); no corepack on Node 26 (A-6)   |
-| pnpm                 | 12.22.0 (`packageManager`; installed with `npm i -g pnpm@12.22.0`, never on the host) |
+| pnpm                 | 12.23.0 (`packageManager`; installed with `npm i -g pnpm@12.23.0`, never on the host) |
 | nginx runtime        | `nginxinc/nginx-unprivileged:1.31.7-alpine-slim`                                      |
 | Playwright runner    | `mcr.microsoft.com/playwright:v1.65.1-noble` (equals `@playwright/test`)              |
 | monaco-editor        | 0.57.0 (installed with the contract screens)                                          |
@@ -586,7 +624,7 @@ Runtime dependencies (`dependencies`):
 | `@radix-ui/react-tabs`          | 1.2.1    |
 | `@radix-ui/react-toast`         | 1.3.1    |
 | `@radix-ui/react-tooltip`       | 1.4.1    |
-| `@tanstack/react-query`         | 5.108.2  |
+| `@tanstack/react-query`         | 5.108.3  |
 | `@tanstack/react-router`        | 1.170.46 |
 | `jsonc-parser`                  | 3.3.1    |
 | `lucide-react`                  | 1.77.0   |
@@ -638,7 +676,7 @@ Tooling (`devDependencies`):
 - **TypeScript stays on 6.x** (A-5): 7.x ships no JavaScript compiler API, so `openapi-typescript` (and
   `typescript-eslint`, peer `<6.1.0`) cannot run on it.
 - **Node tooling runs in a container on this host**: the host has no pnpm and none may be installed globally. Use
-  `node:26.13.1-trixie-slim` with `npm i -g pnpm@12.22.0`, named volumes for `node_modules` and the pnpm store, or the
+  `node:26.13.1-trixie-slim` with `npm i -g pnpm@12.23.0`, named volumes for `node_modules` and the pnpm store, or the
   Docker `ci` stage once it exists.
 
 ## URL scheme (D-UI-08-23)

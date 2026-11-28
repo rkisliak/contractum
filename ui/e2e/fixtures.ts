@@ -193,6 +193,33 @@ export async function pasteIntoEditor(page: Page, text: string): Promise<void> {
     .toEqual([]);
 }
 
+/**
+ * The publish dialog of a released version whose document does not say `status: active`:
+ * Publish stays disabled, "Change status to active" rewrites the status value in the editor and
+ * closes the dialog, and the draft is saved so it can be published.
+ */
+export async function changeStatusToActiveAndSave(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: /^Publish .*\?$/ });
+  await expect(dialog).toContainText("A released version needs status: active");
+  await expect(
+    dialog.getByRole("button", { name: /^Publish \S+$/ }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "Change status to active" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+  // An info Alert under the draft toolbar says what to do next, until the draft is saved.
+  const changed = page.getByRole("status").filter({
+    hasText:
+      "Status changed to active. Review the change, save the draft, then publish.",
+  });
+  await expect(changed).toBeVisible();
+  await expect(changed).toContainText("Information:");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByText("Draft saved.")).toBeVisible();
+  await expect(changed).toHaveCount(0);
+}
+
 /** Fails when the page scrolls horizontally at the page's current viewport width. */
 export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({

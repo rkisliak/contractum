@@ -5,7 +5,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { isApiError, type Problem } from "@/api/problem";
 import type { ContractSummary } from "@/api/types";
 import { Alert } from "@/components/Alert";
@@ -19,7 +19,8 @@ import { useCapabilities } from "@/features/access/useCapabilities";
 import { useFolderList } from "@/features/folders/api";
 import { formatDateTime } from "@/features/folders/FolderOverview";
 import { contractKeys, useApi, useContract } from "./api";
-import { contractName } from "./ContractLayout";
+import { contractAccess, contractName } from "./ContractLayout";
+import { metadataOnlyNotice, redactedFact } from "./copy";
 import styles from "./Contracts.module.css";
 import { PrincipalName } from "@/components/PrincipalName";
 
@@ -100,7 +101,20 @@ export function BlockedDelete({ problem }: { problem: Problem }) {
   return <ProblemAlert problem={problem} context="action" />;
 }
 
-function Facts({ contract }: { contract: ContractSummary }) {
+function Facts({
+  contract,
+  canSeeVersions,
+}: {
+  contract: ContractSummary;
+  canSeeVersions: boolean;
+}) {
+  // A redacted field is null because the caller may not see it, not because it is empty.
+  const hidden = (shown: ReactNode) =>
+    contract.content_redacted ? (
+      <span className={styles.muted}>{redactedFact}</span>
+    ) : (
+      shown
+    );
   const folders = useFolderList(true).data?.folders ?? [];
   const folder = folders.find(
     (candidate) => candidate.id === contract.folder_id,
@@ -124,18 +138,28 @@ function Facts({ contract }: { contract: ContractSummary }) {
         </Link>
       </dd>
       <dt>Domain</dt>
-      <dd>{orNotSet(contract.domain)}</dd>
+      <dd>{hidden(orNotSet(contract.domain))}</dd>
       <dt>ODCS status</dt>
       <dd>
         {contract.status ? (
-          <Badge intent="neutral">{contract.status}</Badge>
+          <Badge
+            intent={
+              contract.latest_version && contract.status !== "active"
+                ? "warning"
+                : "neutral"
+            }
+          >
+            {contract.status}
+          </Badge>
         ) : (
           orNotSet(null)
         )}
       </dd>
       <dt>Tags</dt>
       <dd>
-        {contract.tags && contract.tags.length > 0 ? (
+        {contract.content_redacted ? (
+          hidden(null)
+        ) : contract.tags && contract.tags.length > 0 ? (
           <span className={styles.badges}>
             {contract.tags.map((tag) => (
               <Badge key={tag} intent="neutral">
@@ -148,20 +172,24 @@ function Facts({ contract }: { contract: ContractSummary }) {
         )}
       </dd>
       <dt>ODCS apiVersion</dt>
-      <dd>{orNotSet(contract.api_version)}</dd>
+      <dd>{hidden(orNotSet(contract.api_version))}</dd>
       <dt>Latest version</dt>
       <dd>
         {contract.latest_version ? (
-          <Link
-            to="/contracts/$contractId/versions/$ref"
-            params={{
-              contractId: contract.id,
-              ref: contract.latest_version.semver,
-            }}
-            className={styles.rowLink}
-          >
-            {contract.latest_version.semver}
-          </Link>
+          canSeeVersions ? (
+            <Link
+              to="/contracts/$contractId/versions/$ref"
+              params={{
+                contractId: contract.id,
+                ref: contract.latest_version.semver,
+              }}
+              className={styles.rowLink}
+            >
+              {contract.latest_version.semver}
+            </Link>
+          ) : (
+            contract.latest_version.semver
+          )
         ) : (
           "Not published"
         )}
@@ -221,56 +249,68 @@ export function ContractOverview({ contractId }: { contractId: string }) {
   if (!contract.data) return null;
   const data = contract.data;
   const name = contractName(data);
+  const { metadataOnly, canSeeVersions } = contractAccess(data, caps);
+  const showActions =
+    caps.can("contract:read") || canSeeVersions || caps.can("contract:delete");
 
   return (
     <div className={styles.stack}>
+      {metadataOnly ? <Alert intent="info">{metadataOnlyNotice}</Alert> : null}
       {blocked ? <BlockedDelete problem={blocked} /> : null}
       <div className={styles.cards}>
         <Card title="Contract">
-          <Facts contract={data} />
+          <Facts contract={data} canSeeVersions={canSeeVersions} />
         </Card>
-        <Card title="Actions">
-          <div className={styles.stackTight}>
-            <p className={styles.muted}>
-              {caps.can("contract:read")
-                ? "Drafts are edited on the Drafts tab; published versions and their lifecycle are on the Versions tab."
-                : "Published versions are on the Versions tab."}
-            </p>
-            <div className={styles.toolbar}>
-              {caps.can("contract:read") ? (
-                <Link
-                  to="/contracts/$contractId/drafts"
-                  params={{ contractId: data.id }}
-                  className={styles.rowLink}
-                >
-                  Open drafts
-                </Link>
+        {showActions ? (
+          <Card title="Actions">
+            <div className={styles.stackTight}>
+              {canSeeVersions ? (
+                <p className={styles.muted}>
+                  {caps.can("contract:read")
+                    ? "Drafts are edited on the Drafts tab; published versions and their lifecycle are on the Versions tab."
+                    : "Published versions are on the Versions tab."}
+                </p>
               ) : null}
-              <Link
-                to="/contracts/$contractId/versions"
-                params={{ contractId: data.id }}
-                className={styles.rowLink}
-              >
-                View versions
-              </Link>
+              {caps.can("contract:read") || canSeeVersions ? (
+                <div className={styles.toolbar}>
+                  {caps.can("contract:read") ? (
+                    <Link
+                      to="/contracts/$contractId/drafts"
+                      params={{ contractId: data.id }}
+                      className={styles.rowLink}
+                    >
+                      Open drafts
+                    </Link>
+                  ) : null}
+                  {canSeeVersions ? (
+                    <Link
+                      to="/contracts/$contractId/versions"
+                      params={{ contractId: data.id }}
+                      className={styles.rowLink}
+                    >
+                      View versions
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+              {caps.can("contract:delete") ? (
+                <div>
+                  <Button
+                    variant="outline-danger"
+                    size="small"
+                    icon={Trash2}
+                    onClick={() => {
+                      setBlocked(null);
+                      setConfirm(true);
+                    }}
+                  >
+                    Delete contract
+                  </Button>
+                </div>
+              ) : null}
             </div>
-            {caps.can("contract:delete") ? (
-              <div>
-                <Button
-                  variant="outline-danger"
-                  size="small"
-                  icon={Trash2}
-                  onClick={() => {
-                    setBlocked(null);
-                    setConfirm(true);
-                  }}
-                >
-                  Delete contract
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </Card>
+          </Card>
+        ) : null}
       </div>
       <ConfirmDialog
         open={confirm}

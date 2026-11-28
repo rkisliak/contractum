@@ -43,7 +43,7 @@ def doc(odcs_id: str, *names: str, version: str = "1.0.0", description: str = ""
     )
     return (
         f'apiVersion: v3.2.0\nkind: DataContract\nid: {odcs_id}\nversion: "{version}"\n'
-        f"status: draft\nname: Orders\nschema:\n  - name: orders\n    properties:\n{props}"
+        f"status: active\nname: Orders\nschema:\n  - name: orders\n    properties:\n{props}"
     ).encode()
 
 

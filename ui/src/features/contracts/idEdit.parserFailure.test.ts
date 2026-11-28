@@ -12,10 +12,13 @@ vi.mock("yaml", async (importOriginal) => {
   };
 });
 
-const { replaceTopLevelId } = await import("./idEdit");
+const { replaceTopLevelId, replaceTopLevelStatus } = await import("./idEdit");
 
 describe("replaceTopLevelId when the parser throws", () => {
   it("gives null instead of throwing", () => {
     expect(replaceTopLevelId("id: a\n", "yaml", "urn:b")).toBeNull();
+    expect(
+      replaceTopLevelStatus("status: draft\n", "yaml", "active"),
+    ).toBeNull();
   });
 });

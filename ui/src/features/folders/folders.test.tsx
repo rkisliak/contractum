@@ -53,7 +53,7 @@ function contract(n: number) {
     content_redacted: false,
     template: null,
     origin: null,
-    version: { number: 1, state: "latest" },
+    version: { number: 1, state: "latest", deprecated: false },
     latest_version: n === 1 ? { version_id: "v1", semver: "1.0.0" } : null,
     created_by: "local:admin",
     created_at: "2026-11-01T10:00:00Z",
@@ -73,6 +73,119 @@ describe("folders page", () => {
     expect(
       await screen.findByRole("button", { name: "Create organization" }),
     ).toBeVisible();
+  });
+
+  it("expands every folder with Expand all and closes all but Root with Collapse all", async () => {
+    const user = userEvent.setup();
+    renderApp("/folders", { folders });
+    const tree = await screen.findByRole("treegrid", { name: "All folders" });
+    const expandAll = screen.getByRole("button", { name: "Expand all" });
+    const collapseAll = screen.getByRole("button", { name: "Collapse all" });
+    expect(within(tree).queryByRole("row", { name: "Ledger" })).toBeNull();
+    // Only Root is open: there is nothing to collapse yet.
+    expect(expandAll).toBeEnabled();
+    expect(collapseAll).toBeDisabled();
+
+    await user.click(expandAll);
+    expect(within(tree).getByRole("row", { name: "Payments" })).toBeVisible();
+    expect(within(tree).getByRole("row", { name: "Ledger" })).toBeVisible();
+    expect(within(tree).getByRole("row", { name: "Acme" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    // Everything is open: Expand all would change nothing.
+    expect(expandAll).toBeDisabled();
+    expect(collapseAll).toBeEnabled();
+
+    await user.click(collapseAll);
+    expect(within(tree).getByRole("row", { name: "Acme" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(within(tree).queryByRole("row", { name: "Payments" })).toBeNull();
+    expect(within(tree).queryByRole("row", { name: "Ledger" })).toBeNull();
+    expect(expandAll).toBeEnabled();
+    expect(collapseAll).toBeDisabled();
+  });
+
+  it("enables Collapse all when one folder is opened by hand, and judges only what is on screen", async () => {
+    const user = userEvent.setup();
+    renderApp("/folders", { folders });
+    const tree = await screen.findByRole("treegrid", { name: "All folders" });
+    const expandAll = screen.getByRole("button", { name: "Expand all" });
+    const collapseAll = screen.getByRole("button", { name: "Collapse all" });
+
+    await user.click(within(tree).getByRole("row", { name: "Acme" }));
+    expect(collapseAll).toBeEnabled();
+    // Payments is still closed.
+    expect(expandAll).toBeEnabled();
+    await user.click(within(tree).getByRole("row", { name: "Payments" }));
+    expect(expandAll).toBeDisabled();
+    // Closing Acme hides Payments (still open underneath): the screen shows only Root open, so
+    // Collapse all would change nothing visible.
+    await user.click(within(tree).getByRole("row", { name: "Acme" }));
+    expect(collapseAll).toBeDisabled();
+    expect(expandAll).toBeEnabled();
+  });
+
+  it("disables both when no folder can open, and lets Collapse all reopen a closed Root", async () => {
+    const user = userEvent.setup();
+    renderApp("/folders", { folders: [rootFolder, acme] });
+    const tree = await screen.findByRole("treegrid", { name: "All folders" });
+    const expandAll = screen.getByRole("button", { name: "Expand all" });
+    const collapseAll = screen.getByRole("button", { name: "Collapse all" });
+    // Acme has no subfolders and contracts are not shown: it has no arrow.
+    expect(within(tree).getByRole("row", { name: "Acme" })).not.toHaveAttribute(
+      "aria-expanded",
+    );
+    expect(expandAll).toBeDisabled();
+    expect(collapseAll).toBeDisabled();
+
+    // Collapse all leaves Root open, so with Root closed by hand it would change the tree.
+    await user.click(within(tree).getByRole("row", { name: "Root" }));
+    expect(within(tree).queryByRole("row", { name: "Acme" })).toBeNull();
+    expect(expandAll).toBeEnabled();
+    expect(collapseAll).toBeEnabled();
+    await user.click(collapseAll);
+    expect(within(tree).getByRole("row", { name: "Acme" })).toBeVisible();
+    expect(collapseAll).toBeDisabled();
+  });
+
+  it("with contracts shown, counts a folder whose empty list has loaded as unable to open", async () => {
+    const user = userEvent.setup();
+    renderApp("/folders?contracts=true", {
+      folders: [rootFolder, acme],
+      handlers: [
+        http.get("*/api/v1/contracts/contracts", () =>
+          HttpResponse.json({ items: [], next_cursor: null }),
+        ),
+      ],
+    });
+    const tree = await screen.findByRole("treegrid", { name: "All folders" });
+    const expandAll = screen.getByRole("button", { name: "Expand all" });
+    const collapseAll = screen.getByRole("button", { name: "Collapse all" });
+    // Acme's contracts are unknown until it opens, so it can open.
+    expect(expandAll).toBeEnabled();
+    await user.click(expandAll);
+    const acmeRow = within(tree).getByRole("row", { name: "Acme" });
+    await waitFor(() => {
+      expect(acmeRow).not.toHaveAttribute("aria-expanded");
+    });
+    // Its list came back empty: it lost its arrow, so neither command would change anything.
+    expect(expandAll).toBeDisabled();
+    expect(collapseAll).toBeDisabled();
+  });
+
+  it("sizes the folder columns for folder content, so the Name track keeps room at 1024px", async () => {
+    renderApp("/folders", { folders });
+    const tree = await screen.findByRole("treegrid", { name: "All folders" });
+    // Kind fits the widest kind badge (Organization), the counts a number: 23.5rem with Actions.
+    expect(tree.style.getPropertyValue("--tree-cols")).toBe(
+      "minmax(0, 1fr) 7rem 6rem 6rem 4.5rem",
+    );
+    expect(tree.style.getPropertyValue("--tree-cols-narrow")).toBe(
+      "minmax(0, 1fr) 4.5rem",
+    );
   });
 
   it("shows kind badges, counts and quick actions on navigator rows", async () => {

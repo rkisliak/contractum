@@ -79,7 +79,7 @@ export const ROUTES: Record<string, (d: Demo) => (string | null)[]> = {
   "contracts/$contractId/subscribers": (d) => [
     `/contracts/${d.orders.id}/subscribers`,
   ],
-  "folders/index": () => ["/folders"],
+  "folders/index": () => ["/folders", "/folders?contracts=true"],
   "folders/$folderId/index": (d) => [
     `/folders/${d.root.id}`,
     `/folders/${d.acme.id}`,
@@ -291,7 +291,7 @@ export const VOLUME_ROUTES: Record<string, (v: Volume) => (string | null)[]> = {
   "contracts/$contractId/subscribers": (v) => [
     `/contracts/${v.bigContract.id}/subscribers`,
   ],
-  "folders/index": () => ["/folders"],
+  "folders/index": () => ["/folders", "/folders?contracts=true"],
   "folders/$folderId/index": (v) => [
     `/folders/${v.longTeam.id}`,
     `/folders/${v.rtlTeam.id}`,

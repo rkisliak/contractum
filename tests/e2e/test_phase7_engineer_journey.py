@@ -99,7 +99,7 @@ id: {odcs_id}
 apiVersion: v3.2.0
 name: {name}
 version: "{version}"
-status: draft
+status: active
 domain: phase7
 tags: [phase7, journey]
 description:

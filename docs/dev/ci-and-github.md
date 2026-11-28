@@ -34,7 +34,7 @@ only).
 | DAST Nightly (`dast-nightly.yml`) | nightly 03:17 UTC, manual, called by Release | `gate`, `dast` | Starts the compose test stack, runs Schemathesis over the merged OpenAPI document and OWASP ZAP (baseline and API scan). Fails on a Schemathesis failure or an unignored High alert |
 | SDK (`sdk.yml`) | pull request and push to `main` that touch `clients/python/**`, `ui/openapi/**`, the SDK docs or the workflow; nightly 02:47 UTC; manual | `sdk-lint`, `sdk-unit (python <version>)`, `sdk-os (<os>)`, `sdk-lowest`, `sdk-latest`, `sdk-unit-coverage`, `sdk-integration`, `sdk-package`, `sdk-ok` | The SDK and CLI in `clients/python`: lock, ruff, mypy, import rules, the generated client and the CLI and SDK reference pages are up to date; unit tests on Python 3.11 to 3.14, on Windows and macOS, with the lowest and the newest allowed dependencies; a 98 percent unit-only coverage floor; the integration suite against the real compose stack with a 98 percent combined coverage floor; `sdk-package`, the dry run of the SDK release: `clients/python/scripts/build_release.sh 0.0.0rc1` builds the wheel and sdist, installs each on Python 3.11 and 3.14, checks the Apache-2.0 licence files and writes `SHA256SUMS`, then the CLI image is built and runs an offline smoke. Nothing is published. `sdk-ok` is one aggregate result |
 | Release (`release.yml`) | manual on `main` only (input `mode`: `pre-release` or `promote`) | `plan`, `image (<image>)`, `images-manifest`, `e2e`, `dast`, `tested`, `verify-candidate`, `promote-images`, `images-ready`, `sdk`, `cli-image`, `chart`, `release`, `latest` | Computes the next platform version from the commits and checks that the commit passed CI, E2E Nightly and DAST Nightly. A pre-release builds the seven server images once, runs the full E2E and DAST tests on exactly those digests and records them as tested. A promote builds no server image: it verifies that record and adds the stable tag to the same digests. Both build the SDK wheel and sdist and the CLI image, package the Helm chart pinned to the tested digests, then create the tag and the GitHub Release. See [Releasing](#releasing) |
-| Documentation (`docs.yml`) | pull request, push to `main`, manual | `docs-lint`, `docs-build`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`. `pages-deploy` deploys the site only from `main` (a push, or a manual run on `main`) with `DOCS_PAGES_ENABLED` set to `true` |
+| Documentation (`docs.yml`) | pull request (also when its description is edited), push to `main`, manual | `docs-lint`, `docs-build`, `docs-gate`, `pages-deploy` | markdownlint, typos and an offline lychee check of local links, images and heading anchors; the HTTP API reference drift check; `zensical build --strict`; the [docs gate](#the-docs-gate). `pages-deploy` deploys the site only from `main` (a push, or a manual run on `main`) with `DOCS_PAGES_ENABLED` set to `true` |
 | Docs Links Weekly (`docs-links-weekly.yml`) | Mondays 05:17 UTC, manual | `external-links` | lychee over the external links of every Markdown file. It never runs on pull requests, so a remote site that is down never blocks a merge |
 
 The nightly `e2e-nightly` and `dast-nightly` runs skip a scheduled run when the head of `main`
@@ -300,6 +300,7 @@ Settings, Rules, Rulesets (or classic branch protection):
   `docker-build` job, so a change to the image matrix never orphans a required check, and a
   docs-only change that skips the code jobs still reports a result.
 - `docs-lint` and `docs-build` run on every pull request and are good candidates to require.
+  `docs-gate` is a good candidate too, once it has run on `main`.
 - `sdk-ok` rolls up every `sdk.yml` job. `sdk.yml` runs only when its paths change, so a required
   `sdk-ok` would wait forever on a pull request that does not touch them. Require it only together
   with a rule that handles skipped workflows.
@@ -316,7 +317,8 @@ Settings, Rules, Rulesets (or classic branch protection):
   lint configs and the docs workflows. With "Require review from Code Owners" on, every change
   needs that review.
 - `.github/pull_request_template.md` asks for a summary, whether the docs were updated (or why they
-  are not needed), and which checks were run.
+  are not needed), and which checks were run. It also shows where a pull request with no docs
+  impact puts its `Docs-Impact: none — <reason>` line (see [The docs gate](#the-docs-gate)).
 
 ## Code security settings
 
@@ -388,6 +390,9 @@ in `docs-repo-tests` on a docs-only change. Run them with `uv run pytest tests/r
   history for this test.
 - `test_ci_changes.py` covers the [docs-only skip](#the-docs-only-skip) and `test_dependabot.py`
   the Dependabot commit prefixes.
+- `test_docs_gate.py` covers [the docs gate](#the-docs-gate). It scans every doc for stale release
+  claims and tests the phrase matcher, the trailer rules and the surface list (every pattern must
+  still match a file). It also checks the Vale pins and the hooks.
 
 ## Security scanners
 
@@ -454,6 +459,8 @@ decision for it and the [ASVS review](../admin/security/asvs-l2.md) records the 
 | ZAP image | `ZAP_IMAGE` in `scripts/zap-scan.sh` | `docker buildx imagetools inspect ghcr.io/zaproxy/zaproxy:stable`, copy the top-level digest, then run the scan locally and review the new alerts |
 | lychee | `LYCHEE_VERSION`, `LYCHEE_SHA256` in `docs.yml` and `docs-links-weekly.yml`; the image digest in the `lychee.toml` header | Take both from the `lychee-v<version>` release and keep the two workflows equal |
 | markdownlint-cli2 | the image tag and digest in `docs.yml` | Pick the new tag and its index digest (`docker buildx imagetools inspect`) and change them together |
+| Vale | `VALE_VERSION`, `VALE_SHA256` in `docs.yml`; `VALE_VERSION` and `VALE_IMAGE` in `scripts/docs_gate.py` | Take the SHA-256 from the release's `vale_<version>_checksums.txt` (the `Linux_64-bit.tar.gz` line) and the image's index digest (`docker buildx imagetools inspect jdkato/vale:v<version>`), and change all four together |
+| Vale packages | `Packages` in `.vale.ini` | Take the new release asset URL and its digest (`gh release view <tag> --repo vale-cli/<package> --json assets`), change both together and run `python3 scripts/docs_gate.py --sync` |
 | Actions | `uses:` lines | Pin the full 40-character commit SHA with the version as a comment. For an annotated tag, `gh api repos/OWNER/REPO/commits/TAG --jq .sha` |
 | Schemathesis, zensical, typos | `pyproject.toml` (exact pins) | With the rest of the lock, through Dependabot or by hand |
 
@@ -490,12 +497,76 @@ access token. The active scan is capped below
 the 15 minute lifetime of the access token. ZAP runs last on purpose, because the scan feeds the
 login throttle.
 
+## The docs gate
+
+`scripts/docs_gate.py` makes "the docs change with the code" a check instead of a habit. It runs in
+two git hooks, in the `docs-gate` job of `docs.yml` and in `tests/repo`. It needs only `python3`
+and git, plus Vale for the prose check.
+
+It checks three things:
+
+- **No stale release claims.** Once a `v*` tag exists, no doc may contain a phrase such as
+  `no release has been published` or `in a future release`. The phrases are the `tokens:` list in
+  `.vale/styles/Contractum/StaleRelease.yml`, which Vale reads too. The check scans every doc on
+  every pull request, so a release makes an untouched page fail as well.
+- **Docs impact.** A change to a documented surface must also change a doc under `docs/`, a
+  `README.md` or `mkdocs.yml`. Surfaces are API routes, settings, roles, problems, the SDK and CLI,
+  UI screens, the Helm chart, the release workflow, the local stack, the gateway and the gate
+  itself. The list is `SURFACES` in the script; the failure names the pages that usually need a
+  word. Tests
+  and changes that only move version pins (action SHAs, image tags and digests) do not count.
+- **Vale on the changed docs.** An error anywhere in a changed doc blocks: a stale release claim,
+  an internal planning id or the old product name. Warnings are printed only for the lines the
+  change adds or edits, and never block.
+
+"Docs" here means every page under `docs/` and every `README.md`. Agent notes (`.claude/`,
+`CLAUDE.md` files) are not checked.
+
+**Turn on the hooks** once per clone:
+
+```bash
+sh scripts/setup-hooks.sh
+```
+
+It sets `git config core.hooksPath .githooks` and downloads the Vale packages pinned in
+`.vale.ini`, checking each SHA-256. The pre-commit hook checks the staged docs, and the commit-msg
+hook checks docs impact. CI runs the same checks for a clone without hooks.
+
+**Vale** must be version 3.28.1. One way is the release binary as `vale` on your `PATH`: download
+it from the [Vale 3.28.1 release](https://github.com/vale-cli/vale/releases/tag/v3.28.1) and check
+it against `vale_3.28.1_checksums.txt`. The other is a running Docker: the gate then runs the
+official image, pinned by digest. Without either, a commit that stages a doc stops with the setup steps (exit 2).
+Commits that stage no doc do not need Vale.
+
+**When a change has no docs impact**, say so in the last paragraph of the commit message, with a
+real reason:
+
+```text
+Docs-Impact: none — internal refactor of the retention job, no behaviour change
+```
+
+- In a pull request, put that line at the end of the description: the check re-runs when the
+  description is edited, and the squash commit on `main` keeps it.
+- An en dash, a hyphen or `--` after `none` works too. The reason needs at least 10 characters.
+- "n/a", "later", "TBD", "docs in a follow-up" and similar are refused: docs that are due belong in
+  the change.
+- The line only skips the docs-impact check. Stale claims and Vale errors still block.
+
+Never bypass the hooks with `--no-verify`, and never shorten the phrase list or the surface list to
+make a change pass. A Vale error on a correct term is fixed by adding the term to
+`.vale/styles/config/vocabularies/Contractum/accept.txt`.
+
+Exit codes: 0 pass, 1 a finding, 2 a setup problem (no git, no Vale, packages not synced).
+
 ## Docs checks locally
 
 The same checks as `docs.yml`, from the repository root:
 
 | Check | Command |
 |-------|---------|
+| Docs gate (the staged docs, as the pre-commit hook does) | `python3 scripts/docs_gate.py --staged` |
+| Docs gate (every doc, before a release) | `python3 scripts/docs_gate.py --all` |
+| Docs gate (a branch, as CI does) | `python3 scripts/docs_gate.py --range origin/main HEAD` |
 | markdownlint | `docker run --rm -v "$PWD:/workdir:ro" davidanson/markdownlint-cli2:v0.24.2@sha256:c768e94d8bb161c449bde28f60656929ca1f02c3010a405f65c9cac71563a889` (config `.markdownlint-cli2.jsonc`) |
 | typos | `uv run --group docs typos` (config `_typos.toml`) |
 | lychee (offline) | `docker run --rm -v "$PWD:/repo:ro" -w /repo lycheeverse/lychee:0.24.2@sha256:e2d19e57cf6ab037026f20b8e449a1f30d9d7f81eef4194763aab2eab20bd28d --offline --config lychee.toml --extensions md .` |

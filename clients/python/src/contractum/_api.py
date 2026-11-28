@@ -19,7 +19,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Any, NoReturn, Protocol, TypeVar
+from typing import Any, Literal, NoReturn, Protocol, TypeVar
 from uuid import UUID
 
 import httpx
@@ -259,6 +259,7 @@ def list_contracts(
     q: str | None = None,
     limit: int = 50,
     cursor: str | None = None,
+    sort: Literal["id", "name"] = "id",
 ) -> ContractListOut:
     """GET one page of the contracts the caller can read."""
     return _expect(
@@ -276,6 +277,7 @@ def list_contracts(
             q=q,
             limit=limit,
             cursor=cursor,
+            sort=sort,
         ),
     )
 

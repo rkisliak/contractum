@@ -40,7 +40,7 @@ async def test_admin_stores_a_yaml_contract_and_fetches_the_identical_bytes(
         assert str(uuid.UUID(contract_id).version) == "7"
         assert created.headers["location"] == f"/api/v1/contracts/contracts/{contract_id}"
         assert contract["odcs_id"] == "urn:datacontract:payments:orders"
-        assert body["version"] == {"number": 1, "state": "draft"}
+        assert body["version"] == {"number": 1, "state": "draft", "deprecated": False}
         assert body["structural_validation"]["valid"] is True
         # folder facts come from identity, never from the client
         assert contract["folder_id"] == chain.team

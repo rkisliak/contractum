@@ -28,7 +28,7 @@ import {
 } from "./api";
 import { breakingCopy, idMismatchOf, semverConflictCopy } from "./DraftEditor";
 import { markersFor } from "./FindingsPanel";
-import { declaredBump, documentStatus } from "./PublishDialog";
+import { declaredBump, documentStatus, isPrerelease } from "./PublishDialog";
 import type { UnifiedFinding } from "./report";
 import { curlExample, todayUtc } from "./VersionActions";
 
@@ -69,7 +69,7 @@ const contract = {
   content_redacted: false,
   template: null,
   origin: null,
-  version: { number: 2, state: "draft" },
+  version: { number: 2, state: "draft", deprecated: false },
   latest_version: { version_id: "v-1.0.0", semver: "1.0.0" },
   created_by: "local:admin",
   created_at: "2026-11-01T10:00:00Z",
@@ -98,8 +98,11 @@ function draft(revision: number, overrides: Record<string, unknown> = {}) {
   };
 }
 
-const DOC =
+// The document without a status, and the default fixture with `status: active` (a released
+// version with another status cannot be published from the dialog).
+const DOC_BASE =
   "apiVersion: v3.1.0\nkind: DataContract\nid: urn:acme:ledger:orders\nversion: 1.1.0\n";
+const DOC = `${DOC_BASE}status: active\n`;
 
 function problem(
   status: number,
@@ -810,45 +813,360 @@ describe("draft editor publishing", () => {
     ["status: proposed\n", "This document says status: proposed."],
     ["", "This document sets no status."],
   ])(
-    "warns in the dialog that %j is not active and keeps Publish enabled",
+    "leads the dialog with the released-version warning for %j and keeps Publish disabled",
     async (extra, lead) => {
       const user = userEvent.setup();
       renderApp("/contracts/c-1/drafts/d-1", {
         folders,
         permissions: ALL,
-        handlers: base([], { docText: `${DOC}${extra}` }),
+        handlers: base([], { docText: `${DOC_BASE}${extra}` }),
       });
       await user.click(await screen.findByRole("button", { name: "Publish" }));
       const dialog = await screen.findByRole("dialog", {
         name: "Publish 1.1.0?",
       });
+      // The warning is literally the first thing in the body: above the intro sentence and the
+      // facts, and the first part of the dialog's accessible description.
+      const warning = within(dialog)
+        .getAllByRole("status")
+        .find((el) =>
+          el.textContent.includes("A released version needs status: active"),
+        ) as HTMLElement;
+      expect(warning).toBeDefined();
+      expect(warning.textContent).toContain(lead);
+      const intro = within(dialog).getByText(/^The publish gate validates/);
       expect(
-        within(dialog)
-          .getAllByRole("status")
-          .some((el) => el.textContent.includes(lead)),
-      ).toBe(true);
-      expect(dialog.textContent).toContain(
-        `${lead} Consumers usually expect active for a published version.`,
+        warning.compareDocumentPosition(intro) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        warning.compareDocumentPosition(
+          within(dialog).getByText("Declared version"),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      const description = document.getElementById(
+        dialog.getAttribute("aria-describedby") ?? "",
+      ) as HTMLElement;
+      expect(description.firstElementChild).toBe(warning);
+      expect(description).toContainElement(intro);
+      expect(dialog).toHaveAccessibleDescription(
+        /^Warning: A released version needs status: active.*The publish gate validates/,
       );
-      expect(dialog.textContent).toContain("does not block publishing");
       expect(
         within(dialog).getByRole("button", { name: "Publish 1.1.0" }),
-      ).toBeEnabled();
+      ).toBeDisabled();
+      // A released version offers no acknowledgement.
+      expect(within(dialog).queryByRole("checkbox")).toBeNull();
+      if (extra) {
+        expect(warning.textContent).toContain(
+          "Change it to active, save the draft, then publish.",
+        );
+        expect(
+          within(dialog).getByRole("button", {
+            name: "Change status to active",
+          }),
+        ).toBeEnabled();
+      } else {
+        // A missing status is never inserted: the user adds it.
+        expect(warning.textContent).toContain(
+          "Set status: active in the document, save the draft, then publish.",
+        );
+        expect(
+          within(dialog).queryByRole("button", {
+            name: "Change status to active",
+          }),
+        ).toBeNull();
+      }
     },
   );
 
-  it("shows no status warning in the dialog for an active document", async () => {
+  it("orders the footer Keep editing, Change status to active, Publish", async () => {
     const user = userEvent.setup();
     renderApp("/contracts/c-1/drafts/d-1", {
       folders,
       permissions: ALL,
-      handlers: base([], { docText: `${DOC}status: active\n` }),
+      handlers: base([], { docText: `${DOC_BASE}status: draft\n` }),
     });
     await user.click(await screen.findByRole("button", { name: "Publish" }));
     const dialog = await screen.findByRole("dialog", {
       name: "Publish 1.1.0?",
     });
-    expect(dialog.textContent).not.toContain("Consumers usually expect");
+    const [keep, change, publish] = [
+      "Keep editing",
+      "Change status to active",
+      "Publish 1.1.0",
+    ].map((name) => within(dialog).getByRole("button", { name }));
+    const follows = (a?: HTMLElement, b?: HTMLElement) =>
+      Boolean(
+        a &&
+        b &&
+        a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    expect(follows(keep, change)).toBe(true);
+    expect(follows(change, publish)).toBe(true);
+  });
+
+  it("changes only the status value of a YAML draft and leaves saving to the user", async () => {
+    const user = userEvent.setup();
+    let puts = 0;
+    const text = `${DOC_BASE}status: draft # set by the starter\nschema:\n  - name: t\n    status: draft\n`;
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base(
+        [
+          http.put(`${API}/drafts/d-1`, () => {
+            puts += 1;
+            return HttpResponse.json(saveResponse(2, { status: "skipped" }));
+          }),
+        ],
+        { docText: text },
+      ),
+    });
+    const editor = await editorBox();
+    await user.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.1.0?",
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Change status to active" }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    // Only the top-level value changed: the comment and the nested status stay byte for byte.
+    expect(editor).toHaveValue(
+      `${DOC_BASE}status: active # set by the starter\nschema:\n  - name: t\n    status: draft\n`,
+    );
+    expect(screen.getByText("Unsaved changes")).toBeVisible();
+    // An info Alert, right under the draft toolbar with the save action, not muted plain text.
+    const changed = screen
+      .getAllByRole("status")
+      .find((el) =>
+        el.textContent.includes(
+          "Status changed to active. Review the change, save the draft, then publish.",
+        ),
+      ) as HTMLElement;
+    expect(changed).toBeDefined();
+    expect(changed).toBeVisible();
+    expect(changed.textContent).toMatch(/^Information: /);
+    const toolbar = screen.getByRole("toolbar", { name: "Draft actions" });
+    expect(toolbar.nextElementSibling).toBe(changed);
+    expect(puts).toBe(0);
+    // Publish waits for the save.
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+
+    // Saving does what it asked for: the Alert goes and Publish comes back.
+    await user.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(await screen.findByText("Draft saved.")).toBeVisible();
+    expect(puts).toBe(1);
+    expect(
+      screen.queryByText(
+        "Status changed to active. Review the change, save the draft, then publish.",
+      ),
+    ).toBeNull();
+  });
+
+  it("drops the status-changed Alert when the change is undone, leaving nothing to save", async () => {
+    const user = userEvent.setup();
+    const text = `${DOC_BASE}status: draft\n`;
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base([], { docText: text }),
+    });
+    const editor = await editorBox();
+    await user.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.1.0?",
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Change status to active" }),
+    );
+    const message =
+      "Status changed to active. Review the change, save the draft, then publish.";
+    expect(await screen.findByText(message)).toBeVisible();
+    fireEvent.change(editor, { target: { value: text } });
+    expect(editor).toHaveValue(text);
+    expect(screen.queryByText(message)).toBeNull();
+    expect(screen.getByText("Saved")).toBeVisible();
+  });
+
+  it("changes only the status value of a JSON draft", async () => {
+    const user = userEvent.setup();
+    const json = `{\n  "apiVersion": "v3.1.0",\n  "kind": "DataContract",\n  "id": "urn:acme:ledger:orders",\n  "version": "1.1.0",\n  "status": "draft",\n  "schema": [{ "name": "t", "status": "draft" }]\n}\n`;
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base([], {
+        docText: json,
+        meta: draft(1, { media_type: "application/json" }),
+      }),
+    });
+    const editor = await editorBox();
+    await user.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.1.0?",
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Change status to active" }),
+    );
+    expect(editor).toHaveValue(
+      json.replace('"status": "draft",', '"status": "active",'),
+    );
+  });
+
+  it("offers no status change to a caller who cannot edit the draft", async () => {
+    const user = userEvent.setup();
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: [
+        "contract:read",
+        "contract:read-metadata",
+        "contract:publish",
+      ],
+      handlers: base([], { docText: `${DOC_BASE}status: draft\n` }),
+    });
+    await user.click(await screen.findByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.1.0?",
+    });
+    expect(dialog.textContent).toContain(
+      "Set status: active in the document, save the draft, then publish.",
+    );
+    expect(
+      within(dialog).queryByRole("button", {
+        name: "Change status to active",
+      }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish 1.1.0" }),
+    ).toBeDisabled();
+  });
+
+  it("lets a prerelease keep its status after an explicit acknowledgement", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base(
+        [
+          http.post(`${API}/drafts/d-1/publish`, () =>
+            HttpResponse.json({ semver: "1.2.0-rc.1", status: "preview" }),
+          ),
+        ],
+        {
+          docText: `${DOC_BASE.replace("1.1.0", "1.2.0-rc.1")}status: draft\n`,
+          meta: draft(1, { declared_version: "1.2.0-rc.1" }),
+        },
+      ),
+    });
+    await user.click(await screen.findByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.2.0-rc.1?",
+    });
+    expect(dialog.textContent).toContain("This document says status: draft");
+    expect(dialog.textContent).toContain(
+      "Consumers will get a Preview with status: draft.",
+    );
+    expect(dialog.textContent).not.toContain("A released version");
+    const publish = within(dialog).getByRole("button", {
+      name: "Publish 1.2.0-rc.1",
+    });
+    const acknowledge = within(dialog).getByRole("checkbox", {
+      name: "Publish with status: draft anyway",
+    });
+    expect(acknowledge).not.toBeChecked();
+    expect(publish).toBeDisabled();
+    expect(
+      within(dialog).getByRole("button", { name: "Change status to active" }),
+    ).toBeEnabled();
+    await user.click(acknowledge);
+    expect(publish).toBeEnabled();
+    await user.click(acknowledge);
+    expect(publish).toBeDisabled();
+
+    // Closing and reopening starts unticked again.
+    await user.click(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    await user.click(screen.getByRole("button", { name: "Publish" }));
+    const again = await screen.findByRole("dialog", {
+      name: "Publish 1.2.0-rc.1?",
+    });
+    const box = within(again).getByRole("checkbox", {
+      name: "Publish with status: draft anyway",
+    });
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    await user.click(
+      within(again).getByRole("button", { name: "Publish 1.2.0-rc.1" }),
+    );
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/contracts/c-1/versions");
+    });
+    expect(router.state.location.search).toEqual({
+      published: "1.2.0-rc.1",
+      status: "preview",
+      documentStatus: "draft",
+    });
+    expect(
+      await screen.findByText(
+        "Published 1.2.0-rc.1 as Preview. Its document says status: draft.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("words the acknowledgement for a prerelease without a status", async () => {
+    const user = userEvent.setup();
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base([], {
+        docText: DOC_BASE,
+        meta: draft(1, { declared_version: "2.0.0-beta" }),
+      }),
+    });
+    await user.click(await screen.findByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 2.0.0-beta?",
+    });
+    expect(dialog.textContent).toContain("This document sets no status");
+    expect(dialog.textContent).toContain(
+      "Consumers will get a Preview with no status.",
+    );
+    expect(
+      within(dialog).getByRole("checkbox", {
+        name: "Publish with no status anyway",
+      }),
+    ).toBeVisible();
+  });
+
+  it("shows nothing extra in the dialog for an active document", async () => {
+    const user = userEvent.setup();
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base([], { docText: `${DOC_BASE}status: active\n` }),
+    });
+    await user.click(await screen.findByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.1.0?",
+    });
+    expect(dialog.textContent).not.toContain("status:");
+    expect(dialog.textContent).not.toContain("no status");
+    expect(within(dialog).queryByRole("checkbox")).toBeNull();
+    expect(
+      within(dialog).queryByRole("button", {
+        name: "Change status to active",
+      }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish 1.1.0" }),
+    ).toBeEnabled();
   });
 
   it("explains a version conflict with the highest published version", async () => {
@@ -1275,6 +1593,16 @@ describe("contract api helpers", () => {
     expect(declaredBump("1.0.0", "1.0.0")).toBe("none");
     expect(declaredBump(null, "1.0.0")).toBeNull();
     expect(declaredBump("1.0.0", "next")).toBeNull();
+  });
+
+  it("tells a prerelease semver from a released one", () => {
+    expect(isPrerelease("1.2.0-rc.1")).toBe(true);
+    expect(isPrerelease("0.1.0-alpha")).toBe(true);
+    expect(isPrerelease("1.2.0")).toBe(false);
+    expect(isPrerelease("1.2.0+build.5")).toBe(false);
+    expect(isPrerelease(null)).toBe(false);
+    expect(isPrerelease(undefined)).toBe(false);
+    expect(isPrerelease("next")).toBe(false);
   });
 
   it("reads the ODCS status of the saved text for the publish hint", () => {

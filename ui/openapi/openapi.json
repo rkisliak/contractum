@@ -2766,7 +2766,12 @@
         "type": "object"
       },
       "ContractVersionSummaryOut": {
+        "description": "A contract's head version.\n\n``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,\nand returned to metadata-only callers too.",
         "properties": {
+          "deprecated": {
+            "title": "Deprecated",
+            "type": "boolean"
+          },
           "number": {
             "title": "Number",
             "type": "integer"
@@ -2778,7 +2783,8 @@
         },
         "required": [
           "number",
-          "state"
+          "state",
+          "deprecated"
         ],
         "title": "ContractVersionSummaryOut",
         "type": "object"
@@ -11152,7 +11158,7 @@
     },
     "/api/v1/contracts/contracts": {
       "get": {
-        "description": "List and search contracts: filters, ``q`` text match, keyset pagination.\n\n``require(\"contract:list\")`` admits every authenticated caller; the identity scopes below trim\nthe SQL, so a caller without access gets an empty page. A row appears when the caller\nholds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a\nLatest. Every row is the contract's head: the Latest once one exists (for every caller), else\nthe newest draft. Its content-derived fields are filled only where the caller holds\n``contract:read`` or ``contract:read-published``, and content filters match only those\nrows, so a published-only caller can never match a draft's values.",
+        "description": "List and search contracts: filters, ``q`` text match, keyset pagination.\n\n``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name\nsorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.\n\n``require(\"contract:list\")`` admits every authenticated caller; the identity scopes below trim\nthe SQL, so a caller without access gets an empty page. A row appears when the caller\nholds ``contract:read-metadata`` there, or ``contract:read-published`` and the contract has a\nLatest. Every row is the contract's head: the Latest once one exists (for every caller), else\nthe newest draft. Its content-derived fields are filled only where the caller holds\n``contract:read`` or ``contract:read-published``, and content filters match only those\nrows, so a published-only caller can never match a draft's values.",
         "operationId": "list_contracts_api_v1_contracts_contracts_get",
         "parameters": [
           {
@@ -11309,6 +11315,20 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "id",
+              "enum": [
+                "id",
+                "name"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           }
         ],

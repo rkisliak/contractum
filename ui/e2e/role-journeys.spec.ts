@@ -18,7 +18,12 @@
 // for every match.) Its mandatory flag is cleared, the journey contract soft-deleted and the
 // grant revoked afterwards (also when an earlier run left them behind).
 import { request, type APIRequestContext, type Page } from "@playwright/test";
-import { expect, pasteIntoEditor, test } from "./fixtures";
+import {
+  changeStatusToActiveAndSave,
+  expect,
+  pasteIntoEditor,
+  test,
+} from "./fixtures";
 import {
   adminPassword,
   escapeRegExp,
@@ -230,8 +235,9 @@ let contractId = "";
 let semver = "";
 
 /**
- * The draft once fixed: the template's content with the table described, in the draft's own
- * format (create-from-template stores what the template build returns, JSON or YAML).
+ * The draft once fixed: the template's content with the table described and `status: active`
+ * (a released version needs it), in the draft's own format (create-from-template stores what the
+ * template build returns, JSON or YAML).
  */
 function fixedDocument(version: string, json: boolean): string {
   const document = {
@@ -240,7 +246,7 @@ function fixedDocument(version: string, json: boolean): string {
     apiVersion: "v3.2.0",
     name: contractName,
     version,
-    status: "draft",
+    status: "active",
     description: {
       purpose: "Starting point for a daily batch table at Acme.",
     },
@@ -259,7 +265,7 @@ id: ${odcsId}
 apiVersion: v3.2.0
 name: ${contractName}
 version: "${version}"
-status: draft
+status: active
 description:
   purpose: Starting point for a daily batch table at Acme.
 schema:
@@ -441,6 +447,10 @@ test.describe.serial("role journeys", () => {
     const editor = page.locator(".monaco-editor").first();
     await expect(editor).toBeVisible();
     await expectCleanPage(page, issues, "new draft", { h1: contractName });
+
+    // The template says `status: draft` and a released version: the dialog keeps Publish disabled
+    // until the status is changed to active and saved.
+    await changeStatusToActiveAndSave(page);
 
     // Publish: the gate refuses it on the per-run mandatory rule, at the table's pointer.
     await page.getByRole("button", { name: "Publish", exact: true }).click();

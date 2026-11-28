@@ -62,7 +62,7 @@ apiVersion: v3.2.0
 id: {odcs_id}
 name: Audit Resilience
 version: "1.0.0"
-status: draft
+status: active
 schema:
   - name: events
     physicalType: table
@@ -220,7 +220,7 @@ id: {odcs_id}
 apiVersion: v3.2.0
 name: Access Best Effort
 version: "1.0.0"
-status: draft
+status: active
 domain: resilience
 tags: [phase7, access]
 description:

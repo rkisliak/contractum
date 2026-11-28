@@ -54,7 +54,7 @@ id: {odcs_id}
 apiVersion: v3.2.0
 name: Phase 5 Orders
 version: "{version}"
-status: draft
+status: active
 domain: governance
 description:
   purpose: Phase 5 journey contract.

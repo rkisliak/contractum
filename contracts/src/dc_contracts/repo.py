@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
 from dc_auth.authorizer import FolderFacts, FolderScope
 from dc_core.problems import ProblemError
@@ -128,15 +129,28 @@ async def get_contract_with_version(
     return row[0], row[1]
 
 
-async def search_contracts(
+@dataclass(frozen=True)
+class ContractPage:
+    """One page of the contract list: its rows, whether more follow, and the last row's sort key.
+
+    ``last_sort_key`` is the ``sort=name`` key of the last returned row (``None`` for an empty
+    page); the ``sort=name`` cursor carries it together with that row's contract id.
+    """
+
+    rows: list[tuple[Contract, ContractVersion, bool]]
+    has_more: bool
+    last_sort_key: str | None
+
+
+async def search_contract_page(
     session: AsyncSession,
     filters: ContractSearchFilters,
     *,
     metadata_scope: FolderScope,
     content_scope: FolderScope,
     published_scope: FolderScope | None = None,
-) -> tuple[list[tuple[Contract, ContractVersion, bool]], bool]:
-    """One page of contracts in id order, and whether a further page exists.
+) -> ContractPage:
+    """One page of contracts in ``filters.sort`` order, and whether a further page exists.
 
     Each row is ``(contract, version, content_visible)``: ``content_visible`` is true when the
     caller's ``content_scope`` or ``published_scope`` covers the row (D-36). All-empty scopes issue
@@ -147,6 +161,11 @@ async def search_contracts(
         filters, metadata_scope, content_scope, published_scope=published_scope
     )
     if stmt is None:
-        return [], False
-    rows = [(row[0], row[1], bool(row[2])) for row in (await session.execute(stmt)).all()]
-    return rows[: filters.limit], len(rows) > filters.limit
+        return ContractPage([], False, None)
+    fetched = (await session.execute(stmt)).all()
+    kept = fetched[: filters.limit]
+    return ContractPage(
+        rows=[(row[0], row[1], bool(row[2])) for row in kept],
+        has_more=len(fetched) > filters.limit,
+        last_sort_key=str(kept[-1][3]) if kept else None,
+    )

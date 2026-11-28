@@ -243,6 +243,17 @@ Contractum also ships platform rule sets that apply to every contract: `odcs-str
 `odcs-consistency`, `odcs-references` and `odcs-publication`. Every validation also checks the
 official ODCS JSON Schema first. A schema violation always blocks.
 
+`odcs-publication` checks the document's ODCS `status` when you publish:
+
+- A released version needs `status: active`. A released version has no prerelease part, for
+  example `"1.2.0"`. Any other status, or no status, is the `error` finding
+  `released-status-active`.
+- A prerelease version, for example `"1.2.0-rc.1"`, publishes as a Preview with `draft` or
+  `proposed`. It gets the warning `published-status-active`.
+
+Version 2 of the set added the error, so it follows the grace period below: it warns first, then
+blocks.
+
 ### Warn first, then block
 
 A mandatory version does not block at once. It warns first:

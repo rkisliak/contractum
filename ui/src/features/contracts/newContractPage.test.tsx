@@ -29,7 +29,7 @@ const FOLDER_API = "*/api/v1/contracts/folders/ledger-id";
 
 const created = {
   contract: makeContract(),
-  version: { number: 1, state: "draft" },
+  version: { number: 1, state: "draft", deprecated: false },
   draft: { id: "d-1", revision: 1, etag: '"r1"' },
   structural_validation: { valid: true, error_count: 0, errors: [] },
   validation: { status: "unavailable" },

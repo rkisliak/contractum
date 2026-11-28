@@ -9,6 +9,8 @@ from ...types import Response, UNSET
 from ... import errors
 
 from ...models.contract_list_out import ContractListOut
+from ...models.list_contracts_api_v1_contracts_contracts_get_sort import check_list_contracts_api_v1_contracts_contracts_get_sort
+from ...models.list_contracts_api_v1_contracts_contracts_get_sort import ListContractsApiV1ContractsContractsGetSort
 from ...models.problem import Problem
 from ...types import UNSET, Unset
 from typing import cast
@@ -28,6 +30,7 @@ def _get_kwargs(
     q: None | str | Unset = UNSET,
     limit: int | Unset = 50,
     cursor: None | str | Unset = UNSET,
+    sort: ListContractsApiV1ContractsContractsGetSort | Unset = 'id',
 
 ) -> dict[str, Any]:
     
@@ -101,6 +104,12 @@ def _get_kwargs(
     else:
         json_cursor = cursor
     params["cursor"] = json_cursor
+
+    json_sort: str | Unset = UNSET
+    if not isinstance(sort, Unset):
+        json_sort = sort
+
+    params["sort"] = json_sort
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -195,11 +204,15 @@ def sync_detailed(
     q: None | str | Unset = UNSET,
     limit: int | Unset = 50,
     cursor: None | str | Unset = UNSET,
+    sort: ListContractsApiV1ContractsContractsGetSort | Unset = 'id',
 
 ) -> Response[ContractListOut | Problem]:
     """ List Contracts
 
      List and search contracts: filters, ``q`` text match, keyset pagination.
+
+    ``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name
+    sorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
     the SQL, so a caller without access gets an empty page. A row appears when the caller
@@ -220,6 +233,7 @@ def sync_detailed(
         q (None | str | Unset):
         limit (int | Unset):  Default: 50.
         cursor (None | str | Unset):
+        sort (ListContractsApiV1ContractsContractsGetSort | Unset):  Default: 'id'.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -241,6 +255,7 @@ tags=tags,
 q=q,
 limit=limit,
 cursor=cursor,
+sort=sort,
 
     )
 
@@ -263,11 +278,15 @@ def sync(
     q: None | str | Unset = UNSET,
     limit: int | Unset = 50,
     cursor: None | str | Unset = UNSET,
+    sort: ListContractsApiV1ContractsContractsGetSort | Unset = 'id',
 
 ) -> ContractListOut | Problem | None:
     """ List Contracts
 
      List and search contracts: filters, ``q`` text match, keyset pagination.
+
+    ``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name
+    sorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
     the SQL, so a caller without access gets an empty page. A row appears when the caller
@@ -288,6 +307,7 @@ def sync(
         q (None | str | Unset):
         limit (int | Unset):  Default: 50.
         cursor (None | str | Unset):
+        sort (ListContractsApiV1ContractsContractsGetSort | Unset):  Default: 'id'.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -310,6 +330,7 @@ tags=tags,
 q=q,
 limit=limit,
 cursor=cursor,
+sort=sort,
 
     ).parsed
 
@@ -326,11 +347,15 @@ async def asyncio_detailed(
     q: None | str | Unset = UNSET,
     limit: int | Unset = 50,
     cursor: None | str | Unset = UNSET,
+    sort: ListContractsApiV1ContractsContractsGetSort | Unset = 'id',
 
 ) -> Response[ContractListOut | Problem]:
     """ List Contracts
 
      List and search contracts: filters, ``q`` text match, keyset pagination.
+
+    ``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name
+    sorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
     the SQL, so a caller without access gets an empty page. A row appears when the caller
@@ -351,6 +376,7 @@ async def asyncio_detailed(
         q (None | str | Unset):
         limit (int | Unset):  Default: 50.
         cursor (None | str | Unset):
+        sort (ListContractsApiV1ContractsContractsGetSort | Unset):  Default: 'id'.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -372,6 +398,7 @@ tags=tags,
 q=q,
 limit=limit,
 cursor=cursor,
+sort=sort,
 
     )
 
@@ -394,11 +421,15 @@ async def asyncio(
     q: None | str | Unset = UNSET,
     limit: int | Unset = 50,
     cursor: None | str | Unset = UNSET,
+    sort: ListContractsApiV1ContractsContractsGetSort | Unset = 'id',
 
 ) -> ContractListOut | Problem | None:
     """ List Contracts
 
      List and search contracts: filters, ``q`` text match, keyset pagination.
+
+    ``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name
+    sorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
     the SQL, so a caller without access gets an empty page. A row appears when the caller
@@ -419,6 +450,7 @@ async def asyncio(
         q (None | str | Unset):
         limit (int | Unset):  Default: 50.
         cursor (None | str | Unset):
+        sort (ListContractsApiV1ContractsContractsGetSort | Unset):  Default: 'id'.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -441,5 +473,6 @@ tags=tags,
 q=q,
 limit=limit,
 cursor=cursor,
+sort=sort,
 
     )).parsed

@@ -10,6 +10,13 @@ Stores ODCS data contracts inside folders of any kind (ROOT, Organization, Proje
 - Templates (`/api/v1/contracts/folders/{folder_id}/templates`, `/templates/...`): an editable draft
   plus immutable numbered published versions that can be deprecated; availability to the folders
   below (`available-templates`) and create-from-template (`.../contracts/from-template`).
+- List order: `GET /api/v1/contracts/contracts` takes `sort=id` (default) or `sort=name` (the Folders tree's per-folder
+  query). The name key is `left(lower(coalesce(nullif(name,''), odcs_id)), 128)` then the id (`search.py`
+  `name_sort_key`); the `n:`-prefixed cursor (`encode_name_cursor`, `decode_name_cursor`) carries that key, so the next
+  page takes the key from the cursor only and never looks the row up. It is strict (one position, one cursor) and a cursor
+  of the other sort is 422. The list row's `version.deprecated` (required) is true when the head version is deprecated and
+  is also returned to metadata-only callers. The per-folder tree statement is backed by `ix_contract_folder_id`
+  (`folder_id`, `id`; migration 0019): the recorded EXPLAIN was a Seq Scan without it, and `test_tree_query_plan.py` pins the index.
 - Metadata-only reads for Policy Managers (`contract:read-metadata`, content fields redacted) and
   lists trimmed to the folders the caller can see (empty page, never 403).
 - Drafts with revisions (`If-Match`/ETag), publishing a draft in place as an immutable version, the

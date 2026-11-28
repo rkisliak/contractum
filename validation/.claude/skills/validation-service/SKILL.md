@@ -11,8 +11,8 @@ Use when adding anything to `validation/src/dc_validation/`.
    `internal_routers=[internal_router, impact_router]` to `dc_core.app.create_app`, wires
    `auth_lifespan` with `remote_authorizer_factory` and `sandbox_hook(settings)`, and owns an outbox
    model. The service owns `rule_set`, `rule_set_version`, `validation_run` (migrations 0002 to
-   0009; 0005 seeds `odcs-structural`, 0006 the semantic sets `odcs-consistency` and
-   `odcs-references`, 0009 the publication set `odcs-publication`). The gateway forwards `/api/v1/validation/` to it; the internal routes (the
+   0010; 0005 seeds `odcs-structural`, 0006 the semantic sets `odcs-consistency` and
+   `odcs-references`, 0009 the publication set `odcs-publication`, 0010 its version 2). The gateway forwards `/api/v1/validation/` to it; the internal routes (the
    run, the stored-run read and the two batch routes) are never routed. `api/rulesets.py` is the
    model for new routes.
 2. **Add a router** exactly as in the root `add-route` skill: a `PolicyRouter(prefix=
@@ -74,11 +74,17 @@ Use when adding anything to `validation/src/dc_validation/`.
    `PUT .../versions/{n}/enforce-at` and `PUT .../paused` (`ruleset:mandate` at ROOT; anything else
    is the uniform 404). A paused set resolves as non-blocking `warn` with `paused: true`.
    `ODCS_PUBLICATION_V1` (migration 0009, `odcs-publication`, same warn grace) holds the publish-only
-   checks: today one **warning** rule `published-status-active`, which reads `ctx.operation` (`runs.rule_ctx`
+   checks: one **warning** rule `published-status-active`, which reads `ctx.operation` (`runs.rule_ctx`
    binds the run mode; batch binds `publish`; cel-1 never sees it). **A warning-severity platform rule
    never blocks** (D-124 blocks only error-severity findings), in grace or after `enforce_at`, so it
-   is the right tool for advice that must not stop a publish; a blocking check would need severity
-   `error` and a deliberate decision. Its message is static and guards make it error-free.
+   is the right tool for advice that must not stop a publish; a blocking check needs severity
+   `error` and a deliberate decision. `ODCS_PUBLICATION_V2` (migration 0010) is such a decision: the
+   **error** `released-status-active` (a released version needs `status: active`) plus the warning
+   for prerelease publishes. It shows how to evolve a platform set after it shipped: a new constant
+   and a migration that publishes the next version exactly as `publish_rule_set` would
+   (`publish_counter`, draft content, `enforce_at = now() + DC_MANDATORY_WARN_DAYS`, one
+   `ruleset.version_published` event), idempotent on fixed ids. Messages are static and guards make
+   every rule error-free.
 10. **Compatibility and native findings (Phase 6).** A run request may carry a `baseline` and
    `stable_major_floor` (sent by contracts). `execute_run` parses the baseline like the document,
    diffs it with `dc_odcs.diff.compare` in a thread, and `compat.build_compatibility` builds the

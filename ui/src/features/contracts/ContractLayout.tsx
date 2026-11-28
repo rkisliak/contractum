@@ -1,8 +1,11 @@
 // The contract page frame: breadcrumbs (Contracts, the folder chain, the contract), the name as
-// h1 with the Latest semver badge, the ODCS id, and the tab navigation over the child routes
+// h1 with the Latest semver badge (plus a warning "Status: draft" badge when the Latest document's
+// ODCS status is not `active`), the ODCS id, and the tab navigation over the child routes
 // (Overview, Document, Drafts, Versions, Diff, Rule sets, Subscribers). A 404 is NotFound.
+import { useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { ContractSummary } from "@/api/types";
+import { Alert } from "@/components/Alert";
 import { Badge } from "@/components/Badge";
 import type { Crumb } from "@/components/Breadcrumb";
 import { NotFound } from "@/components/NotFound";
@@ -12,14 +15,56 @@ import { Skeleton } from "@/components/states";
 import { TabNav } from "@/components/Tabs";
 import { useCapabilities } from "@/features/access/useCapabilities";
 import { useFolderList } from "@/features/folders/api";
-import { ancestorIds } from "@/features/folders/tree";
+import { ancestorIds, contractDisplayName } from "@/features/folders/tree";
 import { isNotFound, problemOf } from "@/lib/unexpected";
 import { useContract } from "./api";
+import { latestStatusBadge, metadataOnlyNotice } from "./copy";
 
-export function contractName(
-  contract: Pick<ContractSummary, "name" | "odcs_id">,
+/** The one display rule for a contract's name: its ODCS name, or its id when the name is empty. */
+export const contractName = contractDisplayName;
+
+/**
+ * Whether a metadata-only caller may open the page at `pathname`: the Overview and Rule sets
+ * answer a metadata read, every other tab needs content or published reads the API refuses.
+ * `bases` are the page's root paths, the API's canonical id and the id as the URL spells it (a
+ * UUID may arrive in another case); a path is compared without case or a trailing slash.
+ */
+export function metadataOnlyMayOpen(
+  pathname: string,
+  ...bases: string[]
+): boolean {
+  // Trailing slashes are cut by index: a `/\/+$/` pattern backtracks over every run of slashes.
+  let end = pathname.length;
+  while (end > 0 && pathname.charAt(end - 1) === "/") end -= 1;
+  const path = pathname.slice(0, end).toLowerCase();
+  return bases.some((base) => {
+    const root = base.toLowerCase();
+    return path === root || path === `${root}/rule-sets`;
+  });
+}
+
+/**
+ * What the caller's role lets the contract page offer. `metadataOnly` is the API's own flag
+ * (`content_redacted`, a Policy Manager without a contract role); `canSeeVersions` is true when
+ * the Versions list, a version and the Diff would be answered (a published read or a full read,
+ * shown while the capabilities load). The UI decides nothing: it only leaves out what the API
+ * would refuse, so the page sends no request the caller is refused.
+ */
+export function contractAccess(
+  contract: Pick<ContractSummary, "content_redacted">,
+  caps: { isPending: boolean; can: (permission: string) => boolean },
 ) {
-  return contract.name ?? contract.odcs_id;
+  const allows = (permission: string) => caps.isPending || caps.can(permission);
+  const metadataOnly = contract.content_redacted;
+  // A metadata-only caller holds no content right, also while the capabilities load.
+  const canRead = !metadataOnly && allows("contract:read");
+  return {
+    allows,
+    metadataOnly,
+    canRead,
+    canSeeVersions:
+      !metadataOnly && (allows("contract:read-published") || canRead),
+  };
 }
 
 export function useFolderCrumbs(folderId: string | undefined): Crumb[] {
@@ -49,6 +94,7 @@ export function ContractLayout({
   const contract = useContract(contractId);
   const folderCrumbs = useFolderCrumbs(contract.data?.folder_id);
   const caps = useCapabilities(contract.data?.folder_id ?? null);
+  const pathname = useLocation({ select: (location) => location.pathname });
 
   if (contract.isError) {
     return isNotFound(contract.error) ? (
@@ -68,16 +114,23 @@ export function ContractLayout({
   // Tabs follow what each tab's first request needs (shown while the capabilities load): the
   // current document, drafts and subscribers need contract:read, attached rule sets
   // contract:read-metadata. A published-only reader (a consumer) still reads the Latest document.
-  const allows = (permission: string) => caps.isPending || caps.can(permission);
-  const canRead = allows("contract:read");
+  // A metadata-only caller (content_redacted) gets neither content nor version tabs.
+  const { allows, metadataOnly, canRead, canSeeVersions } = contractAccess(
+    data,
+    caps,
+  );
   const tabs = [
     { to: base, label: "Overview", exact: true },
-    ...(canRead || data.latest_version
+    ...(!metadataOnly && (canRead || data.latest_version)
       ? [{ to: `${base}/document`, label: "Document" }]
       : []),
     ...(canRead ? [{ to: `${base}/drafts`, label: "Drafts" }] : []),
-    { to: `${base}/versions`, label: "Versions" },
-    { to: `${base}/diff`, label: "Diff" },
+    ...(canSeeVersions
+      ? [
+          { to: `${base}/versions`, label: "Versions" },
+          { to: `${base}/diff`, label: "Diff" },
+        ]
+      : []),
     ...(allows("contract:read-metadata")
       ? [{ to: `${base}/rule-sets`, label: "Rule sets" }]
       : []),
@@ -95,7 +148,15 @@ export function ContractLayout({
         ]}
         badges={
           data.latest_version ? (
-            <Badge intent="success">Latest {data.latest_version.semver}</Badge>
+            <>
+              <Badge intent="success">
+                Latest {data.latest_version.semver}
+              </Badge>
+              {/* With a Latest, `status` is the Latest document's ODCS status (the head row). */}
+              {data.status !== "active" ? (
+                <Badge intent="warning">{latestStatusBadge(data.status)}</Badge>
+              ) : null}
+            </>
           ) : (
             <Badge intent="neutral">Not published</Badge>
           )
@@ -103,7 +164,13 @@ export function ContractLayout({
         description={<span>{data.odcs_id}</span>}
       />
       <TabNav label="Contract sections" items={tabs} />
-      {children}
+      {metadataOnly &&
+      !metadataOnlyMayOpen(pathname, base, `/contracts/${contractId}`) ? (
+        // A direct link to a content tab: the child is not mounted, so it sends no refused request.
+        <Alert intent="info">{metadataOnlyNotice}</Alert>
+      ) : (
+        children
+      )}
     </>
   );
 }

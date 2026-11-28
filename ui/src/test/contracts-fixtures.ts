@@ -61,7 +61,7 @@ export function makeContract(overrides: Record<string, unknown> = {}) {
     content_redacted: false,
     template: null,
     origin: null,
-    version: { number: 2, state: "draft" },
+    version: { number: 2, state: "draft", deprecated: false },
     latest_version: { version_id: "v-1.0.0", semver: "1.0.0" },
     created_by: "local:admin",
     created_at: "2026-11-01T10:00:00Z",

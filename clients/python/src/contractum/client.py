@@ -249,8 +249,13 @@ class Client:
         q: str | None = None,
         limit: int = 50,
         cursor: str | None = None,
+        sort: Literal["id", "name"] = "id",
     ) -> ContractPage:
-        """Return one page of the contracts the caller can read; ``limit`` is clamped to 1..100."""
+        """Return one page of the contracts the caller can read; ``limit`` is clamped to 1..100.
+
+        ``sort`` is ``"id"`` (creation order, the default) or ``"name"`` (by name, ignoring case).
+        A ``cursor`` is only valid with the ``sort`` it came from.
+        """
         page = _api.list_contracts(
             self._http,
             folder_id=_contract_id(folder_id) if folder_id is not None else None,
@@ -263,6 +268,7 @@ class Client:
             q=q,
             limit=max(1, min(limit, MAX_PAGE_SIZE)),
             cursor=cursor,
+            sort=sort,
         )
         return ContractPage.from_generated(page)
 
@@ -278,6 +284,7 @@ class Client:
         tags: list[str] | None = None,
         q: str | None = None,
         page_size: int = MAX_PAGE_SIZE,
+        sort: Literal["id", "name"] = "id",
     ) -> Iterator[ContractSummary]:
         """Yield every matching contract, following ``next_cursor`` until the last page."""
         cursor: str | None = None
@@ -294,6 +301,7 @@ class Client:
                 q=q,
                 limit=page_size,
                 cursor=cursor,
+                sort=sort,
             )
             yield from page.items
             cursor = page.next_cursor

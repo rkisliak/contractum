@@ -28,6 +28,7 @@
   "updated_by": "dana",
   "version": {
     "number": 3,
-    "state": "published"
+    "state": "published",
+    "deprecated": false
   }
 }

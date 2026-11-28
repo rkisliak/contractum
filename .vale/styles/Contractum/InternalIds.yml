@@ -1,0 +1,16 @@
+# Planning ids mean nothing to a reader. Mirrors INTERNAL_ID in tests/repo/test_docs_site.py
+# (keep both in step; tests/repo/test_docs_gate.py checks that they match) plus GSD plan ids and
+# .planning paths. Say what the decision is, not its id.
+extends: existence
+message: "Internal planning id '%s' in reader docs: describe the behaviour instead."
+level: error
+nonword: true
+tokens:
+  - '\bD-(?:[A-Z]+-)*\d+\b'
+  - '\bT-\d+(?:-[A-Z0-9]+)+\b'
+  - '\b\d{6}-[a-z0-9]{3}\b'
+  - '\bPhase \d+'
+  - '\b(?:UI|RULE|RBAC|VAL|AUTH|VER|SUB|PLAT|AUD|GOV|DOCS|DATA|CONT|SDK|FETCH|API|REPORT|REF|CLIAUTH|TMPL|SITE|SDKQA|DOCCI|CLEAN|SRV|PUB|E2E|MAIL|SRC|TREE)-\d+\b'
+  - '\b\d{2}-\d{2}-(?:PLAN|SUMMARY|CONTEXT|RESEARCH|VERIFICATION|UAT|REVIEW)\b'
+  - '\b(?:[Pp]lan|[Ww]ave) \d{1,2}(?:-\d{2})?\b'
+  - '\.planning/'

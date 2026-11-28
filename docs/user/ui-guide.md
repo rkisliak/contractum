@@ -19,6 +19,23 @@ The UI follows your system theme (light or dark) and works on a phone.
   links to the main areas.
 - **Folders** shows the folder tree you can see: Root, then Organization, Project and Team. A folder
   page has tabs for its contracts, sub-folders, templates, rule sets, subscribers and access.
+  - **Expand all** opens every folder in the tree. **Collapse all** closes them again, leaving
+    only Root open. Each button is disabled while it would change nothing on screen.
+  - Tick **Show contracts in tree** (next to **Show archived**, off by default, and kept in the
+    page address so a link keeps it) to list each expanded folder's own contracts under its
+    sub-folders. Contracts are sorted by name. Each row shows the contract's lifecycle badge and
+    Latest version after its name, such as **Latest 1.0.0**. The badge is Draft, Preview, Latest,
+    Unpublished or Deprecated. A draft of a published contract shows **Draft** and **Latest 1.0.0**.
+    Before the first publish the row says "Not published". Open a contract by clicking its row,
+    by pressing Enter on it, or with the arrow button in the **Actions** column.
+  - A folder shows its first 100 contracts, then a **More contracts — open folder** row that opens
+    the folder's **Contracts** tab. The row carries no count, because the server does not report
+    how many contracts a folder holds.
+  - The tree only shows contracts you can open from the **Contracts** list. A folder with no
+    such contracts shows nothing under it. A folder with no sub-folders and no contracts loses
+    its expand arrow once its list has loaded.
+  - The Folders page loads at most 2,000 folders. When it stops, a note says so. Open a folder to
+    see everything inside it, including contracts in folders the tree did not load.
 - **Contracts** lists every contract you can see, across all folders, with filters for text, ODCS
   status and domain. The **Search contracts** box in the top bar works from any page.
 - **Subscriptions** lists the [subscriber cards](subscriptions.md) you can see. A card records which
@@ -68,7 +85,18 @@ byte for byte, exactly as written.
 - **Validate**: checks the draft against the ODCS JSON Schema and every rule set that applies to the
   folder.
 - **Publish**: opens the publish dialog. Save first. A new version above the Latest is published as
-  a Preview; promote it from the **Versions** tab to make it the Latest.
+  a Preview; promote it from the **Versions** tab to make it the Latest. A released version, such
+  as 1.2.0, needs `status: active` in the document. A prerelease, such as 1.2.0-rc.1, can keep
+  `status: draft` and gets a warning.
+  - When the saved document does not say `status: active`, the warning is the first thing in the
+    dialog. For a released version, **Publish** stays disabled.
+  - **Change status to active** rewrites only the `status` value in the editor. A note under the
+    toolbar then asks you to review the change, save, then publish. It goes away once you save. A
+    document with no `status` needs it added by hand.
+  - For a prerelease, tick **Publish with status: draft anyway** to enable **Publish**.
+  - After the publish, the **Versions** tab notice says when the document's status was not
+    `active`. The contract header shows a warning badge, such as **Status: draft**, beside
+    **Latest 1.0.0** while the Latest document's status is not `active`.
 - **Compare with Latest**, a download button and **Discard draft**.
 
 If a breaking change needs a new major version, the editor says so and names the smallest version
@@ -87,6 +115,10 @@ date), **Unpublish version** and **Republish version**.
 
 The Policy Manager role is given at a folder and covers everything below it. It reads contract
 metadata but not contract content.
+A contract you can see as metadata only opens with a notice and without the **Document**,
+**Drafts**, **Versions**, **Diff** and **Subscribers** tabs. A link to one of those tabs shows the same
+notice. Facts taken from the contract content (domain, tags, ODCS apiVersion) read "Not available at
+your access level", because they are hidden, not empty.
 
 ![The rule set editor with a rule's JSONPath target and CEL condition](../images/ui/rule-set-editor.png)
 

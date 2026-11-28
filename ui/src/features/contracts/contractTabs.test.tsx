@@ -49,7 +49,7 @@ const contract = {
   content_redacted: false,
   template: null,
   origin: null,
-  version: { number: 2, state: "draft" },
+  version: { number: 2, state: "draft", deprecated: false },
   latest_version: { version_id: "v-1.0.0", semver: "1.0.0" },
   created_by: "local:admin",
   created_at: "2026-11-01T10:00:00Z",
@@ -1048,6 +1048,38 @@ describe("contract versions tab", () => {
     expect(
       screen.getByText("Consumers fetching the Latest now receive it."),
     ).toBeVisible();
+  });
+
+  it.each([
+    ["draft", "Its document says status: draft."],
+    ["none", "Its document sets no status."],
+    ["other", "Its document does not say status: active."],
+  ])(
+    "turns the banner into a warning when the published document said %s",
+    async (documentStatus, says) => {
+      renderApp(
+        `/contracts/c-1/versions?published=0.1.0&status=latest&documentStatus=${documentStatus}`,
+        { folders, permissions: ALL, handlers: versionsHandlers([latest]) },
+      );
+      const title = await screen.findByText(
+        `Published 0.1.0 as Latest. ${says}`,
+      );
+      const banner = title.closest("[role=status]") as HTMLElement;
+      expect(banner).toHaveTextContent("Warning:");
+      expect(banner).toHaveTextContent(
+        "Consumers fetching the Latest now receive it. To correct it, publish a new version that says status: active.",
+      );
+    },
+  );
+
+  it("ignores a document status outside the allow-list", async () => {
+    renderApp(
+      "/contracts/c-1/versions?published=0.1.0&status=latest&documentStatus=active",
+      { folders, permissions: ALL, handlers: versionsHandlers([latest]) },
+    );
+    const title = await screen.findByText("Published 0.1.0 as Latest");
+    expect(title.closest("[role=status]")).toHaveTextContent("Success:");
+    expect(screen.queryByText(/To correct it/)).toBeNull();
   });
 
   it("words the banner for an unknown status", async () => {

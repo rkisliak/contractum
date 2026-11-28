@@ -21,6 +21,7 @@ from dc_validation.sandbox import Sandbox
 from dc_validation.seed import (
     ODCS_CONSISTENCY_V1,
     ODCS_PUBLICATION_V1,
+    ODCS_PUBLICATION_V2,
     ODCS_REFERENCES_V1,
     ODCS_STRUCTURAL_NAME,
     ODCS_STRUCTURAL_V1,
@@ -250,12 +251,15 @@ REFERENCES_V1_SHA256 = "f877858d8902e614c7f62e53d4b27d125c38825c76c3e1074e15f38a
 
 # The hash migration 0009 stores (quick 261119-rpi). Never edited: a change is a new constant.
 PUBLICATION_V1_SHA256 = "5268111919adcfa52e806f06f53eaf5cbc8289e00508a09531a84fc13156bbe3"
+# The hash migration 0010 stores (quick 261128-rsa). Never edited: a change is a new constant.
+PUBLICATION_V2_SHA256 = "fe594df93f31c74f3c47e91634e7f51efb4b6ab2cff53b170371a3c2b4324dbd"
 
 SEEDED_SETS: dict[str, RuleSetContent] = {
     "odcs-structural": ODCS_STRUCTURAL_V1,
     "odcs-consistency": ODCS_CONSISTENCY_V1,
     "odcs-references": ODCS_REFERENCES_V1,
     "odcs-publication": ODCS_PUBLICATION_V1,
+    "odcs-publication v2": ODCS_PUBLICATION_V2,
 }
 
 
@@ -450,3 +454,142 @@ async def test_the_publication_rule_never_errors_under_any_ctx_operation(
     assert [results[unit.id].outcome for unit in units] in (["pass"], ["fail"])
     if operation != "publish":
         assert results[units[0].id].outcome == "pass"
+
+
+# -- odcs-publication v2 (quick 261128-rsa) ------------------------------------------------------
+
+
+def test_publication_v2_adds_the_released_error_and_keeps_the_preview_warning() -> None:
+    assert content_sha256(ODCS_PUBLICATION_V2) == PUBLICATION_V2_SHA256
+    assert content_sha256(ODCS_PUBLICATION_V1) == PUBLICATION_V1_SHA256  # v1 is never edited
+    assert ODCS_PUBLICATION_V2.dsl_version == "cel-2"
+    assert [(r.key, r.severity) for r in ODCS_PUBLICATION_V2.rules] == [
+        ("published-status-active", "warning"),
+        ("released-status-active", "error"),
+    ]
+    for rule in ODCS_PUBLICATION_V2.rules:
+        assert "{" not in rule.message and "$" not in rule.message  # static text, never templated
+        assert rule.fixtures.pass_, rule.key
+        assert rule.fixtures.fail, rule.key
+
+
+async def publication_v2_outcomes(document: Any, operation: str | None) -> dict[str, str]:
+    ctx: dict[str, Any] = {"folder_kind": "team", "folder_path": "a", "organization_id": None}
+    if operation is not None:
+        ctx["operation"] = operation
+    units = [
+        EvalUnit(id=i, rule=rule, dsl_version="cel-2")
+        for i, rule in enumerate(ODCS_PUBLICATION_V2.rules)
+    ]
+    async with sandbox() as box:
+        results = await box.evaluate(
+            units, document, ctx=ctx, previous=None, changes=[], refs=EMPTY_REFS
+        )
+    return {unit.rule.key: results[unit.id].outcome for unit in units}
+
+
+def _odcs(**fields: Any) -> dict[str, Any]:
+    return {"apiVersion": "v3.2.0", "kind": "DataContract", "id": "urn:x", **fields}
+
+
+# (document, operation) -> (published-status-active, released-status-active)
+PUBLICATION_V2_MATRIX: dict[str, tuple[dict[str, Any], str | None, tuple[str, str]]] = {
+    "release + draft at publish: error": (
+        _odcs(version="1.2.0", status="draft"),
+        "publish",
+        ("pass", "fail"),
+    ),
+    "release + no status at publish: error": (_odcs(version="1.2.0"), "publish", ("pass", "fail")),
+    "release + proposed at publish: error": (
+        _odcs(version="1.0.0", status="proposed"),
+        "publish",
+        ("pass", "fail"),
+    ),
+    "release with build metadata + draft at publish: error": (
+        _odcs(version="1.0.0+build-7", status="draft"),
+        "publish",
+        ("pass", "fail"),
+    ),
+    "release + active at publish: pass": (
+        _odcs(version="1.2.0", status="active"),
+        "publish",
+        ("pass", "pass"),
+    ),
+    "prerelease + draft at publish: warning only": (
+        _odcs(version="1.2.0-rc.1", status="draft"),
+        "publish",
+        ("fail", "pass"),
+    ),
+    "prerelease + no status at publish: warning only": (
+        _odcs(version="1.2.0-rc.1"),
+        "publish",
+        ("fail", "pass"),
+    ),
+    "prerelease + active at publish: pass": (
+        _odcs(version="1.2.0-rc.1", status="active"),
+        "publish",
+        ("pass", "pass"),
+    ),
+    "missing version + draft at publish: judged as a release": (
+        _odcs(status="draft"),
+        "publish",
+        ("pass", "fail"),
+    ),
+    "release + draft at save: nothing": (
+        _odcs(version="1.2.0", status="draft"),
+        "save",
+        ("pass", "pass"),
+    ),
+    "prerelease + draft at save: nothing": (
+        _odcs(version="1.2.0-rc.1", status="draft"),
+        "save",
+        ("pass", "pass"),
+    ),
+    "release + draft with no operation: nothing": (
+        _odcs(version="1.2.0", status="draft"),
+        None,
+        ("pass", "pass"),
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("document", "operation", "expected"),
+    PUBLICATION_V2_MATRIX.values(),
+    ids=PUBLICATION_V2_MATRIX.keys(),
+)
+async def test_publication_v2_blocks_only_released_versions_without_status_active(
+    document: dict[str, Any], operation: str | None, expected: tuple[str, str]
+) -> None:
+    got = await publication_v2_outcomes(document, operation)
+
+    assert (got["published-status-active"], got["released-status-active"]) == expected
+
+
+PUBLICATION_V2_ODD_DOCUMENTS: dict[str, Any] = {
+    **PUBLICATION_ODD_DOCUMENTS,
+    "version integer": {"version": 1, "status": "draft"},
+    "version null": {"version": None},
+    "version list": {"version": ["1.0.0-rc.1"]},
+    "version map": {"version": {"value": "1.0.0"}},
+    "version empty": {"version": ""},
+    "version prerelease, status list": {"version": "1.0.0-rc.1", "status": ["active"]},
+}
+
+
+@pytest.mark.parametrize("operation", [None, "save", "publish"])
+@pytest.mark.parametrize(
+    "document", PUBLICATION_V2_ODD_DOCUMENTS.values(), ids=PUBLICATION_V2_ODD_DOCUMENTS.keys()
+)
+async def test_the_publication_v2_rules_never_error_under_any_ctx_operation(
+    document: Any, operation: str | None
+) -> None:
+    """An error outcome in an enforced mandatory rule blocks publish (D-139): never an error."""
+    got = await publication_v2_outcomes(document, operation)
+
+    assert all(outcome in ("pass", "fail") for outcome in got.values()), got
+    if operation != "publish":
+        assert set(got.values()) == {"pass"}
+    else:
+        # Exactly one of the two judges a publish whose status is not active: never both.
+        assert list(got.values()).count("fail") <= 1, got

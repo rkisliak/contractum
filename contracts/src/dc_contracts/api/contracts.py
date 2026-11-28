@@ -77,7 +77,7 @@ from dc_contracts.ingest import (
 from dc_contracts.lifecycle import parts_of
 from dc_contracts.models import Contract, ContractVersion
 from dc_contracts.notation import get_adapter
-from dc_contracts.repo import get_contract_with_version, insert_contract, search_contracts
+from dc_contracts.repo import get_contract_with_version, insert_contract, search_contract_page
 from dc_contracts.runtime_settings import effective_governance
 from dc_contracts.search import (
     DEFAULT_LIMIT,
@@ -85,7 +85,9 @@ from dc_contracts.search import (
     MAX_Q_LENGTH,
     ContractSearchFilters,
     decode_cursor,
+    decode_name_cursor,
     encode_cursor,
+    encode_name_cursor,
     reject_nul,
 )
 from dc_contracts.settings import ContractsSettings
@@ -108,8 +110,15 @@ _DOCUMENT_MEDIA_TYPES = {media_type: _BINARY for media_type in sorted(ALLOWED_ME
 
 
 class ContractVersionSummaryOut(BaseModel):
+    """A contract's head version.
+
+    ``deprecated`` is lifecycle metadata like ``state``: true when the head version is deprecated,
+    and returned to metadata-only callers too.
+    """
+
     number: int
     state: str
+    deprecated: bool
 
 
 class ContractLatestVersionOut(BaseModel):
@@ -315,7 +324,11 @@ def _metadata(
             if contract.origin_contract_id is not None and contract.origin_version_id is not None
             else None
         ),
-        version=ContractVersionSummaryOut(number=version.version_no, state=version.state),
+        version=ContractVersionSummaryOut(
+            number=version.version_no,
+            state=version.state,
+            deprecated=version.deprecated_at is not None,
+        ),
         latest_version=(
             ContractLatestVersionOut(version_id=version.id, semver=version.semver)
             if contract.latest_version_id == version.id and version.semver is not None
@@ -451,7 +464,11 @@ async def _created_response(
     await uow.commit()
 
     response.headers["Location"] = f"/api/v1/contracts/contracts/{contract.id}"
-    summary = ContractVersionSummaryOut(number=version.version_no, state=version.state)
+    summary = ContractVersionSummaryOut(
+        number=version.version_no,
+        state=version.state,
+        deprecated=version.deprecated_at is not None,
+    )
     validation = await save_mode_embed(request, contract.id, version.id, raw, version.media_type)
     return ContractCreatedOut(
         contract=_metadata(contract, version, content_visible=True),
@@ -799,7 +816,11 @@ async def create_contract_from_version(
         )
 
     response.headers["Location"] = f"/api/v1/contracts/contracts/{contract.id}"
-    summary = ContractVersionSummaryOut(number=version.version_no, state=version.state)
+    summary = ContractVersionSummaryOut(
+        number=version.version_no,
+        state=version.state,
+        deprecated=version.deprecated_at is not None,
+    )
     validation = await save_mode_embed(request, contract.id, version.id, raw, version.media_type)
     return ContractCreatedOut(
         contract=_metadata(contract, version, content_visible=True),
@@ -840,8 +861,12 @@ async def list_contracts(
     q: Annotated[str | None, Query(max_length=MAX_Q_LENGTH)] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
     cursor: Annotated[str | None, Query()] = None,
+    sort: Annotated[Literal["id", "name"], Query()] = "id",
 ) -> ContractListOut:
     """List and search contracts: filters, ``q`` text match, keyset pagination.
+
+    ``sort`` is ``id`` (the default, creation order) or ``name`` (lower-cased name, an empty name
+    sorted by its odcs id, then id); ``next_cursor`` is only valid with the ``sort`` it came from.
 
     ``require("contract:list")`` admits every authenticated caller; the identity scopes below trim
     the SQL, so a caller without access gets an empty page. A row appears when the caller
@@ -852,7 +877,13 @@ async def list_contracts(
     rows, so a published-only caller can never match a draft's values.
     """
     reject_nul(odcs_id=odcs_id, name=name, domain=domain, status=status, tags=tags, q=q)
-    after = decode_cursor(cursor) if cursor is not None else None
+    after: uuid.UUID | None = None
+    after_key: str | None = None
+    if cursor is not None:
+        if sort == "name":
+            after_key, after = decode_name_cursor(cursor)
+        else:
+            after = decode_cursor(cursor)
     authorizer = request.app.state.authorizer_factory(request)
     # WR-01: the scope calls run after require(), so an identity outage here must be the same 503
     # every other route answers, never an unhandled 500 (and never an unfiltered page).
@@ -878,20 +909,29 @@ async def list_contracts(
         q=q,
         limit=limit,
         cursor=after,
+        sort=sort,
+        cursor_key=after_key,
     )
-    rows, has_more = await search_contracts(
+    page = await search_contract_page(
         session,
         filters,
         metadata_scope=metadata_scope,
         content_scope=content_scope,
         published_scope=published_scope,
     )
+    next_cursor: str | None = None
+    if page.has_more:
+        last_id = page.rows[-1][0].id
+        if sort == "name" and page.last_sort_key is not None:
+            next_cursor = encode_name_cursor(page.last_sort_key, last_id)
+        else:
+            next_cursor = encode_cursor(last_id)
     return ContractListOut(
         items=[
             _metadata(contract, version, content_visible=visible)
-            for contract, version, visible in rows
+            for contract, version, visible in page.rows
         ],
-        next_cursor=encode_cursor(rows[-1][0].id) if has_more else None,
+        next_cursor=next_cursor,
     )
 
 

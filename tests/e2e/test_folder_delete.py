@@ -35,7 +35,7 @@ async def _folder(gateway: httpx.AsyncClient, token: str, parent: str, slug: str
 def _contract(odcs_id: str) -> bytes:
     return (
         f'apiVersion: v3.2.0\nkind: DataContract\nid: {odcs_id}\nversion: "1.0.0"\n'
-        "status: draft\nname: Orders\n"
+        "status: active\nname: Orders\n"
         "schema:\n  - name: orders\n    properties:\n      - name: id\n"
         "        logicalType: string\n"
     ).encode()

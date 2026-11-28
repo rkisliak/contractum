@@ -131,6 +131,38 @@
   flex-shrink: 0;
 }
 
+/* A contract row: the folder row geometry, a link for a name, no pointer cursor on the row itself. */
+.contractRow:hover {
+  background: var(--color-neutral-secondary-soft);
+}
+
+.contractRow:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.contractLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.contractLink:hover {
+  text-decoration: underline;
+}
+
+/* The odcs_id shown for a contract without a name, and the muted state rows ("No contracts"). */
+.muted {
+  color: var(--color-body-subtle);
+}
+
+.stateRow {
+  color: var(--color-body-subtle);
+}
+
+.stateRow .row > [aria-busy] {
+  flex: 1 1 auto;
+}
+
 .cell {
   display: flex;
   align-items: center;
@@ -153,6 +185,41 @@
   gap: var(--spacing-1);
 }
 
+.errorIcon {
+  flex-shrink: 0;
+  color: var(--color-fg-danger);
+}
+
+.overflowIcon {
+  color: var(--color-body);
+}
+
+/* A contract row's name hugs its text, so the lifecycle badge and version follow it directly (as
+   in the contract page header); a long name still ends in an ellipsis before them. */
+.contractRow .label {
+  flex: 0 1 auto;
+}
+
+/* A contract row's name cell spans the folder columns (kind, counts), up to the actions column
+   when there is one; the grid lines follow the narrow tracks too. */
+.spanToActions {
+  grid-column: 1 / -2;
+}
+
+.spanAll {
+  grid-column: 1 / -1;
+}
+
+/* The lifecycle badge(s) and version after a contract's name, at every width. */
+.contractMeta {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing-2);
+  /* The name cell's gap is 0.375rem: the badge sits as far from the name as the version from it. */
+  margin-inline-start: calc(var(--spacing-2) - 0.375rem);
+}
+
 @container (max-width: 36rem) {
   .gridRow {
     grid-template-columns: var(--tree-cols-narrow);
@@ -160,5 +227,28 @@
 
   [data-collapsible] {
     display: none;
+  }
+
+  /* A contract row keeps the name cell's width for the name (beside its open action, like a
+     folder row); the badge(s) and version wrap onto a second line under it, lined up with the
+     name (past the chevron slot and icon), instead of squeezing the name to a few characters. */
+  .contractRow {
+    padding-block: var(--spacing-2);
+  }
+
+  .contractRow .row {
+    flex-wrap: wrap;
+    row-gap: var(--spacing-1);
+  }
+
+  .contractRow .label {
+    flex: 1 1 0;
+  }
+
+  .contractMeta {
+    flex: 0 0 100%;
+    margin-inline-start: 0;
+    flex-wrap: wrap;
+    padding-inline-start: calc(1rem + 0.375rem + 0.875rem + 0.375rem);
   }
 }

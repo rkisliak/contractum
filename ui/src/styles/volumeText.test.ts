@@ -67,4 +67,21 @@ describe("long and right-to-left user text", () => {
     );
     expect(button).toMatch(/\.text\s*\{[^}]*text-overflow:\s*ellipsis/);
   });
+
+  it("gives a narrow tree's contract name the name cell and wraps its badges and version under it (R5)", () => {
+    const tree = css("features/folders/FolderTree.module.css");
+    const narrow = tree.slice(tree.indexOf("@container (max-width: 36rem)"));
+    const wide = tree.slice(0, tree.indexOf("@container (max-width: 36rem)"));
+    // The contract row keeps its actions cell (the open action) on a narrow tree: nothing hides it.
+    expect(narrow).not.toMatch(/\.contractRow > \[role="gridcell"\]/);
+    expect(narrow).toMatch(/\.contractRow \.row\s*\{[^}]*flex-wrap:\s*wrap/);
+    expect(narrow).toMatch(/\.contractRow \.label\s*\{[^}]*flex:\s*1 1 0/);
+    expect(narrow).toMatch(/\.contractMeta\s*\{[^}]*flex:\s*0 0 100%/);
+    // The name cell spans the folder columns up to the actions column at every width.
+    expect(wide).toMatch(/\.spanToActions\s*\{[^}]*grid-column:\s*1 \/ -2/);
+    // On a wide tree the meta follows the name directly and never shrinks; the name ellipsises.
+    expect(wide).toMatch(/\.contractRow \.label\s*\{[^}]*flex:\s*0 1 auto/);
+    expect(wide).toMatch(/\.contractMeta\s*\{[^}]*flex-shrink:\s*0/);
+    expect(wide).toMatch(/\.label\s*\{[^}]*text-overflow:\s*ellipsis/);
+  });
 });

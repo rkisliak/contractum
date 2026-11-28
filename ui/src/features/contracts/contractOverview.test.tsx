@@ -110,10 +110,41 @@ describe("contract layout", () => {
     ).toBeVisible();
   });
 
+  it("names a contract whose name is the empty string by its ODCS id, in the title and the delete dialog", async () => {
+    const user = userEvent.setup();
+    contractPage("/contracts/c-1", {
+      contract: makeContract({ name: "" }),
+    });
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "urn:acme:ledger:orders",
+      }),
+    ).toBeVisible();
+    await user.click(
+      await screen.findByRole("button", { name: "Delete contract" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Delete urn:acme:ledger:orders?"),
+    ).toBeVisible();
+    // The type-to-confirm gate stays closed until the displayed name is typed.
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete urn:acme:ledger:orders",
+    });
+    expect(confirm).toBeDisabled();
+    await user.type(
+      within(dialog).getByRole("textbox"),
+      "urn:acme:ledger:orders",
+    );
+    expect(confirm).toBeEnabled();
+  });
+
   it("names an unnamed contract by its ODCS id and hides Document with nothing to read", async () => {
     contractPage("/contracts/c-1", {
       contract: makeContract({ name: null, latest_version: null }),
-      permissions: ["contract:view"],
+      // A consumer: published reads only, nothing published yet, so no Document tab.
+      permissions: ["contract:read-published", "contract:view"],
     });
     expect(
       await screen.findByRole("heading", {
@@ -131,6 +162,49 @@ describe("contract layout", () => {
           .map((link) => link.textContent),
       ).toEqual(["Overview", "Versions", "Diff"]);
     });
+  });
+});
+
+describe("contract header status badge", () => {
+  function header() {
+    return (
+      screen.getByRole("heading", { level: 1 }).closest("header") ??
+      document.body
+    );
+  }
+
+  it.each([
+    ["draft", "Status: draft"],
+    [null, "No status"],
+  ])(
+    "warns beside the Latest badge when the Latest document's status is %j",
+    async (status, label) => {
+      contractPage("/contracts/c-1", {
+        contract: makeContract({ status }),
+      });
+      expect(await screen.findByText("Latest 1.0.0")).toBeVisible();
+      const badge = screen.getByText(label).closest("[data-badge]");
+      expect(badge).not.toBeNull();
+      expect(badge?.className).toMatch(/warning/);
+      expect(header()).toContainElement(badge as HTMLElement);
+    },
+  );
+
+  it("shows only the Latest badge for an active Latest", async () => {
+    contractPage("/contracts/c-1", { contract: makeContract() });
+    expect(await screen.findByText("Latest 1.0.0")).toBeVisible();
+    expect(screen.queryByText(/^Status: /)).toBeNull();
+    expect(screen.queryByText("No status")).toBeNull();
+  });
+
+  it("adds no status badge before the first publish", async () => {
+    contractPage("/contracts/c-1", {
+      contract: makeContract({ status: "draft", latest_version: null }),
+    });
+    expect(
+      (await screen.findAllByText("Not published")).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Status: draft")).toBeNull();
   });
 });
 

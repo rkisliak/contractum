@@ -44,7 +44,7 @@ id: {odcs_id}
 apiVersion: v3.2.0
 name: Bypass Orders
 version: "1.0.0"
-status: draft
+status: active
 schema:
   - name: orders
     properties:

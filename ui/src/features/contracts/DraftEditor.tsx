@@ -43,6 +43,8 @@ import { useFolderList } from "@/features/folders/api";
 import { isNotFound, problemOf } from "@/lib/unexpected";
 import { firstSemver } from "@/lib/text";
 import { contractName } from "./ContractLayout";
+import { publishedDocumentStatus } from "./ContractVersions";
+import { publishStatusCopy } from "./copy";
 import {
   contractKeys,
   fetchDraftDocument,
@@ -53,7 +55,7 @@ import {
   useContract,
 } from "./api";
 import { FindingsPanel, markersFor } from "./FindingsPanel";
-import { replaceTopLevelId } from "./idEdit";
+import { replaceTopLevelId, replaceTopLevelStatus } from "./idEdit";
 import { documentStatus, PublishDialog } from "./PublishDialog";
 import { flattenReport, hasFinding, summaryOf } from "./report";
 import styles from "./Contracts.module.css";
@@ -163,6 +165,8 @@ export function DraftEditor({
   const [report, setReport] = useState<ReportState | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // "Change status to active" was used: an info Alert under the toolbar asks for review and a save.
+  const [statusChanged, setStatusChanged] = useState(false);
   const [busy, setBusy] = useState<
     "save" | "validate" | "publish" | "keep" | null
   >(null);
@@ -191,6 +195,14 @@ export function DraftEditor({
   // Publish is disabled while dirty, so the saved bytes are exactly what publish sends.
   const savedStatus = useMemo(() => documentStatus(saved), [saved]);
   const language = formatOf(meta.data?.media_type);
+  // "Change status to active" in the publish dialog: only an existing status value is rewritten.
+  const statusFixed = useMemo(
+    () =>
+      saved !== null && savedStatus !== undefined && savedStatus !== "active"
+        ? replaceTopLevelStatus(saved, language, "active")
+        : null,
+    [saved, savedStatus, language],
+  );
   const readOnly =
     !caps.isPending && (!caps.can("contract:update") || archived);
   const canPublish = caps.can("contract:publish") && !archived;
@@ -290,6 +302,7 @@ export function DraftEditor({
     setNotice(null);
     try {
       await put(buffer, etag);
+      setStatusChanged(false);
       setNotice("Draft saved.");
       return true;
     } catch (error) {
@@ -327,6 +340,7 @@ export function DraftEditor({
   async function reloadLatest() {
     setConflict(null);
     setReport(null);
+    setStatusChanged(false);
     // Re-seed only once the newer server copy is in the cache: clearing first would re-seed
     // from the still-cached old document (and its old ETag) on the next render.
     await queryClient.invalidateQueries({
@@ -341,6 +355,7 @@ export function DraftEditor({
     setBusy("keep");
     try {
       await put(buffer, conflict.etag);
+      setStatusChanged(false);
       setConflict(null);
       setNotice("Draft saved over the newer server copy.");
     } catch (error) {
@@ -374,7 +389,11 @@ export function DraftEditor({
         await navigate({
           to: "/contracts/$contractId/versions",
           params: { contractId },
-          search: { published: data.semver, status: data.status },
+          search: {
+            published: data.semver,
+            status: data.status,
+            ...publishedDocumentStatus(savedStatus),
+          },
         });
       queryClient.removeQueries({
         queryKey: contractKeys.draft(contractId, draftId),
@@ -495,6 +514,11 @@ export function DraftEditor({
       {notice}
     </p>
   );
+  // Shown under the save action until the change is saved (or undone: nothing left to save).
+  const statusChangedAlert =
+    statusChanged && dirty ? (
+      <Alert intent="info">{publishStatusCopy.changed}</Alert>
+    ) : null;
   // A refused save: the id mismatch with its fix, or the problem.
   const saveAlerts = idMismatch ? (
     <Alert
@@ -631,6 +655,7 @@ export function DraftEditor({
           }}
         />
       </div>
+      {statusChangedAlert}
       {statusLine}
       {saveAlerts}
       {semverProblem ? (
@@ -728,6 +753,7 @@ export function DraftEditor({
         }
         notices={
           <>
+            {statusChangedAlert}
             {statusLine}
             {saveAlerts}
           </>
@@ -745,6 +771,16 @@ export function DraftEditor({
         busy={busy === "publish"}
         problem={publishProblem}
         onPublish={() => void publish()}
+        onChangeStatus={
+          !readOnly && statusFixed !== null && statusFixed !== saved
+            ? () => {
+                setPublishOpen(false);
+                setBuffer(statusFixed);
+                setNotice(null);
+                setStatusChanged(true);
+              }
+            : undefined
+        }
       />
       <Dialog
         open={conflict !== null}

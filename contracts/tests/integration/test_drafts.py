@@ -89,7 +89,7 @@ async def test_create_returns_the_draft_reference_and_keeps_the_version_summary(
         body = created.json()
         row = stored(stack, sql, body["contract"]["id"])
         assert body["draft"] == {"id": str(row["id"]), "revision": 1, "etag": '"r1"'}
-        assert body["version"] == {"number": 1, "state": "draft"}
+        assert body["version"] == {"number": 1, "state": "draft", "deprecated": False}
 
 
 async def test_put_with_the_current_etag_saves_bumps_the_revision_and_records_one_event(

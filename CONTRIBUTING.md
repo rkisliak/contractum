@@ -35,6 +35,9 @@ and [clients/python/LICENSE](clients/python/LICENSE). Read them before you contr
 `bash scripts/ci.sh` runs the same lint, type, unit, integration and UI checks as CI on your
 machine.
 
+Run `sh scripts/setup-hooks.sh` once per clone. It turns on the git hooks of the docs gate (see
+below and [The docs gate](docs/dev/ci-and-github.md#the-docs-gate)).
+
 ## What a change must pass
 
 A pull request into `main` merges only when all of these are true:
@@ -56,7 +59,10 @@ The project also holds every change to these rules:
 - **Docs stay current.** A change a reader could notice updates the matching page under `docs/` or
   `README.md` in the same pull request. The pull request template asks you to confirm this. The
   docs checks are the ones in [CI and GitHub](docs/dev/ci-and-github.md): markdownlint, typos,
-  lychee and `zensical build --strict`.
+  lychee, `zensical build --strict` and the docs gate. The gate fails a change to the API, the SDK
+  and CLI, the UI, the settings, the Helm chart or the release workflow that changes no doc. A
+  change with no reader-visible effect ends its pull request description with
+  `Docs-Impact: none — <reason>`.
 - **No secrets or personal data** in code, docs, tests or commit messages.
 
 ## Commit messages and pull requests

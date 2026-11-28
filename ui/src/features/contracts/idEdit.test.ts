@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { replaceTopLevelId } from "./idEdit";
+import { replaceTopLevelId, replaceTopLevelStatus } from "./idEdit";
 
 const YAML_DOC = `apiVersion: v3.2.0
 kind: DataContract
@@ -57,5 +57,48 @@ describe("replaceTopLevelId edge cases", () => {
   it("gives null for a JSON array or an id needing more than one YAML line", () => {
     expect(replaceTopLevelId('[{"id": "a"}]', "json", "urn:a")).toBeNull();
     expect(replaceTopLevelId("id: a\n", "yaml", "two\nlines")).toBeNull();
+  });
+});
+
+describe("replaceTopLevelStatus", () => {
+  it("rewrites only the top-level status value of a YAML document", () => {
+    const doc = `${YAML_DOC.trimEnd()}\n    status: draft\nstatus: draft # keep\n`;
+    expect(replaceTopLevelStatus(doc, "yaml", "active")).toBe(
+      doc.replace("status: draft # keep", "status: active # keep"),
+    );
+    expect(
+      replaceTopLevelStatus('status: "proposed"\n', "yaml", "active"),
+    ).toBe("status: active\n");
+    expect(replaceTopLevelStatus("status: null\n", "yaml", "active")).toBe(
+      "status: active\n",
+    );
+  });
+
+  it("rewrites only the top-level status value of a JSON document", () => {
+    const json = `{\n  "status": "draft",\n  "schema": [{ "status": "draft" }]\n}`;
+    expect(replaceTopLevelStatus(json, "json", "active")).toBe(
+      `{\n  "status": "active",\n  "schema": [{ "status": "draft" }]\n}`,
+    );
+    expect(replaceTopLevelStatus('{"status": null}', "json", "active")).toBe(
+      '{"status": "active"}',
+    );
+    expect(replaceTopLevelStatus('{"status": true}', "json", "active")).toBe(
+      '{"status": "active"}',
+    );
+  });
+
+  it("never inserts a missing status and refuses what it cannot edit safely", () => {
+    expect(replaceTopLevelStatus("kind: x\n", "yaml", "active")).toBeNull();
+    expect(
+      replaceTopLevelStatus("status:\nkind: x\n", "yaml", "active"),
+    ).toBeNull();
+    expect(
+      replaceTopLevelStatus("status:\n  nested: 1\n", "yaml", "active"),
+    ).toBeNull();
+    expect(replaceTopLevelStatus('{"kind": 1}', "json", "active")).toBeNull();
+    expect(
+      replaceTopLevelStatus('{"status": {"a": 1}}', "json", "active"),
+    ).toBeNull();
+    expect(replaceTopLevelStatus("{ broken", "json", "active")).toBeNull();
   });
 });

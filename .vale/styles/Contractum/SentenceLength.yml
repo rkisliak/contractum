@@ -1,0 +1,7 @@
+# Aim for 15 to 20 words a sentence; split anything over 25. Vale warns above 30 words.
+extends: occurrence
+message: "Sentence over 30 words: split it, one idea per sentence."
+level: warning
+scope: sentence
+max: 30
+token: '[^\s]+'

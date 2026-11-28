@@ -1,0 +1,7 @@
+# Instructions are imperatives; "please" adds length, not politeness (Google, Microsoft).
+extends: existence
+message: "Drop 'please' from instructions."
+level: warning
+ignorecase: true
+tokens:
+  - please

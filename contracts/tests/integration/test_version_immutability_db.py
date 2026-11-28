@@ -30,6 +30,7 @@ PUBLISH_SECOND = (
 def doc(odcs_id: str) -> bytes:
     return (
         f'apiVersion: v3.2.0\nkind: DataContract\nid: {odcs_id}\nversion: "1.0.0"\n'
+        "status: active\n"
         "schema:\n  - name: orders\n    properties:\n      - name: id\n"
         "        logicalType: string\n"
     ).encode()

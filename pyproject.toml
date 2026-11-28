@@ -30,19 +30,19 @@ dev = [
   "pytest-asyncio==1.5.0",
   "testcontainers==4.15.0",
   "respx==0.23.1",
-  "hypothesis==6.170.17",
+  "hypothesis==6.170.22",
   "ruff==0.17.6",
   "mypy==2.4.1",
   "import-linter==2.17",
   "httpx==0.29.0",
-  "schemathesis==4.34.3",
+  "schemathesis==4.34.4",
   "pytest-cov==7.1.0",
   "coverage==7.17.5",
 ]
 # Docs site build and spell check (zensical + mkdocstrings for the site, typos for the docs CI job).
 # Not part of any default sync: run it with `uv run --group docs ...`.
 docs = [
-  "zensical==0.1.3",
+  "zensical==0.1.4",
   "mkdocstrings-python==2.0.11",
   "typos==1.52.2",
 ]
@@ -52,7 +52,7 @@ e2e = [
   "httpx==0.29.0",
   "pyjwt[crypto]==2.15.1",
   "docker>=7.1",
-  "schemathesis==4.34.3",
+  "schemathesis==4.34.4",
 ]
 
 [tool.pytest.ini_options]

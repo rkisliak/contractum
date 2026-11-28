@@ -1,0 +1,30 @@
+# Team and agent jargon that a user, admin or new contributor does not know. Swap for plain words,
+# or define the term on first use (contributor docs only). Extend this list when a review finds
+# a new one; see rules/style.md in the keep-docs-current skill for the reasoning.
+extends: substitution
+message: "Write '%s' instead of the internal jargon '%s', or explain the term in plain words."
+level: warning
+ignorecase: true
+swap:
+  seams?: boundary|extension point
+  PDP: access check|identity's access check
+  outbox: change-event table|audit event
+  tripwires?: safety check
+  lanes?: CI job|track
+  tracers?: end-to-end check
+  quorum: agreement|majority
+  waves?: batch|step
+  spikes?: experiment|prototype
+  plumbing: wiring|setup
+  load-bearing: required|essential
+  footguns?: pitfall
+  fail-closed: refused when the check cannot run
+  fail-open: allowed when the check cannot run
+  first-class: built-in|fully supported
+  out of the box: by default
+  leverage: use
+  utili[sz]e: use
+  in order to: to
+  dogfood(?:ing)?: use ourselves
+  happy path: usual case
+  gray area|grey area: open question

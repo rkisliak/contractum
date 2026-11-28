@@ -358,7 +358,7 @@ set. How the pieces fit, with the section that specifies each:
 | Baseline under the lock | Contracts sends the baseline, the floor and caller-scoped link facts with every run and re-checks the baseline under the publish lock: 409 `baseline-changed` | "Versions and lifecycle": "Publish compatibility" |
 | Reference facts and cel-2 | Before rules run, elements, servers, contract links, people and teams are resolved into the tri-state `refs` binding; `cel-2` rules also read `previous` and `changes`; published `cel-1` versions evaluate as before | "Validation runs and reports": "Reference facts" |
 | Seeded semantic sets | `odcs-consistency` and `odcs-references`, platform scope, mandatory, in warn grace for `DC_MANDATORY_WARN_DAYS` after migration 0006 (set the variable on `validation-migrate` too); a Global Policy Manager can enforce them early | "Mandatory rule sets and enforcement" |
-| Publication warning | `odcs-publication` (platform scope, mandatory, warn grace like the semantic sets, migration 0009) holds the warning `published-status-active`: a version published with an ODCS `status` other than `active` carries one non-blocking finding in its stored report; it never blocks, before or after `enforce_at`; draft saves and validations never show it | "Mandatory rule sets and enforcement"; "The `ctx.operation` binding" |
+| Publication status | `odcs-publication` (platform scope, mandatory, warn grace like the semantic sets). Version 1 (migration 0009) holds the warning `published-status-active`. Version 2 (migration 0010) adds the error `released-status-active`. Once version 2 is enforced, it refuses a released version (no prerelease part) whose ODCS `status` is not `active`. A prerelease (Preview) publish keeps the warning. Draft saves and validations show neither | "Mandatory rule sets and enforcement"; "The `ctx.operation` binding" |
 | Stored report and changelog | `GET .../versions/{ref}/validation-report` returns the report a version was published with; `GET .../contracts/{contract_id}/diff?from=&to=` classifies the changes between any two readable versions or drafts on the fly | "Versions and lifecycle": "Stored validation reports", "Changelog between two versions" |
 | Rule impact | `POST /api/v1/contracts/governance/rule-set-dry-runs` (would a rule-set version, published or draft, block the published contracts in scope) and `GET /api/v1/contracts/governance/drift?folder_id=` (which published contracts fail the rules now in force); paged, content-free, no state change | "Versions and lifecycle": "Rule impact: dry-runs and compliance drift" |
 | Breaking-change notices | A card pinned to a version the new publish breaks also gets `contract.version.breaking_published`, listing the breaking changes per pinned version | "Subscriber cards": "Breaking-change notices" |
@@ -590,18 +590,27 @@ the folder in the path must be the ROOT folder. If `DC_MANDATORY_WARN_DAYS` is e
 validation service it must be set on `validation-migrate` too, because the date is stamped by the
 migration.
 
-**The publication warning never blocks.** Migration
+**A released version needs `status: active`.** Migration
 `0009_seed_publication_rule_set` seeds `odcs-publication` (cel-2, mandatory, platform scope, same
-warn grace and `DC_MANDATORY_WARN_DAYS` rule as above) with one rule, `published-status-active`,
-severity `warning`: it fires only in a publish-mode run whose document's ODCS `status` is not the
-string `active` (`draft`, `proposed`, `deprecated`, absent or any other type). The platform never
-rewrites the author's `status`; this only tells consumers-to-be. It covers a first publish (Latest)
-and a later one (Preview) alike, because promote never re-validates and a published document is
-immutable, so the publish run is the only moment to warn. A finding is blocking only when its
-severity is `error` and its set is enforced, so this finding stays `blocking: false` and the
-report `publishable: true` in warn grace, after `enforce-now` or a past `enforce-at` (mode
-`enforce`) and while paused. The ROOT pause and `enforce-at` routes work as for the other platform
-sets. The finding's message is fixed text and never quotes the document.
+warn grace and `DC_MANDATORY_WARN_DAYS` rule as above). Its one rule, `published-status-active`, has
+severity `warning`. It fires only in a publish-mode run whose document's ODCS `status` is not the
+string `active` (`draft`, `proposed`, `deprecated`, absent or any other type). Migration
+`0010_publication_rule_set_v2` publishes version 2 the way every new version of a mandatory set is
+published: `publish_counter` 2, the draft becomes the new content, `enforce_at = now() +
+DC_MANDATORY_WARN_DAYS` and one `ruleset.version_published` event. Version 2 adds the rule
+`released-status-active`, severity `error`. It fails a publish-mode run of a released version (a
+SemVer without a prerelease part) whose `status` is not `active`. `published-status-active` stays
+a warning and judges only prerelease publishes, so a Preview may keep `draft` or `proposed`. Both
+read the document's own ODCS `version`. Contracts gates the exact stored bytes and re-checks their
+hash under the lock. It then publishes the SemVer those bytes declare, or refuses the publish
+(`invalid-version`). Only a string shaped like a SemVer prerelease (`1.2.0-rc.1`) counts as a
+Preview. A missing, non-string or other version is judged as a release, so the rule fails closed.
+The platform never rewrites the author's `status`. The publish run is the only moment to check,
+because promote never re-validates and a published document is immutable. Until version 2's
+`enforce_at`, version 2 is a non-blocking `warn` entry next to version 1. After `enforce-now` or a
+past `enforce-at`, version 2 is enforced and version 1 drops out. The error then blocks
+(`publishable: false`). A ROOT pause turns version 2 back into a non-blocking `warn` entry. The
+messages are fixed text and never quote the document.
 
 **What applies.** Per mandatory set the enforced version is the newest one whose `enforce_at`
 has passed; it can block. Every version newer than that one (every version when none is enforced)

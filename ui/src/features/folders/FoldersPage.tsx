@@ -81,22 +81,28 @@ export function FoldersPage({
         }
       />
       <div className={styles.stack}>
-        <Checkbox
-          id="folders-show-archived"
-          label="Show archived"
-          checked={showArchived}
-          onChange={(event) => {
-            onShowArchivedChange(event.target.checked);
-          }}
-        />
-        <Checkbox
-          id="folders-show-contracts"
-          label={treeCopy.toggle}
-          checked={showContracts}
-          onChange={(event) => {
-            onShowContractsChange(event.target.checked);
-          }}
-        />
+        <div
+          className={styles.viewOptions}
+          role="group"
+          aria-label="View options"
+        >
+          <Checkbox
+            id="folders-show-archived"
+            label="Show archived"
+            checked={showArchived}
+            onChange={(event) => {
+              onShowArchivedChange(event.target.checked);
+            }}
+          />
+          <Checkbox
+            id="folders-show-contracts"
+            label={treeCopy.toggle}
+            checked={showContracts}
+            onChange={(event) => {
+              onShowContractsChange(event.target.checked);
+            }}
+          />
+        </div>
         {list.isError ? (
           <ProblemAlert
             problem={problemOf(list.error)}

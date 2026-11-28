@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ContractVersions,
+  isPublishedDocumentStatus,
   type VersionsSearch,
 } from "@/features/contracts/ContractVersions";
 
@@ -14,6 +15,9 @@ export const Route = createFileRoute("/_app/contracts/$contractId/versions/")({
       : {}),
     ...(typeof search.warnings === "number"
       ? { warnings: search.warnings }
+      : {}),
+    ...(isPublishedDocumentStatus(search.documentStatus)
+      ? { documentStatus: search.documentStatus }
       : {}),
   }),
   component: function ContractVersionsRoute() {

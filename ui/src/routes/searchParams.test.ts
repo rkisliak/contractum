@@ -96,6 +96,14 @@ describe.each<
         { published: "1.2.0", status: "published", warnings: 3 },
       ],
       [{ published: 1, status: null, warnings: "3" }, {}],
+      [
+        { published: "0.1.0", documentStatus: "draft" },
+        { published: "0.1.0", documentStatus: "draft" },
+      ],
+      [{ documentStatus: "none" }, { documentStatus: "none" }],
+      [{ documentStatus: "active" }, {}],
+      [{ documentStatus: "<b>x</b>" }, {}],
+      [{ documentStatus: 1 }, {}],
     ],
   ],
   [

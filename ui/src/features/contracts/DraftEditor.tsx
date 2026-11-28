@@ -43,6 +43,8 @@ import { useFolderList } from "@/features/folders/api";
 import { isNotFound, problemOf } from "@/lib/unexpected";
 import { firstSemver } from "@/lib/text";
 import { contractName } from "./ContractLayout";
+import { publishedDocumentStatus } from "./ContractVersions";
+import { publishStatusCopy } from "./copy";
 import {
   contractKeys,
   fetchDraftDocument,
@@ -53,7 +55,7 @@ import {
   useContract,
 } from "./api";
 import { FindingsPanel, markersFor } from "./FindingsPanel";
-import { replaceTopLevelId } from "./idEdit";
+import { replaceTopLevelId, replaceTopLevelStatus } from "./idEdit";
 import { documentStatus, PublishDialog } from "./PublishDialog";
 import { flattenReport, hasFinding, summaryOf } from "./report";
 import styles from "./Contracts.module.css";
@@ -191,6 +193,14 @@ export function DraftEditor({
   // Publish is disabled while dirty, so the saved bytes are exactly what publish sends.
   const savedStatus = useMemo(() => documentStatus(saved), [saved]);
   const language = formatOf(meta.data?.media_type);
+  // "Change status to active" in the publish dialog: only an existing status value is rewritten.
+  const statusFixed = useMemo(
+    () =>
+      saved !== null && savedStatus !== undefined && savedStatus !== "active"
+        ? replaceTopLevelStatus(saved, language, "active")
+        : null,
+    [saved, savedStatus, language],
+  );
   const readOnly =
     !caps.isPending && (!caps.can("contract:update") || archived);
   const canPublish = caps.can("contract:publish") && !archived;
@@ -374,7 +384,11 @@ export function DraftEditor({
         await navigate({
           to: "/contracts/$contractId/versions",
           params: { contractId },
-          search: { published: data.semver, status: data.status },
+          search: {
+            published: data.semver,
+            status: data.status,
+            ...publishedDocumentStatus(savedStatus),
+          },
         });
       queryClient.removeQueries({
         queryKey: contractKeys.draft(contractId, draftId),
@@ -745,6 +759,15 @@ export function DraftEditor({
         busy={busy === "publish"}
         problem={publishProblem}
         onPublish={() => void publish()}
+        onChangeStatus={
+          !readOnly && statusFixed !== null && statusFixed !== saved
+            ? () => {
+                setPublishOpen(false);
+                setBuffer(statusFixed);
+                setNotice(publishStatusCopy.changed);
+              }
+            : undefined
+        }
       />
       <Dialog
         open={conflict !== null}

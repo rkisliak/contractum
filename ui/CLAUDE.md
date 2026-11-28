@@ -436,14 +436,25 @@ segment, visible?(folder), requires? }`, `tabVisible(tab, folder, caps)`: `requi
   keys (`["contracts", ...]` lists, `["contract", id, ...]` per contract), raw-text document fetches with `Accept`
   (`parseAs: "text"`) and raw-body writes (`bodySerializer`). `report.ts` reads the untyped validation report into one
   finding list (`flattenReport`, grouped by the server's `blocking` flag); `FindingsPanel` renders it; `versionStatus.tsx`
-  maps a version to text-plus-icon badges. The Publish dialog (`PublishDialog.tsx`) shows an advisory warning Alert
-  when `documentStatus(saved)` (the saved bytes, which are exactly what publish sends) is not `active` (the real
-  status, or "sets no status"); it never disables Publish and mirrors the platform rule `published-status-active`,
-  which warns only on publish and never blocks. Clearer refusals (quick 261119-wk8): a draft save refused with
+  maps a version to text-plus-icon badges. The Publish dialog (`PublishDialog.tsx`) leads its body with a warning
+  Alert when `documentStatus(saved)` (the saved bytes, which are exactly what publish sends) is not `active` (the real
+  status, or "sets no status"). A released version (`isPrerelease(declared)` false, no `-` part) keeps Publish
+  disabled ("A released version needs status: active"); a prerelease (a Preview) enables it only after the
+  "Publish with status: … anyway" Checkbox, which resets each time the dialog opens. The footer reads Keep editing,
+  **Change status to active** (shown when `replaceTopLevelStatus` in `idEdit.ts` can rewrite an existing top-level
+  `status` value and the caller may edit; it never inserts a missing one, closes the dialog and never saves), Publish.
+  The server gate still decides. A publish of a non-active document adds `documentStatus` (allow-list
+  `PUBLISHED_DOCUMENT_STATUSES` in `ContractVersions.tsx`: proposed, draft, deprecated, retired, none, other) to the
+  Versions search, which turns the "Published x as Latest" notice into a warning; the component re-checks the
+  allow-list because the router also hands down raw parent search keys. The contract header shows a warning Badge
+  "Status: draft" (or "No status") beside "Latest x.y.z" when a Latest exists and `ContractSummary.status` (the head
+  row's ODCS status, which is the Latest once one exists) is not `active`; the Overview's ODCS status badge turns
+  warning then too. Strings live in `copy.ts` (`publishStatusCopy`, `publishedStatusCopy`, `latestStatusBadge`).
+  Clearer refusals (quick 261119-wk8): a draft save refused with
   `odcs-id-mismatch` shows "This contract's id is X. The document says Y." (ids in the normal font; the problem's
   `expected_odcs_id` and `found_odcs_id` are allow-listed in `api/problem.ts`) and, when the buffer allows it, a
-  "Put the contract's id back" button that rewrites only the top-level `id` value (`idEdit.ts`, YAML and JSON) and
-  never saves. Findings computed for text that has since changed render as stale: a warning Alert ("These findings
+  "Put the contract's id back" button that rewrites only the top-level `id` value (`idEdit.ts` `replaceTopLevelId`,
+  YAML and JSON) and never saves. Findings computed for text that has since changed render as stale: a warning Alert ("These findings
   are for revision N. Save and validate to check the current text.") with the page's save-and-validate action, the
   list collapsed behind "Show previous findings", headings "Earlier errors/warnings/info" (never "Blocking") and
   no locations. Structural unknown-property findings name the offending keys in the API message.

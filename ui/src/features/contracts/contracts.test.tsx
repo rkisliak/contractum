@@ -115,8 +115,9 @@ function draft(revision: number) {
   };
 }
 
+// `status: active`: a released version with another status cannot be published from the dialog.
 const DOC =
-  "apiVersion: v3.1.0\nkind: DataContract\nid: urn:acme:ledger:orders\nversion: 1.1.0\n";
+  "apiVersion: v3.1.0\nkind: DataContract\nid: urn:acme:ledger:orders\nversion: 1.1.0\nstatus: active\n";
 
 function problem(
   status: number,

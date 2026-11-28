@@ -4,7 +4,7 @@
 // Demo data (Acme > Payments > Ledger/Fraud, the "Orders" contract, the acme-baseline rule set,
 // the "Acme batch table" template, the demo-analytics-team card) is found through the API.
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { changeStatusToActiveAndSave, expect, test } from "./fixtures";
 import {
   adminApi,
   cleanupJourneyTeams,
@@ -270,6 +270,8 @@ test("real writes across areas", async ({ page }) => {
     page.getByRole("heading", { name: "Validation findings" }),
   ).toBeVisible();
   await expectCleanPage(page, issues, "validated draft", { h1: contractName });
+  // The template says `status: draft`: a released version needs `status: active` first.
+  await changeStatusToActiveAndSave(page);
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   const publish = page.getByRole("dialog", { name: /^Publish .*\?$/ });
   await expect(publish).toBeVisible();

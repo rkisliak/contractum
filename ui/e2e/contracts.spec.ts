@@ -6,7 +6,12 @@
 // page scrollbar.
 import type { Page } from "@playwright/test";
 import { exerciseDraftMessages } from "./draft-messages";
-import { expect, expectNoSeriousA11yViolations, test } from "./fixtures";
+import {
+  changeStatusToActiveAndSave,
+  expect,
+  expectNoSeriousA11yViolations,
+  test,
+} from "./fixtures";
 
 function adminPassword(): string {
   const password = process.env.DC_UI_E2E_ADMIN_PASSWORD;
@@ -74,22 +79,35 @@ test("create, validate, publish and delete a contract", async ({ page }) => {
 
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Publish 0.1.0?" });
-  // The blank starter says `status: draft`: the dialog warns, and Publish stays enabled.
-  await expect(dialog).toContainText(/This document says status: draft/);
+  // The blank starter says `status: draft`: a released version needs `status: active`, so the
+  // warning leads the dialog and Publish stays disabled.
+  await expect(dialog).toContainText("A released version needs status: active");
+  await expect(dialog).toContainText("This document says status: draft.");
   await expect(
     dialog.getByRole("button", { name: "Publish 0.1.0" }),
-  ).toBeEnabled();
+  ).toBeDisabled();
+  await expectNoSeriousA11yViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  // "Change status to active" rewrites the status line; the user saves, then publishes.
+  await changeStatusToActiveAndSave(page);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(dialog).not.toContainText("A released version");
   await dialog.getByRole("button", { name: "Publish 0.1.0" }).click();
   await expect(page.getByText("Published 0.1.0 as Latest")).toBeVisible();
+  await expect(page.getByText(/Its document says status/)).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "Latest" })).toBeVisible();
   await expectNoSeriousA11yViolations(page);
 
-  // The stored publish report carries the non-blocking platform warning.
+  // The stored publish report no longer carries the platform status warning.
   await page.getByRole("link", { name: "0.1.0", exact: true }).first().click();
   await page.getByRole("tab", { name: "Validation report" }).click();
   await expect(
     page.getByRole("region", { name: "Findings at publish" }),
-  ).toContainText("status is not 'active'");
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Findings at publish" }),
+  ).not.toContainText("status is not 'active'");
   await expectNoSeriousA11yViolations(page);
 
   // The Document tab editor reaches the bottom of a 1440x1080 window with no page scrollbar,

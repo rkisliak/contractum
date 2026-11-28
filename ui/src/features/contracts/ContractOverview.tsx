@@ -142,7 +142,15 @@ function Facts({
       <dt>ODCS status</dt>
       <dd>
         {contract.status ? (
-          <Badge intent="neutral">{contract.status}</Badge>
+          <Badge
+            intent={
+              contract.latest_version && contract.status !== "active"
+                ? "warning"
+                : "neutral"
+            }
+          >
+            {contract.status}
+          </Badge>
         ) : (
           orNotSet(null)
         )}

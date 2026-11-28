@@ -84,6 +84,14 @@ byte for byte, exactly as written.
   folder.
 - **Publish**: opens the publish dialog. Save first. A new version above the Latest is published as
   a Preview; promote it from the **Versions** tab to make it the Latest.
+  - When the saved document does not say `status: active`, the dialog shows a warning first. For a
+    released version, **Publish** stays disabled.
+  - **Change status to active** rewrites only the `status` value in the editor. Review the change,
+    save, then publish. A document with no `status` needs it added by hand.
+  - For a prerelease, tick **Publish with status: draft anyway** to enable **Publish**.
+  - After the publish, the **Versions** tab notice says when the document's status was not
+    `active`. The contract header shows a warning badge, such as **Status: draft**, beside
+    **Latest 1.0.0** while the Latest document's status is not `active`.
 - **Compare with Latest**, a download button and **Discard draft**.
 
 If a breaking change needs a new major version, the editor says so and names the smallest version

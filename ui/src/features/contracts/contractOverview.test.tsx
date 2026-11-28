@@ -165,6 +165,49 @@ describe("contract layout", () => {
   });
 });
 
+describe("contract header status badge", () => {
+  function header() {
+    return (
+      screen.getByRole("heading", { level: 1 }).closest("header") ??
+      document.body
+    );
+  }
+
+  it.each([
+    ["draft", "Status: draft"],
+    [null, "No status"],
+  ])(
+    "warns beside the Latest badge when the Latest document's status is %j",
+    async (status, label) => {
+      contractPage("/contracts/c-1", {
+        contract: makeContract({ status }),
+      });
+      expect(await screen.findByText("Latest 1.0.0")).toBeVisible();
+      const badge = screen.getByText(label).closest("[data-badge]");
+      expect(badge).not.toBeNull();
+      expect(badge?.className).toMatch(/warning/);
+      expect(header()).toContainElement(badge as HTMLElement);
+    },
+  );
+
+  it("shows only the Latest badge for an active Latest", async () => {
+    contractPage("/contracts/c-1", { contract: makeContract() });
+    expect(await screen.findByText("Latest 1.0.0")).toBeVisible();
+    expect(screen.queryByText(/^Status: /)).toBeNull();
+    expect(screen.queryByText("No status")).toBeNull();
+  });
+
+  it("adds no status badge before the first publish", async () => {
+    contractPage("/contracts/c-1", {
+      contract: makeContract({ status: "draft", latest_version: null }),
+    });
+    expect(
+      (await screen.findAllByText("Not published")).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Status: draft")).toBeNull();
+  });
+});
+
 describe("contract overview facts", () => {
   it("lists a template origin and words every unset value", async () => {
     contractPage("/contracts/c-1", {

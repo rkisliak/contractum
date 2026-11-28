@@ -1,5 +1,6 @@
 // The contract page frame: breadcrumbs (Contracts, the folder chain, the contract), the name as
-// h1 with the Latest semver badge, the ODCS id, and the tab navigation over the child routes
+// h1 with the Latest semver badge (plus a warning "Status: draft" badge when the Latest document's
+// ODCS status is not `active`), the ODCS id, and the tab navigation over the child routes
 // (Overview, Document, Drafts, Versions, Diff, Rule sets, Subscribers). A 404 is NotFound.
 import { useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -17,7 +18,7 @@ import { useFolderList } from "@/features/folders/api";
 import { ancestorIds, contractDisplayName } from "@/features/folders/tree";
 import { isNotFound, problemOf } from "@/lib/unexpected";
 import { useContract } from "./api";
-import { metadataOnlyNotice } from "./copy";
+import { latestStatusBadge, metadataOnlyNotice } from "./copy";
 
 /** The one display rule for a contract's name: its ODCS name, or its id when the name is empty. */
 export const contractName = contractDisplayName;
@@ -147,7 +148,15 @@ export function ContractLayout({
         ]}
         badges={
           data.latest_version ? (
-            <Badge intent="success">Latest {data.latest_version.semver}</Badge>
+            <>
+              <Badge intent="success">
+                Latest {data.latest_version.semver}
+              </Badge>
+              {/* With a Latest, `status` is the Latest document's ODCS status (the head row). */}
+              {data.status !== "active" ? (
+                <Badge intent="warning">{latestStatusBadge(data.status)}</Badge>
+              ) : null}
+            </>
           ) : (
             <Badge intent="neutral">Not published</Badge>
           )

@@ -1,7 +1,8 @@
 // Versions tab (D-UI-10-01, D-UI-10-16, D-UI-10-17): every version, highest SemVer first, with
 // status badges (text plus icon), publisher and time, size, media type and ODCS apiVersion, and a
-// row actions menu. After a publish the page shows "Published 1.3.0 as Preview". A short "How to
-// fetch" panel explains the URLs and links to the API docs.
+// row actions menu. After a publish the page shows "Published 1.3.0 as Preview" (a warning that
+// names the document's ODCS status when it was not `active`). A short "How to fetch" panel
+// explains the URLs and links to the API docs.
 import { WhenBy } from "@/components/DataTable/WhenBy";
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
@@ -19,13 +20,50 @@ import { problemOf } from "@/lib/unexpected";
 import { absoluteUrl, useContract, useContractVersions } from "./api";
 import { VersionActions } from "./VersionActions";
 import { VersionBadges } from "./versionStatus";
+import { publishedStatusCopy } from "./copy";
 import styles from "./Contracts.module.css";
 import { PrincipalName } from "@/components/PrincipalName";
+
+/**
+ * The allow-list of the `documentStatus` search param: the published document's ODCS status when
+ * it was not `active` ("none": it set no status, "other": any value outside the ODCS list).
+ */
+export const PUBLISHED_DOCUMENT_STATUSES = [
+  "proposed",
+  "draft",
+  "deprecated",
+  "retired",
+  "none",
+  "other",
+] as const;
+export type PublishedDocumentStatus =
+  (typeof PUBLISHED_DOCUMENT_STATUSES)[number];
+
+export function isPublishedDocumentStatus(
+  value: unknown,
+): value is PublishedDocumentStatus {
+  return (PUBLISHED_DOCUMENT_STATUSES as readonly unknown[]).includes(value);
+}
+
+/**
+ * The `documentStatus` search param for a publish of a document with this ODCS status
+ * (`documentStatus(saved)`): nothing when it is `active` or unknown.
+ */
+export function publishedDocumentStatus(status: string | null | undefined): {
+  documentStatus?: PublishedDocumentStatus;
+} {
+  if (status === undefined || status === "active") return {};
+  if (status === null) return { documentStatus: "none" };
+  return {
+    documentStatus: isPublishedDocumentStatus(status) ? status : "other",
+  };
+}
 
 export type VersionsSearch = {
   published?: string;
   status?: string;
   warnings?: number;
+  documentStatus?: PublishedDocumentStatus;
 };
 
 function sizeLabel(bytes: number): string {
@@ -50,6 +88,10 @@ export function ContractVersions({
       version.status === "latest" && version.lifecycle === "published",
   );
   const canPublish = caps.can("contract:publish");
+  // Checked again here: the router hands down raw search keys of the parent routes as well.
+  const documentStatus = isPublishedDocumentStatus(search.documentStatus)
+    ? search.documentStatus
+    : undefined;
 
   const columns: Column<ContractVersion>[] = [
     {
@@ -120,12 +162,13 @@ export function ContractVersions({
     <section className={styles.stack} aria-label="Versions">
       {search.published ? (
         <Alert
-          intent="success"
-          title={`Published ${search.published} as ${search.status === "latest" ? "Latest" : search.status === "preview" ? "Preview" : "a new version"}`}
+          intent={documentStatus ? "warning" : "success"}
+          title={`Published ${search.published} as ${search.status === "latest" ? "Latest" : search.status === "preview" ? "Preview" : "a new version"}${documentStatus ? `. ${publishedStatusCopy.says(documentStatus)}` : ""}`}
         >
           {search.status === "preview"
             ? "It is above the Latest, so consumers reach it by its own version number. Promote it to make it the Latest."
             : "Consumers fetching the Latest now receive it."}
+          {documentStatus ? ` ${publishedStatusCopy.fix}` : null}
         </Alert>
       ) : null}
       <p className={styles.status} role="status">

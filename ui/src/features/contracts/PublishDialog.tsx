@@ -1,7 +1,8 @@
 // The pre-publish dialog (D-UI-10-04): the declared version, the current Latest and a one-line
 // diff summary against it (fetched when the dialog opens). A declared bump below the required one
 // is flagged but never blocks: the server gate decides. The confirm reads "Publish 1.3.0".
-// When the saved document's ODCS `status` is not `active`, a warning leads the body. A released
+// When the saved document's ODCS `status` is not `active`, a warning is the first thing in the body,
+// above the intro sentence, and the first part of the dialog's description. A released
 // version (a declared semver without a prerelease part) needs `status: active`, so Publish stays
 // disabled; a prerelease (a Preview) may keep its status after an explicit acknowledgement. Both
 // offer "Change status to active", which rewrites only the status value in the editor buffer and
@@ -136,12 +137,49 @@ export function PublishDialog({
   const statusRisk = risk !== undefined;
   const released = !isPrerelease(declared);
   const publishBlocked = statusRisk && (released || !acknowledged);
+  const intro =
+    "The publish gate validates the saved draft against every mandatory and attached rule set. Nothing is published if it fails.";
+  const statusWarning =
+    risk === undefined ? null : released ? (
+      <Alert intent="warning" title={publishStatusCopy.releasedTitle}>
+        {publishStatusCopy.says(risk)}{" "}
+        {publishStatusCopy.releasedFix(onChangeStatus !== undefined)}
+      </Alert>
+    ) : (
+      <Alert
+        intent="warning"
+        title={publishStatusCopy.previewTitle(risk)}
+        action={
+          <Checkbox
+            id="publish-status-acknowledged"
+            label={publishStatusCopy.acknowledge(risk)}
+            checked={acknowledged}
+            onChange={(event) => {
+              setAcknowledged(event.target.checked);
+            }}
+          />
+        }
+      >
+        {publishStatusCopy.previewRisk(risk)}
+      </Alert>
+    );
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
       title={`${label}?`}
-      description="The publish gate validates the saved draft against every mandatory and attached rule set. Nothing is published if it fails."
+      // The warning leads the description (spaced like body blocks), so it is the first thing
+      // seen and the first thing a screen reader announces, before the intro sentence.
+      description={
+        statusWarning ? (
+          <>
+            {statusWarning}
+            <p>{intro}</p>
+          </>
+        ) : (
+          intro
+        )
+      }
       footer={
         <>
           <Button
@@ -176,31 +214,6 @@ export function PublishDialog({
       }
     >
       <div className={styles.stackTight}>
-        {risk !== undefined ? (
-          released ? (
-            <Alert intent="warning" title={publishStatusCopy.releasedTitle}>
-              {publishStatusCopy.says(risk)}{" "}
-              {publishStatusCopy.releasedFix(onChangeStatus !== undefined)}
-            </Alert>
-          ) : (
-            <Alert
-              intent="warning"
-              title={publishStatusCopy.previewTitle(risk)}
-              action={
-                <Checkbox
-                  id="publish-status-acknowledged"
-                  label={publishStatusCopy.acknowledge(risk)}
-                  checked={acknowledged}
-                  onChange={(event) => {
-                    setAcknowledged(event.target.checked);
-                  }}
-                />
-              }
-            >
-              {publishStatusCopy.previewRisk(risk)}
-            </Alert>
-          )
-        ) : null}
         <dl className={styles.facts}>
           <dt>Declared version</dt>
           <dd>

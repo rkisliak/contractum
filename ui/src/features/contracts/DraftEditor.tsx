@@ -165,6 +165,8 @@ export function DraftEditor({
   const [report, setReport] = useState<ReportState | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // "Change status to active" was used: an info Alert under the toolbar asks for review and a save.
+  const [statusChanged, setStatusChanged] = useState(false);
   const [busy, setBusy] = useState<
     "save" | "validate" | "publish" | "keep" | null
   >(null);
@@ -300,6 +302,7 @@ export function DraftEditor({
     setNotice(null);
     try {
       await put(buffer, etag);
+      setStatusChanged(false);
       setNotice("Draft saved.");
       return true;
     } catch (error) {
@@ -337,6 +340,7 @@ export function DraftEditor({
   async function reloadLatest() {
     setConflict(null);
     setReport(null);
+    setStatusChanged(false);
     // Re-seed only once the newer server copy is in the cache: clearing first would re-seed
     // from the still-cached old document (and its old ETag) on the next render.
     await queryClient.invalidateQueries({
@@ -351,6 +355,7 @@ export function DraftEditor({
     setBusy("keep");
     try {
       await put(buffer, conflict.etag);
+      setStatusChanged(false);
       setConflict(null);
       setNotice("Draft saved over the newer server copy.");
     } catch (error) {
@@ -509,6 +514,11 @@ export function DraftEditor({
       {notice}
     </p>
   );
+  // Shown under the save action until the change is saved (or undone: nothing left to save).
+  const statusChangedAlert =
+    statusChanged && dirty ? (
+      <Alert intent="info">{publishStatusCopy.changed}</Alert>
+    ) : null;
   // A refused save: the id mismatch with its fix, or the problem.
   const saveAlerts = idMismatch ? (
     <Alert
@@ -645,6 +655,7 @@ export function DraftEditor({
           }}
         />
       </div>
+      {statusChangedAlert}
       {statusLine}
       {saveAlerts}
       {semverProblem ? (
@@ -742,6 +753,7 @@ export function DraftEditor({
         }
         notices={
           <>
+            {statusChangedAlert}
             {statusLine}
             {saveAlerts}
           </>
@@ -764,7 +776,8 @@ export function DraftEditor({
             ? () => {
                 setPublishOpen(false);
                 setBuffer(statusFixed);
-                setNotice(publishStatusCopy.changed);
+                setNotice(null);
+                setStatusChanged(true);
               }
             : undefined
         }

@@ -825,7 +825,8 @@ describe("draft editor publishing", () => {
       const dialog = await screen.findByRole("dialog", {
         name: "Publish 1.1.0?",
       });
-      // The warning is the first thing in the body, before the facts.
+      // The warning is literally the first thing in the body: above the intro sentence and the
+      // facts, and the first part of the dialog's accessible description.
       const warning = within(dialog)
         .getAllByRole("status")
         .find((el) =>
@@ -833,11 +834,24 @@ describe("draft editor publishing", () => {
         ) as HTMLElement;
       expect(warning).toBeDefined();
       expect(warning.textContent).toContain(lead);
+      const intro = within(dialog).getByText(/^The publish gate validates/);
+      expect(
+        warning.compareDocumentPosition(intro) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
       expect(
         warning.compareDocumentPosition(
           within(dialog).getByText("Declared version"),
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
+      const description = document.getElementById(
+        dialog.getAttribute("aria-describedby") ?? "",
+      ) as HTMLElement;
+      expect(description.firstElementChild).toBe(warning);
+      expect(description).toContainElement(intro);
+      expect(dialog).toHaveAccessibleDescription(
+        /^Warning: A released version needs status: active.*The publish gate validates/,
+      );
       expect(
         within(dialog).getByRole("button", { name: "Publish 1.1.0" }),
       ).toBeDisabled();
@@ -925,14 +939,57 @@ describe("draft editor publishing", () => {
       `${DOC_BASE}status: active # set by the starter\nschema:\n  - name: t\n    status: draft\n`,
     );
     expect(screen.getByText("Unsaved changes")).toBeVisible();
-    expect(
-      screen.getByText(
-        "Status changed to active. Review the change, save the draft, then publish.",
-      ),
-    ).toBeVisible();
+    // An info Alert, right under the draft toolbar with the save action, not muted plain text.
+    const changed = screen
+      .getAllByRole("status")
+      .find((el) =>
+        el.textContent.includes(
+          "Status changed to active. Review the change, save the draft, then publish.",
+        ),
+      ) as HTMLElement;
+    expect(changed).toBeDefined();
+    expect(changed).toBeVisible();
+    expect(changed.textContent).toMatch(/^Information: /);
+    const toolbar = screen.getByRole("toolbar", { name: "Draft actions" });
+    expect(toolbar.nextElementSibling).toBe(changed);
     expect(puts).toBe(0);
     // Publish waits for the save.
     expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+
+    // Saving does what it asked for: the Alert goes and Publish comes back.
+    await user.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(await screen.findByText("Draft saved.")).toBeVisible();
+    expect(puts).toBe(1);
+    expect(
+      screen.queryByText(
+        "Status changed to active. Review the change, save the draft, then publish.",
+      ),
+    ).toBeNull();
+  });
+
+  it("drops the status-changed Alert when the change is undone, leaving nothing to save", async () => {
+    const user = userEvent.setup();
+    const text = `${DOC_BASE}status: draft\n`;
+    renderApp("/contracts/c-1/drafts/d-1", {
+      folders,
+      permissions: ALL,
+      handlers: base([], { docText: text }),
+    });
+    const editor = await editorBox();
+    await user.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Publish 1.1.0?",
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Change status to active" }),
+    );
+    const message =
+      "Status changed to active. Review the change, save the draft, then publish.";
+    expect(await screen.findByText(message)).toBeVisible();
+    fireEvent.change(editor, { target: { value: text } });
+    expect(editor).toHaveValue(text);
+    expect(screen.queryByText(message)).toBeNull();
+    expect(screen.getByText("Saved")).toBeVisible();
   });
 
   it("changes only the status value of a JSON draft", async () => {

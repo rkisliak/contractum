@@ -437,13 +437,15 @@ segment, visible?(folder), requires? }`, `tabVisible(tab, folder, caps)`: `requi
   (`parseAs: "text"`) and raw-body writes (`bodySerializer`). `report.ts` reads the untyped validation report into one
   finding list (`flattenReport`, grouped by the server's `blocking` flag); `FindingsPanel` renders it; `versionStatus.tsx`
   maps a version to text-plus-icon badges. The Publish dialog (`PublishDialog.tsx`) leads its body with a warning
-  Alert when `documentStatus(saved)` (the saved bytes, which are exactly what publish sends) is not `active` (the real
+  Alert (the first block of the dialog description, above the intro sentence, so also first in `aria-describedby`) when `documentStatus(saved)` (the saved bytes, which are exactly what publish sends) is not `active` (the real
   status, or "sets no status"). A released version (`isPrerelease(declared)` false, no `-` part) keeps Publish
   disabled ("A released version needs status: active"); a prerelease (a Preview) enables it only after the
   "Publish with status: … anyway" Checkbox, which resets each time the dialog opens. The footer reads Keep editing,
   **Change status to active** (shown when `replaceTopLevelStatus` in `idEdit.ts` can rewrite an existing top-level
   `status` value and the caller may edit; it never inserts a missing one, closes the dialog and never saves), Publish.
-  The server gate still decides. A publish of a non-active document adds `documentStatus` (allow-list
+  After it the draft editor shows an info Alert ("Status changed to active. Review the change, save the draft, then
+  publish.") right under its toolbar and in the full-screen editor's notices, while the buffer is dirty and until the
+  next successful save or reload. The server gate still decides. A publish of a non-active document adds `documentStatus` (allow-list
   `PUBLISHED_DOCUMENT_STATUSES` in `ContractVersions.tsx`: proposed, draft, deprecated, retired, none, other) to the
   Versions search, which turns the "Published x as Latest" notice into a warning; the component re-checks the
   allow-list because the router also hands down raw parent search keys. The contract header shows a warning Badge

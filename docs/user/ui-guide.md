@@ -86,10 +86,11 @@ byte for byte, exactly as written.
   a Preview; promote it from the **Versions** tab to make it the Latest. A released version, such
   as 1.2.0, needs `status: active` in the document. A prerelease, such as 1.2.0-rc.1, can keep
   `status: draft` and gets a warning.
-  - When the saved document does not say `status: active`, the dialog shows a warning first. For a
-    released version, **Publish** stays disabled.
-  - **Change status to active** rewrites only the `status` value in the editor. Review the change,
-    save, then publish. A document with no `status` needs it added by hand.
+  - When the saved document does not say `status: active`, the warning is the first thing in the
+    dialog. For a released version, **Publish** stays disabled.
+  - **Change status to active** rewrites only the `status` value in the editor. A note under the
+    toolbar then asks you to review the change, save, then publish. It goes away once you save. A
+    document with no `status` needs it added by hand.
   - For a prerelease, tick **Publish with status: draft anyway** to enable **Publish**.
   - After the publish, the **Versions** tab notice says when the document's status was not
     `active`. The contract header shows a warning badge, such as **Status: draft**, beside

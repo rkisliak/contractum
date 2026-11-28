@@ -34,7 +34,7 @@ id: {odcs_id}   # inline comment
 apiVersion: v3.2.0
 name:   {name}
 version: "1.0.0"
-status: draft
+status: active
 domain: journey
 tags: [journey, orders]
 description:

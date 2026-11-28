@@ -24,7 +24,7 @@ id: {odcs_id}   # inline comment
 apiVersion: v3.2.0
 name:   E2E Orders
 version: "1.0.0"
-status: draft
+status: active
 domain: e2e
 tags: [e2e, orders]
 description:

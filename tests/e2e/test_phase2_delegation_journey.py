@@ -39,7 +39,7 @@ id: {odcs_id}   # inline comment
 apiVersion: v3.2.0
 name:   {name}
 version: "1.0.0"
-status: draft
+status: active
 domain: delegation
 tags: [phase2, orders]
 description:

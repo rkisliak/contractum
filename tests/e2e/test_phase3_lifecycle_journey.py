@@ -42,7 +42,7 @@ id: {odcs_id}   # inline comment
 apiVersion: v3.2.0
 name:   Phase 3 Orders
 version: "1.0.0"
-status: draft
+status: active
 domain: lifecycle
 tags: [phase3, orders]
 description:
